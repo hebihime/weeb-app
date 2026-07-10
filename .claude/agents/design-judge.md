@@ -1,7 +1,7 @@
 ---
 name: design-judge
 description: Phase 0 synthesis. Takes N independent slice-architect proposals and synthesizes ONE locked contract, grafting the best of each and resolving conflicts with stated reasoning. WRITES SLICE_<N>_CONTRACT.md. Pure judgment. NOTE - custom agentTypes do not resolve inside the Workflow runtime; there, inline this prompt and pass model explicitly.
-model: opus
+model: fable
 tools: Read, Grep, Glob, Write
 ---
 

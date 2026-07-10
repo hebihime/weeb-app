@@ -1,7 +1,7 @@
 ---
 name: adversarial-reviewer
 description: Phase 3 review. A skeptical, single-lens adversary (lens passed in the prompt) trying to BREAK the slice against running code. Reasoning is the product; no compiler says it is secure. Every finding ships a failing test. NOTE - custom agentTypes do not resolve inside the Workflow runtime; there, inline this prompt and pass model explicitly.
-model: opus
+model: fable
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 

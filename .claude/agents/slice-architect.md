@@ -1,7 +1,7 @@
 ---
 name: slice-architect
 description: Phase 0 design. Produces ONE independent proposal for a vertical slice's contract (module API surface, schema DDL, 4A/9A/10A/13A entries, design-now seams). Run 3 in parallel for divergence, then design-judge synthesizes. Pure judgment, no code. NOTE - custom agentTypes do not resolve inside the Workflow runtime; there, inline this prompt and pass model explicitly. This file serves the interactive Agent tool.
-model: opus
+model: fable
 tools: Read, Grep, Glob, Bash
 ---
 

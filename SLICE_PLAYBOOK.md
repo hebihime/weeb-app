@@ -8,13 +8,14 @@ HARDENED GATE (BUILD.md §8).
 
 | Phase | Agents (model) | Output | Gate |
 |---|---|---|---|
-| **0 Design panel** | 3× slice-architect (opus, divergent biases: simplicity / extraction-grade seams / i18n+privacy+residency) + 1 design-judge (opus) | `SLICE_<N>_CONTRACT.md` | JULIEN reviews + resolves open questions; ratify before any code |
+| **0 Design panel** | 3× slice-architect (fable, divergent biases: simplicity / extraction-grade seams / i18n+privacy+residency) + 1 design-judge (fable) | `SLICE_<N>_CONTRACT.md` | JULIEN reviews + resolves open questions; ratify before any code |
 | **1 Scaffold** | 1× scaffolder (sonnet) | empty-but-running skeleton | `dotnet build` clean + trivial container test + compose health |
 | **2 Build** | shared-wiring → parallel context builders → test-author + frontend-integrator → capped verify (sonnet) | working slice | THE HARDENED GATE (below) |
-| **3 Security** | N adversarial lenses (opus) → triage → capped remediate | `SECURITY_REVIEW_<N>.md` | high/critical cleared, each via a now-green test |
+| **3 Security** | N adversarial lenses (fable) → triage → capped remediate | `SECURITY_REVIEW_<N>.md` | high/critical cleared, each via a now-green test |
 | **4 Retro** | orchestrator | update this file + memory | next ledger row chosen |
 
-**Model rule (scar L25):** judgment model (opus) on the bookends, where no compiler checks the work;
+**Model rule (scar L25):** judgment model = the BEST available model (fable today; re-check when a new
+family ships) on the bookends, where no compiler checks the work — never a downgrade (CLAUDE.md);
 execution model (sonnet) through the middle, where tests/types/compose catch mistakes; cheapest (haiku)
 for pure boilerplate.
 

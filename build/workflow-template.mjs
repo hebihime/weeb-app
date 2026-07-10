@@ -24,7 +24,7 @@ export const meta = {
   ],
 }
 
-const JUDGMENT_MODEL = 'opus'    // bookends: no compiler checks design/security reasoning
+const JUDGMENT_MODEL = 'fable'   // bookends: no compiler checks design/security reasoning; best available model, never a downgrade
 const EXECUTION_MODEL = 'sonnet' // middle: tests/types/compose catch mistakes
 
 const SLICE = args?.slice ?? 'S?'
