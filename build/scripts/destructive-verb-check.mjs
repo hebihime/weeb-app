@@ -13,15 +13,31 @@
 import { readFileSync, statSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const DESTRUCTIVE_VERB_RE = /\b(DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE)\b/i;
+// Raw-SQL verbs (migrationBuilder.Sql("DROP TABLE ...")) AND the idiomatic EF Core fluent migration API
+// (migrationBuilder.DropColumn/.DropTable/.DropSchema(...)) — SECURITY_REVIEW_S0.md PII/residency F2.
+// .cs migration files overwhelmingly use the fluent API, not raw SQL; missing it let an unmarked drop of
+// region/lawful_basis/consent columns (exactly P3's scar) sail through the tripwire.
+const DESTRUCTIVE_VERB_RE = /\b(DROP\s+TABLE|DROP\s+COLUMN|TRUNCATE|DropColumn|DropTable|DropSchema)\b/i;
 const MARKER_RE = /--\s*destructive:\s*\S.+/i;
+
+const VERB_DISPLAY_NAMES = {
+  DROPTABLE: "DROP TABLE",
+  DROPCOLUMN: "DROP COLUMN",
+  DROPSCHEMA: "DROP SCHEMA",
+  TRUNCATE: "TRUNCATE",
+};
+
+function normalizeVerb(raw) {
+  const compact = raw.toUpperCase().replace(/\s+/g, "");
+  return VERB_DISPLAY_NAMES[compact] ?? raw.toUpperCase();
+}
 
 /** @param {string} content @returns {{destructive: boolean, hasMarker: boolean, matchedVerbs: string[]}} */
 export function analyzeMigration(content) {
   const matchedVerbs = [];
   const re = new RegExp(DESTRUCTIVE_VERB_RE.source, "gi");
   let m;
-  while ((m = re.exec(content)) !== null) matchedVerbs.push(m[1].toUpperCase().replace(/\s+/g, " "));
+  while ((m = re.exec(content)) !== null) matchedVerbs.push(normalizeVerb(m[1]));
   return {
     destructive: matchedVerbs.length > 0,
     hasMarker: MARKER_RE.test(content),

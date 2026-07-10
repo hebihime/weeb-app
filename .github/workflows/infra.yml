@@ -53,14 +53,14 @@ jobs:
           done
 
   edge-guard-residency-assertions:
-    name: edge-guard + residency unit assertions
+    name: edge-guard + residency unit assertions (+ adversarial lenses)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs
+      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs infra/edge-guard.idor-lens.test.mjs infra/purge-completeness.lens.test.mjs
 
   what-if:
     name: what-if against dev (guarded on Azure OIDC configured)
@@ -95,6 +95,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment != ''
     environment: ${{ github.event.inputs.environment }}
+    # Own concurrency group, deliberately NOT the workflow-level `infra-${{ github.ref }}` group
+    # (SECURITY_REVIEW_S0.md concurrency F1a/F1b):
+    #  - cancel-in-progress: false — a push touching infra/** must never cancel an in-flight
+    #    `az deployment group create`; ARM keeps mutating prod server-side even after GitHub marks the
+    #    run cancelled, so cancelling here only makes the pipeline lie about what's happening in prod.
+    #  - keyed on the target ENVIRONMENT, not the ref — two dispatches from different refs targeting the
+    #    same environment must serialize (queue), never race concurrently into the same resource group.
+    concurrency:
+      group: infra-deploy-${{ github.event.inputs.environment }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2

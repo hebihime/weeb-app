@@ -84,9 +84,9 @@ test("checkResidencyColumns: pattern matching is case-insensitive on table name"
   assert.equal(violations.length, 2);
 });
 
-test("loadConfig: seeded pii-patterns.json loads and matches the contract's five patterns", () => {
+test("loadConfig: seeded pii-patterns.json loads and matches the contract's patterns (five original + three minor-protection, SECURITY_REVIEW_S0.md minor F5)", () => {
   const config = loadConfig();
-  assert.deepEqual(config.patterns, ["*consent*", "*profile*", "*identity*", "*location*", "*verification*"]);
+  assert.deepEqual(config.patterns, ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*"]);
   assert.deepEqual(config.required_columns, ["region", "lawful_basis"]);
   assert.deepEqual(config.allowlist, []);
 });

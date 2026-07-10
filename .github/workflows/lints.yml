@@ -31,8 +31,20 @@ jobs:
       - name: scan the diff for staged-secret patterns
         run: |
           set -e
-          BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
-          if ! git rev-parse "$BASE" >/dev/null 2>&1; then BASE="$(git rev-list --max-parents=0 HEAD)"; fi
+          # BASE must cover the FULL pushed range, not just the tip commit (SECURITY_REVIEW_S0.md
+          # concurrency F5): on `push`, github.event.before is the pre-push HEAD, so BASE..HEAD spans
+          # every commit in a multi-commit push. HEAD~1 alone only scans the tip commit — a secret added
+          # earlier in the same push would land on master unscanned. `before` is the all-zero SHA on a
+          # new-branch push and may be missing/unresolvable on a shallow/rewritten history; both fall
+          # back to the repo root commit (scan everything) rather than silently narrowing the range.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git rev-parse "$BASE" >/dev/null 2>&1; then
+            BASE="$(git rev-list --max-parents=0 HEAD)"
+          fi
           git diff "$BASE"..HEAD -U0 | node build/scripts/secret-scan.mjs
 
   brand-drift-gate:
@@ -47,25 +59,28 @@ jobs:
       - run: node build/scripts/brand-gate.mjs
 
   contract-lint:
-    name: contract-lint (guarded)
+    name: contract-lint (guarded) + adversarial lens regression suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test tools/contract-lint/contract-lint.test.mjs
+      # Golden vectors + the SECURITY_REVIEW_S0.md adversarial lenses (idor/minor/silent-rejection/
+      # trust-boundary/deferred) — these are the permanent regression suite for every fixNow finding;
+      # running them here is what makes "now-green" mean something instead of a claim nobody checks.
+      - run: node --test tools/contract-lint/contract-lint.test.mjs tools/contract-lint/contract-lint.idor-lens.test.mjs tools/contract-lint/contract-lint.minor-lens.test.mjs tools/contract-lint/contract-lint.silent-rejection.test.mjs tools/contract-lint/contract-lint.trust-boundary.test.mjs tools/contract-lint/contract-lint.deferred.test.mjs
       - run: node tools/contract-lint/contract-lint.mjs
 
   ddl-lint:
-    name: ddl-lint (guarded)
+    name: ddl-lint (guarded) + adversarial lens regression suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test tools/ddl-lint/ddl-lint.test.mjs
+      - run: node --test tools/ddl-lint/ddl-lint.test.mjs tools/ddl-lint/ddl-lint.minor-lens.test.mjs tools/ddl-lint/ddl-lint.pii-residency.adversary.test.mjs
       - name: run against any committed migration SQL fixtures (guarded)
         run: |
           mapfile -d '' FILES < <(find backend -path "*/Migrations/*.sql" -print0 2>/dev/null || true)
@@ -87,24 +102,44 @@ jobs:
       - run: node tools/i18n-lint/i18n-lint.mjs
 
   destructive-verb-check:
-    name: destructive-verb check (golden vectors)
+    name: destructive-verb check (golden vectors + adversarial lens)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test build/scripts/destructive-verb-check.test.mjs
+      - run: node --test build/scripts/destructive-verb-check.test.mjs build/scripts/destructive-verb-check.pii-residency.adversary.test.mjs
 
   edge-guard-assertions:
-    name: edge-guard + residency rendered-rule assertions
+    name: edge-guard + residency rendered-rule assertions (+ adversarial lens)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs
+      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs infra/edge-guard.idor-lens.test.mjs
+
+  concurrency-lens:
+    name: concurrency adversarial lens (S0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test build/scripts/concurrency-lens.test.mjs
+
+  purge-completeness-lens:
+    name: purge-completeness adversarial lens (13A non-stores)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test infra/purge-completeness.lens.test.mjs
 
   actionlint:
     name: actionlint on the workflows themselves

@@ -29,10 +29,15 @@ resource edgeGuardPolicy 'Microsoft.Network/frontdoorwebapplicationfirewallpolic
           action: 'Block'
           matchConditions: [
             {
+              // UrlDecode collapses ONE encoding layer before the Contains check runs. Single-encoded
+              // traversal (%2e%2e) decodes fully to literal ".." here, so '../','..\\','/..','\\..' catch
+              // it post-decode. Double-encoded traversal (%252e%252e) decodes only ONE layer to '%2e%2e',
+              // which the literal '%2e'/'%2f'/'%5c' values still catch. '%25' is a defense-in-depth
+              // tripwire on any bare percent-of-a-percent, independent of decode behavior.
               matchVariable: 'RequestUri'
               operator: 'Contains'
-              matchValue: ['%2e', '%2f', '%5c', '%2E', '%2F', '%5C']
-              transforms: ['Lowercase']
+              matchValue: ['%2e', '%2f', '%5c', '%2E', '%2F', '%5C', '%25', '../', '..\\', '/..', '\\..']
+              transforms: ['Lowercase', 'UrlDecode']
             }
           ]
         }
@@ -58,10 +63,14 @@ resource edgeGuardPolicy 'Microsoft.Network/frontdoorwebapplicationfirewallpolic
           action: 'Block'
           matchConditions: [
             {
+              // UrlDecode normalizes any percent-encoded character inside the segment (e.g. %69nternal ->
+              // internal) before the literal Contains check, so topology-string blocking cannot be
+              // defeated by encoding a single letter of "/internal". '%69nternal' is kept too as a
+              // pre-decode literal tripwire (defense-in-depth if a future engine only partially decodes).
               matchVariable: 'RequestUri'
               operator: 'Contains'
-              matchValue: ['/internal', '/internal/']
-              transforms: ['Lowercase']
+              matchValue: ['/internal', '/internal/', '%69nternal']
+              transforms: ['Lowercase', 'UrlDecode']
             }
           ]
         }

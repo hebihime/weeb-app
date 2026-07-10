@@ -23,6 +23,12 @@ export const ADVERSARIAL_PATHS = [
   "/internal/admin",
   "/internal/",
   "/api/internal/config",
+  // Double URL-encoded traversal: WAF sees literal "%252e", origin decodes it twice to "../..".
+  "/%252e%252e/%252e%252e/etc/passwd",
+  "/..%252f..%252fetc/passwd",
+  // Percent-encoding a single character of "/internal" defeats literal topology-string blocking.
+  "/%69nternal/admin",
+  "/api/%69nternal/config",
 ];
 
 async function probe(baseUrl, path) {

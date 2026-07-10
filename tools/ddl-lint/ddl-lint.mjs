@@ -24,11 +24,15 @@ function globToRegExp(glob) {
 
 /**
  * Extract CREATE TABLE statements from SQL text: { tableName, columnNames }[].
- * Handles quoted ("Foo") and unquoted identifiers, single-line and multi-line column blocks.
+ * Handles quoted ("Foo") and unquoted identifiers, single-line and multi-line column blocks, and an
+ * OPTIONAL schema qualifier (schema.table or "schema"."table") — the shape `dotnet ef migrations
+ * script` emits for a modular monolith with schema-per-module (CLAUDE.md architecture; SECURITY_
+ * REVIEW_S0.md PII/residency F1 / minor F4). The schema qualifier, if present, is discarded; only the
+ * bare table name is returned so the pii-patterns.json glob matching stays unchanged.
  */
 export function parseCreateTables(sql) {
   const tables = [];
-  const stmtRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(([\s\S]*?)\)\s*;/gi;
+  const stmtRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?[A-Za-z_][A-Za-z0-9_]*"?\.)?"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(([\s\S]*?)\)\s*;/gi;
   let m;
   while ((m = stmtRe.exec(sql)) !== null) {
     const tableName = m[1];
