@@ -9,6 +9,10 @@ namespace Svac.AimlRouter.Quota;
 /// </summary>
 public static class AimlRouterQuotaKeys
 {
-    /// <summary>Actor = `sys_&lt;caller_module&gt;`, window daily/UTC, cap = 9A `aiml.daily_call_ceiling` (§5).</summary>
+    /// <summary>
+    /// Actor = `sys_&lt;caller_module&gt;`, window daily/UTC, cap = 9A
+    /// <see cref="Svac.AimlRouter.Config.AimlRouterConfigKeys.DailyCallCeiling"/> (§5) — the REAL runtime
+    /// key <c>Svac.DomainCore.Quota.QuotaService.Consume</c> derives as <c>quota.{this}.cap</c>.
+    /// </summary>
     public const string CallDaily = "aiml.call.daily";
 }

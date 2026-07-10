@@ -32,6 +32,7 @@ internal static class Resolver
     {
         var declaredChain = ChainFor(policy, task);
         var hops = new List<ResolvedHop>(declaredChain.Count);
+        var anyCeilingSkip = false;
 
         foreach (var link in declaredChain)
         {
@@ -50,13 +51,18 @@ internal static class Resolver
             }
             if (ExceedsCeiling(payloadClass, allowlisted.PayloadClassCeiling))
             {
-                continue; // privacy floor for THIS call -> skip, not tried (§1b failover law).
+                // privacy floor for THIS call -> skip, not tried (§1b failover law). This link was
+                // otherwise a genuine candidate (allowlisted, model-declared, DI-registered) — an
+                // empty chain caused ONLY by skips like this one is RefusedPrivacyFloor, not
+                // NoRouteConfigured (ProviderChain.AnyCeilingSkip's own doc comment; §10.3 FINDING 2).
+                anyCeilingSkip = true;
+                continue;
             }
 
             hops.Add(new ResolvedHop(link.Provider, link.Model));
         }
 
-        return new ProviderChain(hops);
+        return new ProviderChain(hops, anyCeilingSkip);
     }
 
     /// <summary>
@@ -73,9 +79,16 @@ internal static class Resolver
         PayloadClass payloadClass)
     {
         var allowlisted = allowlist.FirstOrDefault(a => a.Name == pin.Provider);
-        if (allowlisted is null || !allowlisted.Models.Contains(pin.Model) || !registeredProviderIds.Contains(pin.Provider) || ExceedsCeiling(payloadClass, allowlisted.PayloadClassCeiling))
+        if (allowlisted is null || !allowlisted.Models.Contains(pin.Model) || !registeredProviderIds.Contains(pin.Provider))
         {
             return new ProviderChain(Array.Empty<ResolvedHop>());
+        }
+        if (ExceedsCeiling(payloadClass, allowlisted.PayloadClassCeiling))
+        {
+            // The pin was otherwise a genuine candidate (allowlisted, model-declared, DI-registered) —
+            // refused for a privacy reason distinct from "not allowlisted" (§10.3 FINDING 2; mirrors the
+            // Automatic path's AnyCeilingSkip).
+            return new ProviderChain(Array.Empty<ResolvedHop>(), AnyCeilingSkip: true);
         }
         return new ProviderChain(new[] { new ResolvedHop(pin.Provider, pin.Model) });
     }

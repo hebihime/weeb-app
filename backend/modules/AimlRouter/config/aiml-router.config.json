@@ -42,12 +42,12 @@
       "consumer": "Svac.AimlRouter.AimlRouterService per-hop invocation timeout; bounds [5, 300]; feeds the Timeout failure kind"
     },
     {
-      "key": "aiml.daily_call_ceiling",
+      "key": "quota.aiml.call.daily.cap",
       "scope": "ops",
       "type": "int",
       "value": 10000,
       "requiresReason": false,
-      "consumer": "Svac.AimlRouter.AimlRouterService budget circuit breaker (10A aiml.call.daily cap, §5)"
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume (10A `quota.<quotaKey>.cap` convention, QuotaService.cs:24) for quotaKey=AimlRouterQuotaKeys.CallDaily=\"aiml.call.daily\" (SLICE_S2_CONTRACT.md §5) — the actual runtime key AimlRouterService.ConsumeDailyBudget's budget circuit breaker resolves. Renamed from the contract §4 table's literal `aiml.daily_call_ceiling` (a build-phase fix, backend/tests/Svac.Tests.AimlRouter/BudgetCapConfigKeyWiringTests.cs pins it): that spelling collided with nothing QuotaService.Consume ever reads, so every InvokeAsync call threw KeyNotFoundException. Same v0 value (10000), same scope/requiresReason — the fix is the key's spelling, not its shape."
     }
   ]
 }

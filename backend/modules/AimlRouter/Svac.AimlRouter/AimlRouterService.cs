@@ -78,7 +78,16 @@ internal sealed class AimlRouterService(
 
         if (chain.IsEmpty)
         {
-            var cause = req.ExplicitPin is not null ? AimlFailure.NotAllowlisted : AimlFailure.NoRouteConfigured;
+            // Build-phase fix (SLICE_S2_CONTRACT.md §10.3 FINDING 2, backend/e2e/aiml-router.e2e.mjs's own
+            // header): a chain that resolved empty ONLY because a genuine candidate's payload class
+            // exceeded the provider's ceiling is a privacy-law refusal, not a routing-configuration gap —
+            // ProviderChain.AnyCeilingSkip (set by Resolver) carries exactly that distinction through this
+            // otherwise-opaque IsEmpty signal. NotAllowlisted stays reserved for a pin naming a provider/
+            // model/environment that was never a candidate at all; NoRouteConfigured stays reserved for
+            // the Automatic path finding no candidate for reasons OTHER than the privacy floor.
+            var cause = chain.AnyCeilingSkip
+                ? AimlFailure.RefusedPrivacyFloor
+                : req.ExplicitPin is not null ? AimlFailure.NotAllowlisted : AimlFailure.NoRouteConfigured;
             await AppendDecision(req, ctx, invocationId, hop: null, transport: null, decisionSource: decisionSource, policyVersion, failoverFrom: null, outcome: cause.ToString(), stopwatch, tokensIn: 0, tokensOut: 0, ct);
             return AimlResult.Failed(cause);
         }

@@ -1,11 +1,31 @@
 {
-  "_comment": "SLICE_S2_CONTRACT.md §10.4 — checked-in fixtures only; production content never becomes eval data. Build-phase (Phase 2) extends this to the full N=20 canary set with structured-output-schema conformance thresholds; this Scaffold-phase file ships the harness's first real, working entry so the shape is proven before the set grows.",
+  "_comment": "SLICE_S2_CONTRACT.md §10.4 — checked-in fixtures only; production content never becomes eval data. Build-phase (Phase 2) full N=20 set: EVERY prompt asks the real local-transport model for STRICT JSON matching the shared one-property schema {\"answer\": string} (the contract's own neutral envelope carries StructuredOutputSchema as a documented field; the schema itself is conveyed via the system prompt since neither transport enforces JSON mode server-side yet — this eval measures whether prompting alone reliably yields conforming output, which is exactly what a structured-output-schema-conformance eval is for). Each entry's expectedSubstring is checked case-insensitively against the parsed answer value, never the raw text, so conformance and content-correctness are scored as two separate, both-required conditions. Deliberately short questions + low maxTokens (EvalProbeConformanceTests.cs) keep this the cheap $ path per SLICE_S2_CONTRACT.md §9's per-eval cost discipline.",
+  "schema": {
+    "type": "object",
+    "required": ["answer"],
+    "properties": { "answer": { "type": "string" } }
+  },
+  "systemPromptTemplate": "Respond with ONLY strict JSON matching this schema: {\"answer\": string}. No prose, no markdown code fences, no extra keys, no explanation — the entire response body must be one JSON object.",
   "prompts": [
-    {
-      "id": "canary-001",
-      "system": "Reply with exactly one word and nothing else.",
-      "userText": "Reply with exactly the single word: PONG",
-      "expectedSubstring": "PONG"
-    }
+    { "id": "canary-001", "userText": "What is the single word for the sound a cat makes? Answer in one word.", "expectedSubstring": "meow" },
+    { "id": "canary-002", "userText": "What color do you get from mixing red and white paint? One word.", "expectedSubstring": "pink" },
+    { "id": "canary-003", "userText": "What is 2 + 2? Reply with the digit only.", "expectedSubstring": "4" },
+    { "id": "canary-004", "userText": "What is the capital of France? One word.", "expectedSubstring": "paris" },
+    { "id": "canary-005", "userText": "What is the chemical symbol for water? No spaces.", "expectedSubstring": "h2o" },
+    { "id": "canary-006", "userText": "How many days are in a week? Digit only.", "expectedSubstring": "7" },
+    { "id": "canary-007", "userText": "What planet is known as the Red Planet? One word.", "expectedSubstring": "mars" },
+    { "id": "canary-008", "userText": "What is the opposite of 'up'? One word.", "expectedSubstring": "down" },
+    { "id": "canary-009", "userText": "What shape has three sides? One word.", "expectedSubstring": "triangle" },
+    { "id": "canary-010", "userText": "What do bees produce that people eat? One word.", "expectedSubstring": "honey" },
+    { "id": "canary-011", "userText": "What is the freezing point of water in Celsius? Digit only.", "expectedSubstring": "0" },
+    { "id": "canary-012", "userText": "What is the first letter of the English alphabet? One letter, lowercase.", "expectedSubstring": "a" },
+    { "id": "canary-013", "userText": "What animal is known as man's best friend? One word.", "expectedSubstring": "dog" },
+    { "id": "canary-014", "userText": "How many legs does a spider have? Digit only.", "expectedSubstring": "8" },
+    { "id": "canary-015", "userText": "What is the largest ocean on Earth? One or two words.", "expectedSubstring": "pacific" },
+    { "id": "canary-016", "userText": "What season comes after winter? One word.", "expectedSubstring": "spring" },
+    { "id": "canary-017", "userText": "What gas do plants absorb from the air for photosynthesis? Give the common name, one or two words.", "expectedSubstring": "carbon dioxide" },
+    { "id": "canary-018", "userText": "What is the square root of 9? Digit only.", "expectedSubstring": "3" },
+    { "id": "canary-019", "userText": "What metal is liquid at room temperature? One word.", "expectedSubstring": "mercury" },
+    { "id": "canary-020", "userText": "What do you call a baby dog? One word.", "expectedSubstring": "puppy" }
   ]
 }

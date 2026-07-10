@@ -136,6 +136,45 @@ public sealed class AimlRouterServiceTests
         Assert.Equal(AimlFailure.NotAllowlisted, Assert.IsType<AimlResult.Failure>(result).Cause);
     }
 
+    [Fact]
+    public async Task InvokeAsync_AutomaticPath_PayloadClassAboveCeiling_RefusedPrivacyFloor_NeverNoRouteConfigured()
+    {
+        // SLICE_S2_CONTRACT.md §10.3 FINDING 2 (backend/e2e/aiml-router.e2e.mjs's own header): the
+        // contract's literal drill text is "Personal payload vs pseudonymous ceiling => RefusedPrivacyFloor
+        // on the event". Proven here at gate speed (fake providers, no live CLI, no Postgres): the "seed"
+        // allowlist entry's ceiling is Pseudonymous, so a Personal-class request is a genuine candidate
+        // that privacy law blocks, not an unconfigured route.
+        var router = new AimlRouterService(
+            providers: new IModelProvider[] { new SeedProvider() },
+            egressAuthorizer: new RefuseAllSpecialCategoryAuthorizer(),
+            configRegistry: MakeConfig(),
+            quotaService: new FakeQuotaService(),
+            eventStore: new FakeEventStore());
+
+        var result = await router.InvokeAsync(MakeRequest(PayloadClass.Personal), SystemCtx());
+
+        Assert.Equal(AimlFailure.RefusedPrivacyFloor, Assert.IsType<AimlResult.Failure>(result).Cause);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ExplicitPin_PayloadClassAboveCeiling_RefusedPrivacyFloor_NeverNotAllowlisted()
+    {
+        // Mirrors the Automatic-path fix above for the Explicit-pin path (§1b: "the pin bypasses the
+        // routing policy, never the laws" — the privacy floor is one of those laws, distinct from
+        // allowlist membership).
+        var router = new AimlRouterService(
+            providers: new IModelProvider[] { new SeedProvider() },
+            egressAuthorizer: new RefuseAllSpecialCategoryAuthorizer(),
+            configRegistry: MakeConfig(),
+            quotaService: new FakeQuotaService(),
+            eventStore: new FakeEventStore());
+
+        var pinnedRequest = MakeRequest(PayloadClass.Personal) with { ExplicitPin = new ProviderPin("seed", "seed-v0") };
+        var result = await router.InvokeAsync(pinnedRequest, SystemCtx());
+
+        Assert.Equal(AimlFailure.RefusedPrivacyFloor, Assert.IsType<AimlResult.Failure>(result).Cause);
+    }
+
     /// <summary>A SeedProvider variant that reports whether it was ever invoked, for the egress-refusal ordering proof above.</summary>
     private sealed class RecordingSeedProvider(Action onExecute) : IModelProvider
     {

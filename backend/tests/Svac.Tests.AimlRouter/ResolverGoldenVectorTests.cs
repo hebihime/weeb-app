@@ -51,6 +51,10 @@ public sealed class ResolverGoldenVectorTests
             AimlTaskKind.Generate, PayloadClass.Personal, RegionCode.Unknown);
 
         Assert.True(chain.IsEmpty);
+        // §10.3 FINDING 2 fix: this empty chain's ONLY cause is the ceiling skip, so the caller must be
+        // able to tell it apart from a plain "nothing configured" empty chain and map it to
+        // RefusedPrivacyFloor, never NoRouteConfigured.
+        Assert.True(chain.AnyCeilingSkip);
     }
 
     [Fact]
@@ -61,6 +65,7 @@ public sealed class ResolverGoldenVectorTests
             AimlTaskKind.Generate, PayloadClass.NonPersonal, RegionCode.Unknown);
 
         Assert.True(chain.IsEmpty); // NoRouteConfigured signal.
+        Assert.False(chain.AnyCeilingSkip); // never reached the ceiling check — registration failed first.
     }
 
     [Fact]
@@ -76,6 +81,7 @@ public sealed class ResolverGoldenVectorTests
             AimlTaskKind.Generate, PayloadClass.NonPersonal, RegionCode.Unknown);
 
         Assert.True(chain.IsEmpty);
+        Assert.False(chain.AnyCeilingSkip); // NoRouteConfigured, not a privacy-floor refusal.
     }
 
     [Fact]
@@ -105,6 +111,7 @@ public sealed class ResolverGoldenVectorTests
         var chain = Resolver.ResolveExplicitPin(pin, new[] { AnthropicEntry }, new HashSet<string> { "anthropic" }, PayloadClass.SpecialCategory);
 
         Assert.True(chain.IsEmpty);
+        Assert.True(chain.AnyCeilingSkip); // §10.3 FINDING 2 fix: a pin above ceiling is a privacy refusal, not "not allowlisted".
     }
 
     [Fact]
