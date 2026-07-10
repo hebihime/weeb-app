@@ -81,6 +81,11 @@ deterministic math in pure libs with golden vectors, no LLM.
 - Do NOT put `schema:` on high-volume agent stages (L27: uncatchable retry-cap crash, ~2M tokens wasted
   once): schema-free text + defensive parse. Reserve schema for small bounded outputs (triage routing).
 - Guard every `agent()` result against null + one retry (L28); resume-from-runId replays cached stages.
+- Workflow `args` can arrive JSON-STRINGIFIED (L32, cost one full design panel): on a string,
+  `args?.slice` is `String.prototype.slice` — a function, non-nullish, so `??` fallbacks never fire and
+  agents launch with garbage interpolated into every prompt and filename. Parse defensively
+  (`typeof args === 'string' ? JSON.parse(args) : args`) and FAIL FAST validating every arg against its
+  expected shape before the first `agent()` call.
 - A stage producing a large artifact WRITES the file and returns a pointer, never emits it as text.
 - **Front-load the real end-to-end flow (L30):** the test-author writes the hardest path FIRST (real
   endpoints + real auth + Mailpit email + real 3A events), SQL/stub bypasses explicitly banned. Assume a

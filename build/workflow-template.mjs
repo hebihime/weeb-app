@@ -27,9 +27,15 @@ export const meta = {
 const JUDGMENT_MODEL = 'fable'   // bookends: no compiler checks design/security reasoning; best available model, never a downgrade
 const EXECUTION_MODEL = 'sonnet' // middle: tests/types/compose catch mistakes
 
-const SLICE = args?.slice ?? 'S?'
+// args can arrive JSON-STRINGIFIED (real failure: args?.slice resolved to String.prototype.slice,
+// a non-nullish function, so ?? never fired and 4 agents ran with a garbage slice id). Parse
+// defensively, then FAIL FAST on anything that isn't a real slice id — never launch agents on garbage.
+const ARGS = typeof args === 'string' ? JSON.parse(args) : (args ?? {})
+const SLICE = ARGS.slice
+if (typeof SLICE !== 'string' || !/^S\d+[a-z]?$/.test(SLICE))
+  throw new Error(`bad or missing args.slice (got ${typeof SLICE}) — invoke with args {slice:'S14', ...}`)
 const CONTRACT_PATH = `SLICE_${SLICE}_CONTRACT.md`
-const RATIFIED = args?.ratified === true
+const RATIFIED = ARGS.ratified === true
 
 // critical single-agent stage: null-guard + one retry
 async function critical(prompt, opts, label) {
@@ -112,7 +118,7 @@ await critical(
   { label: 'test-author', phase: 'Build', model: EXECUTION_MODEL },
   'test-author'
 )
-const CONTEXTS = args?.contexts ?? ['single-module'] // length 1 = sequential chain, no fan-out
+const CONTEXTS = ARGS.contexts ?? ['single-module'] // length 1 = sequential chain, no fan-out
 const SEQUENTIAL = CONTEXTS.length === 1
 const buildOne = ctx => agent(
   `Build module "${ctx}" for weeb-app slice "${SLICE}" test-first against ${CONTRACT_PATH}. Own ONLY ` +
