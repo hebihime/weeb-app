@@ -1,8 +1,8 @@
 {
   "brand_key": "weeb",
   "display_name": "Weeb App",
-  "bundle_id_ios": "",
-  "application_id_android": "",
+  "bundle_id_ios": "app.weeb.client",
+  "application_id_android": "app.weeb.client",
   "web_domain": "weeb.app",
   "brand_primary": "#F7568F",
   "brand_celebration": "#FF9838",

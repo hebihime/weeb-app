@@ -1,8 +1,8 @@
 {
   "brand_key": "friki",
   "display_name": "Friki App",
-  "bundle_id_ios": "",
-  "application_id_android": "",
+  "bundle_id_ios": "app.friki.client",
+  "application_id_android": "app.friki.client",
   "web_domain": "friki.app",
   "brand_primary": "#FF7A3D",
   "brand_celebration": "#F7568F",
