@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+body{margin:0;background:#EFEAE4;font-family:"M PLUS Rounded 1c",sans-serif;color:#26170F;}
+a{color:#38BDF2;text-decoration:none} a:hover{color:#F7568F}
+</style>
+</helmet>
+
+<section id="1a" style="padding:48px;display:flex;flex-direction:column;gap:34px">
+  <div style="display:flex;align-items:baseline;gap:16px">
+    <div style="background:#26170F;color:#fff;font-weight:900;font-size:13px;border-radius:999px;padding:4px 14px">1a</div>
+    <div style="font-weight:900;font-size:26px">08 · Admin Portal — C1–C6 (internal, Blazor Server)</div>
+    <div style="font-weight:500;font-size:13px;color:#8A7C72">Information design first · reputation as tiers only · every action takes a reason</div>
+  </div>
+
+  <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start">
+
+  <!-- ============ C1 SAFETY DESK ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C1 · Safety Desk — triage queue + evidence + actions</div>
+    <div style="width:1440px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:48px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 20px;gap:18px">
+        <b style="font-size:13.5px;font-weight:800">WEEB ADMIN</b>
+        <span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:4px 10px">Safety Desk</span>
+        <span style="font-size:12px;font-weight:500;opacity:.7">Verification</span><span style="font-size:12px;font-weight:500;opacity:.7">Content</span><span style="font-size:12px;font-weight:500;opacity:.7">Venues &amp; Cons</span><span style="font-size:12px;font-weight:500;opacity:.7">Quest &amp; Economy</span><span style="font-size:12px;font-weight:500;opacity:.7">Metrics &amp; Ops</span>
+        <span style="margin-left:auto;font-size:11.5px;font-weight:700;color:#F5A623"><i class="fa-solid fa-clock"></i> CON HOURS · 15-min SLA active</span>
+        <span style="font-size:11.5px;font-weight:600;opacity:.85">op: r.tanaka</span>
+      </div>
+      <div style="display:flex;height:640px">
+        <div style="width:560px;flex:none;border-right:1px solid #E0DBD4;background:#fff;display:flex;flex-direction:column">
+          <div style="padding:10px 14px;border-bottom:1px solid #E8E3DD;display:flex;gap:6px;align-items:center">
+            <span style="border:1px solid #26170F;background:#26170F;color:#fff;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700">All 23</span>
+            <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#6B5B50">DM 9</span>
+            <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#6B5B50">Gallery 6</span>
+            <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#6B5B50">Battle 3</span>
+            <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#6B5B50">Appeals 5</span>
+            <span style="margin-left:auto;font-size:10.5px;font-weight:600;color:#8A7C72">sorted by SLA</span>
+          </div>
+          <div style="border-left:4px solid #ED4245;background:#FDF1F1;padding:10px 14px;border-bottom:1px solid #E8E3DD">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px;font-weight:800;color:#ED4245"><i class="fa-solid fa-thumbtack"></i> MINOR-RELATED · pinned</b><span style="font-family:monospace;font-weight:700;color:#ED4245;font-size:13px">04:12</span></div>
+            <div style="font-size:12px;font-weight:600;margin-top:3px">Report: age concern on profile @s… · surface: Con deck · Anime NYC</div>
+            <div style="font-size:11px;font-weight:500;color:#6B5B50;margin-top:2px">AI: escalated to human, no auto-action taken (policy: minors always human)</div>
+          </div>
+          <div style="border-left:4px solid #F5A623;background:#fff;padding:10px 14px;border-bottom:1px solid #E8E3DD">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px;font-weight:700">Harassment · DM thread</b><span style="font-family:monospace;font-weight:700;color:#F5A623;font-size:13px">08:47</span></div>
+            <div style="font-size:11px;font-weight:500;color:#6B5B50;margin-top:2px">AI: auto-muted sender 1h, rationale attached · reporter tier: trusted · reported tier: watch</div>
+          </div>
+          <div style="border-left:4px solid #38BDF2;background:#EAF7FD;padding:10px 14px;border-bottom:1px solid #E8E3DD">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px;font-weight:700">Selected: In-person report · QR check-in</b><span style="font-family:monospace;font-weight:700;color:#26170F;font-size:13px">11:03</span></div>
+            <div style="font-size:11px;font-weight:500;color:#6B5B50;margin-top:2px">AI: held for human (in-person category) · both parties con-present</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #E8E3DD;opacity:.75">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px;font-weight:700">Appeal · suspension of 07-02</b><span style="font-family:monospace;font-weight:700;color:#8A7C72;font-size:13px">—</span></div>
+            <div style="font-size:11px;font-weight:500;color:#6B5B50;margin-top:2px">Appeals queue · no SLA clock · assigned: unclaimed</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #E8E3DD;opacity:.75">
+            <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:12.5px;font-weight:700">Law-enforcement request · LE-118</b><span style="font-size:10.5px;font-weight:700;color:#8A7C72">LEGAL WORKFLOW</span></div>
+            <div style="font-size:11px;font-weight:500;color:#6B5B50;margin-top:2px">Two-person review required · counsel notified · statutory clock 12d</div>
+          </div>
+          <div style="margin-top:auto;padding:10px 14px;border-top:1px solid #E8E3DD;display:flex;gap:8px">
+            <span style="font-size:11px;font-weight:700;color:#6B5B50">Kill switches:</span>
+            <span style="border:1px solid #ED4245;color:#ED4245;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700">Per-con</span>
+            <span style="border:1px solid #ED4245;color:#ED4245;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700">Per-quest</span>
+            <span style="border:1px solid #ED4245;color:#ED4245;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700">Per-venue</span>
+            <span style="font-size:10.5px;font-weight:500;color:#8A7C72;margin-left:auto">one kill, total — blast-radius preview before confirm</span>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;background:#F7F5F2">
+          <div style="padding:12px 18px;border-bottom:1px solid #E0DBD4;display:flex;align-items:center;gap:14px">
+            <b style="font-size:14px;font-weight:800">Case #8841 — in-person report after mutual check-in</b>
+            <span style="border:1px solid #D8D0C8;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700;color:#6B5B50">reporter: TRUSTED</span>
+            <span style="border:1px solid #F5A623;color:#F5A623;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700">reported: WATCH</span>
+            <span style="margin-left:auto;font-size:11px;font-weight:600;color:#8A7C72">tiers only — the number does not exist in this UI</span>
+          </div>
+          <div style="flex:1;display:flex;gap:14px;padding:14px 18px;min-height:0">
+            <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:14px;overflow:hidden">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A7C72;margin-bottom:10px">Evidence — transcript (original + rendered translation)</div>
+              <div style="font-size:12.5px;font-weight:500;line-height:1.7;color:#26170F">
+                <div style="margin-bottom:8px"><b>Reported user:</b> «te espero en la salida oeste» <span style="color:#8A7C72">→ “I'll wait for you at the west exit”</span></div>
+                <div style="margin-bottom:8px"><b>Reporter:</b> “please stop following us”</div>
+                <div style="border:1px dashed #D8D0C8;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#6B5B50">Context: both are members of the same crew — crew-carve-out note: shared crew spaces remain mutually visible despite block.</div>
+                <div style="margin-top:10px;display:flex;gap:8px"><span style="width:74px;height:56px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 8px,#F5F1EC 8px 16px);border:1px solid #E0DBD4"></span><span style="width:74px;height:56px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 8px,#F5F1EC 8px 16px);border:1px solid #E0DBD4"></span><span style="font-size:11px;color:#8A7C72;align-self:center">attached images (2)</span></div>
+              </div>
+              <div style="border-top:1px solid #F0EBE5;margin-top:12px;padding-top:10px;font-size:11.5px;font-weight:500;color:#6B5B50"><b style="color:#26170F">AI rationale:</b> pattern match “post-meetup pursuit” 0.83; held for human because category=in-person. Prior auto-actions on this account: 1 warn (30d ago).</div>
+            </div>
+            <div style="width:300px;flex:none;display:flex;flex-direction:column;gap:8px">
+              <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A7C72;margin-bottom:8px">Actions — reason required</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <button style="border:1px solid #D8D0C8;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Warn</button>
+                  <button style="border:1px solid #D8D0C8;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Mute</button>
+                  <button style="border:1px solid #F5A623;color:#F5A623;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Suspend</button>
+                  <button style="border:1px solid #ED4245;color:#ED4245;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Ban</button>
+                  <button style="border:1px solid #ED4245;color:#ED4245;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Device ban</button>
+                  <button style="border:1px solid #D8D0C8;background:#fff;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Counterpart protection</button>
+                </div>
+                <div style="border:1px solid #D8D0C8;border-radius:8px;padding:9px 11px;margin-top:8px;font-size:11.5px;color:#8A7C72;font-weight:500">Reason (mandatory, audited)…</div>
+              </div>
+              <div style="background:#fff;border:1px solid #ED4245;border-radius:10px;padding:12px">
+                <div style="font-size:11px;font-weight:800;color:#ED4245;margin-bottom:6px">CONFIRM — SUSPEND 7 DAYS</div>
+                <div style="font-size:11.5px;font-weight:500;line-height:1.6;color:#26170F">Blast radius: 1 account · 2 active battles cancel · 1 crew membership pauses · counterpart sees the standard removal notice only.</div>
+                <div style="display:flex;gap:6px;margin-top:8px">
+                  <button style="flex:1;background:#ED4245;color:#fff;border:none;border-radius:8px;padding:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Confirm with reason</button>
+                  <button style="flex:1;background:#fff;border:1px solid #D8D0C8;border-radius:8px;padding:8px;font-family:inherit;font-size:12px;font-weight:600;color:#6B5B50;cursor:pointer">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">Unified human slice of the AI-first pipeline: SLA clocks per row (red under 5 min), minors pinned, AI rationale on every auto-handled item, tier badges never numbers, high-impact actions behind confirm-with-reason with blast-radius preview.</div>
+  </div>
+
+  <!-- ============ C1 MOBILE ============ -->
+  <div style="width:390px;flex:none;display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C1 · Safety Desk — mobile (con-floor triage)</div>
+    <div style="width:390px;height:844px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(43,27,18,.10)">
+      <div style="height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:12px;font-weight:700;color:#8A7C72"><span>14:32</span><span>op: r.tanaka</span></div>
+      <div style="flex:none;background:#26170F;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:10.5px;font-weight:700;opacity:.7;letter-spacing:.08em">CASE #8841 · IN-PERSON · MINOR? NO</div><div style="font-size:14px;font-weight:800;margin-top:2px">Queue position 1 of 23</div></div>
+        <div style="text-align:right"><div style="font-family:monospace;font-size:30px;font-weight:800;color:#F5A623;line-height:1">08:47</div><div style="font-size:9.5px;font-weight:700;opacity:.7">SLA REMAINING</div></div>
+      </div>
+      <div style="flex:1;overflow:hidden;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:6px">
+          <span style="border:1px solid #D8D0C8;background:#fff;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:700;color:#6B5B50">reporter: TRUSTED</span>
+          <span style="border:1px solid #F5A623;background:#fff;color:#F5A623;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:700">reported: WATCH</span>
+          <span style="border:1px solid #D8D0C8;background:#fff;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:700;color:#6B5B50">crew carve-out</span>
+        </div>
+        <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:12px;padding:14px;overflow:hidden">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A7C72;margin-bottom:8px">Evidence — scrollable</div>
+          <div style="font-size:13px;font-weight:500;line-height:1.7">
+            <div style="margin-bottom:8px"><b>Reported:</b> «te espero en la salida oeste» <span style="color:#8A7C72">→ “I'll wait for you at the west exit”</span></div>
+            <div style="margin-bottom:8px"><b>Reporter:</b> “please stop following us”</div>
+            <div style="display:flex;gap:8px;margin:10px 0"><span style="width:80px;height:60px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 8px,#F5F1EC 8px 16px);border:1px solid #E0DBD4"></span><span style="width:80px;height:60px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 8px,#F5F1EC 8px 16px);border:1px solid #E0DBD4"></span></div>
+            <div style="border:1px dashed #D8D0C8;border-radius:8px;padding:9px 11px;font-size:11.5px;color:#6B5B50;line-height:1.6"><b style="color:#26170F">AI rationale:</b> “post-meetup pursuit” 0.83 · held for human (in-person). Prior: 1 warn, 30d.</div>
+          </div>
+        </div>
+        <div style="border:1px solid #D8D0C8;background:#fff;border-radius:10px;padding:10px 13px;font-size:12px;color:#8A7C72;font-weight:500">Reason (required before uphold/escalate)…</div>
+      </div>
+      <div style="flex:none;display:flex;gap:8px;padding:10px 16px 34px;background:#fff;border-top:1px solid #E0DBD4">
+        <button style="flex:1;background:#ED4245;color:#fff;border:none;border-radius:14px;padding:16px 0;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer">Uphold</button>
+        <button style="flex:1;background:#fff;border:1.5px solid #D8D0C8;border-radius:14px;padding:16px 0;font-family:inherit;font-size:14px;font-weight:700;color:#26170F;cursor:pointer">Dismiss</button>
+        <button style="flex:1;background:#26170F;color:#fff;border:none;border-radius:14px;padding:16px 0;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer">Escalate</button>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">One-thumb, standing up: SLA countdown dominant, evidence scrolls in the middle, three fixed actions at the bottom. Reason field precedes any decisive tap.</div>
+  </div>
+
+  <!-- ============ C2 VERIFICATION DESK ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C2 · Verification Desk</div>
+    <div style="width:700px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:44px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 18px;gap:14px"><b style="font-size:12.5px;font-weight:800">WEEB ADMIN</b><span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:3px 9px">Verification Desk</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:6px">
+          <span style="border:1px solid #26170F;background:#26170F;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">Photo manual review 12</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Voluntary ID appeals 4</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Jurisdiction checks 2</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">L3 re-verify 3</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">L4 restore 1</span>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:14px;display:flex;gap:14px">
+          <div style="width:120px;height:150px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 10px,#F5F1EC 10px 20px);border:1px solid #E0DBD4;position:relative;flex:none"><div style="position:absolute;top:44%;left:0;right:0;text-align:center;font-family:monospace;font-size:9px;color:#8A7C72">[ con photo ]</div></div>
+          <div style="width:120px;height:150px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 10px,#F5F1EC 10px 20px);border:1px solid #E0DBD4;position:relative;flex:none"><div style="position:absolute;top:40%;left:0;right:0;text-align:center;font-family:monospace;font-size:9px;color:#8A7C72">[ liveness still ]<br>[ in cosplay ]</div></div>
+          <div style="flex:1">
+            <b style="font-size:14px;font-weight:700">Cosplay edge case — vendor low-confidence (0.61)</b>
+            <div style="font-size:12px;font-weight:500;color:#6B5B50;line-height:1.6;margin-top:6px">Full face paint. Vendor flags mismatch; jawline + earshape consistent. Decide match / no-match; a no-match sends a retry with make-up-free framing, never an accusation.</div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button style="background:#3FB950;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Match — verify</button>
+              <button style="background:#fff;border:1px solid #D8D0C8;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:12.5px;font-weight:600;color:#6B5B50;cursor:pointer">No match — retry flow</button>
+            </div>
+            <div style="border:1px solid #D8D0C8;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:11.5px;color:#8A7C72;font-weight:500">Reason (required)…</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px;font-size:12px;font-weight:500;color:#6B5B50;line-height:1.6"><i class="fa-solid fa-shield-halved" style="color:#38BDF2"></i> Verify-and-discard posture: ID appeal cases show extracted yes/no + birth year only. Document imagery is never displayed after the decision — closed cases render a gray “discarded” tile, by design.</div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">Five queues; cosplay edge cases as the main manual load; post-decision cases can never re-expose documents.</div>
+  </div>
+
+  <!-- ============ C3 CONTENT DESK ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C3 · Content Desk + character governance</div>
+    <div style="width:700px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:44px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 18px;gap:14px"><b style="font-size:12.5px;font-weight:800">WEEB ADMIN</b><span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:3px 9px">Content Desk</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Deck content 31</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Tag approvals 14</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Pronoun presets</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Translation QA 3</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">Contests 7</span>
+          <span style="border:1px solid #D8D0C8;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#6B5B50">DMCA 1</span>
+          <span style="border:1px solid #26170F;background:#26170F;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">Character governance 5</span>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px;font-weight:700">Character draft: “Yuzu Hanabi” — Claude-assisted vector</b><span style="border:1px solid #F5A623;color:#F5A623;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700">ADVERSARIAL-LORE CHECK: 2 FLAGS</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px;font-weight:500;line-height:1.55;color:#26170F">
+            <div style="border:1px solid #E8E3DD;border-radius:8px;padding:10px 12px"><b style="font-size:11px;color:#8A7C72;text-transform:uppercase;letter-spacing:.05em">Breadth check</b><br>Lore holds under 47 of 49 probe prompts. Flags: origin-story date conflict; one probe elicited near-franchise phrasing — rewrite attached.</div>
+            <div style="border:1px solid #E8E3DD;border-radius:8px;padding:10px 12px"><b style="font-size:11px;color:#8A7C72;text-transform:uppercase;letter-spacing:.05em">Presence authoring</b><br>Home GPS: Yokohama harbor district · Anime NYC: Hall C, Days 1–3 · sponsor lore intake: none.</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+            <button style="background:#3FB950;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer">Approve vector</button>
+            <button style="background:#fff;border:1px solid #D8D0C8;border-radius:8px;padding:9px 18px;font-family:inherit;font-size:12.5px;font-weight:600;color:#6B5B50;cursor:pointer">Return with notes</button>
+            <span style="margin-left:auto;font-size:11.5px;font-weight:600;color:#6B5B50">Sponsored-character Gini: <b style="color:#3FB950">0.31</b> (alert ≥ 0.45)</span>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;font-size:12.5px;font-weight:600">Tag approval: “josei” → canonical (locale variants: es “josei”, ja 女性向け) · content-ANIME vector correction pending — <span style="color:#8A7C72;font-weight:500">reason required to save</span></div>
+          <button style="background:#38BDF2;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Approve</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">Character governance pre-G3: draft review with breadth-check surfaced, presence authoring, sponsor lore intake, Gini concentration monitor. Contest lane checks + timelapse evidence live in the Contests queue.</div>
+  </div>
+
+  <!-- ============ C4 VENUE & CON DESK ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C4 · Venue &amp; Con Desk — registry CRUD</div>
+    <div style="width:700px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:44px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 18px;gap:14px"><b style="font-size:12.5px;font-weight:800">WEEB ADMIN</b><span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:3px 9px">Venues &amp; Cons</span></div>
+      <div style="padding:16px 18px;display:flex;gap:12px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between"><b style="font-size:13.5px;font-weight:700">Anime NYC — edition ’26</b><span style="border:1px solid #3FB950;color:#3FB950;border-radius:6px;padding:1px 8px;font-size:10.5px;font-weight:700">LIVE</span></div>
+            <div style="font-size:11.5px;font-weight:500;color:#6B5B50;margin-top:4px">Series: Anime NYC · TZ: America/New_York · Jul 17–19 · zones: 6 · <span style="color:#38BDF2;font-weight:600">Edit geofence &amp; zones</span> · <span style="color:#ED4245;font-weight:600">Kill / suspend</span></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between"><b style="font-size:13.5px;font-weight:700">Venue: Kaiju Ramen Bar — location #2</b><span style="border:1px solid #F5A623;color:#F5A623;border-radius:6px;padding:1px 8px;font-size:10.5px;font-weight:700">IN REVIEW</span></div>
+            <div style="font-size:11.5px;font-weight:500;color:#6B5B50;margin-top:4px">Per-location approval · media review pending · alcohol-primary: no · <span style="color:#38BDF2;font-weight:600">Open checklist</span></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px;font-size:11.5px;font-weight:500;color:#6B5B50;line-height:1.6">Also queued: partner re-verification (3) · event pre-publish approvals (5) · schedule submission approvals (2) · quest location vetoes (1) · post-con partner reports (Anime LA ’26 — drafting)</div>
+        </div>
+        <div style="width:250px;flex:none;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px;position:relative">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A7C72;margin-bottom:8px">Geofence + zone drawing</div>
+          <div style="height:170px;border-radius:8px;background:#F3EFE9;position:relative;overflow:hidden">
+            <div style="position:absolute;top:22px;left:24px;width:170px;height:110px;border:2px dashed #38BDF2;border-radius:12px"></div>
+            <div style="position:absolute;top:38px;left:40px;width:64px;height:40px;border:1.5px solid #F5A623;border-radius:8px;font-size:8.5px;font-weight:700;color:#F5A623;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">ARTIST ALLEY</div>
+            <div style="position:absolute;top:38px;left:116px;width:64px;height:40px;border:1.5px solid #3FB950;border-radius:8px;font-size:8.5px;font-weight:700;color:#3FB950;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">MAIN HALL</div>
+            <div style="position:absolute;bottom:6px;left:8px;font-family:monospace;font-size:9px;color:#8A7C72">[ polygon editor ]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">Series/editions CRUD, geofence + zone polygons, timezone, kill/suspend (confirm-with-reason), per-location venue approvals, media review, quest vetoes, post-con report workflow.</div>
+  </div>
+
+  <!-- ============ C5 QUEST & ECONOMY DESK ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C5 · Quest &amp; Economy Desk</div>
+    <div style="width:700px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:44px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 18px;gap:14px"><b style="font-size:12.5px;font-weight:800">WEEB ADMIN</b><span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:3px 9px">Quest &amp; Economy</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A7C72">Earn / sink ratio (7d)</div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;color:#3FB950">1.14</div><div style="font-size:10.5px;font-weight:500;color:#6B5B50">target band 0.95–1.25 · anti-inflation OK</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A7C72">Photo spot-checks pending</div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px">17</div><div style="font-size:10.5px;font-weight:500;color:#6B5B50">random 4% sample + AI flags</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A7C72">RMT fraud desk</div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;color:#F5A623">2</div><div style="font-size:10.5px;font-weight:500;color:#6B5B50">trade rings under review</div></div>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:14px;display:flex;gap:14px;align-items:center">
+          <span style="width:90px;height:68px;border-radius:8px;background:repeating-linear-gradient(45deg,#EDE8E2 0 9px,#F5F1EC 9px 18px);border:1px solid #E0DBD4;flex:none"></span>
+          <div style="flex:1">
+            <b style="font-size:13.5px;font-weight:700">Spot-check: “Alley Bingo” step 3 — envelope mismatch</b>
+            <div style="font-size:11.5px;font-weight:500;color:#6B5B50;margin-top:3px">Photo timestamp 22:14, geofence exit 21:40 · AI flag: reused image hash (2 accounts)</div>
+          </div>
+          <button style="background:#ED4245;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;flex:none">Fraud → reverse ledger</button>
+          <button style="background:#fff;border:1px solid #D8D0C8;border-radius:8px;padding:9px 14px;font-family:inherit;font-size:12px;font-weight:600;color:#6B5B50;cursor:pointer;flex:none">Looks fine</button>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:12px 14px;font-size:11.5px;font-weight:500;color:#6B5B50;line-height:1.6">Quest CMS: author / schedule / geofence · hidden-content authoring (trigger never user-visible) · sponsored campaign review shows AI-DRAFTED flags from B6 · item catalog · billing: invoice issuance, manual payment recording, dunning states (drives B6's single suspension state).</div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">One-tap fraud→ledger-reversal writes the plain “a quest submission was reversed” row users see in 5.39. Reversal requires reason; both sides of a reversed trade are restored.</div>
+  </div>
+
+  <!-- ============ C6 METRICS & OPS ============ -->
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A7C72">C6 · Metrics &amp; Ops — config registry</div>
+    <div style="width:700px;background:#F2F0ED;border:2px solid #E8E3DD;border-radius:12px;overflow:hidden;font-size:13px">
+      <div style="height:44px;background:#26170F;color:#fff;display:flex;align-items:center;padding:0 18px;gap:14px"><b style="font-size:12.5px;font-weight:800">WEEB ADMIN</b><span style="font-size:12px;font-weight:700;background:rgba(255,255,255,.14);border-radius:6px;padding:3px 9px">Metrics &amp; Ops</span></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:11px 13px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#8A7C72">D14 meet-rate</div><div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#3FB950">34%</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:11px 13px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#8A7C72">D17 hang-again</div><div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#3FB950">71%</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:11px 13px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#8A7C72">Category density — Eat</div><div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#F5A623">BELOW FLOOR</div><div style="font-size:9.5px;font-weight:600;color:#8A7C72">degraded-merge active (5.24)</div></div>
+          <div style="flex:1;background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:11px 13px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#8A7C72">Push delivery</div><div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#3FB950">99.2%</div></div>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid #F0EBE5;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A7C72">Config registry — typed entries, scope-badged</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EBE5;font-variant-numeric:tabular-nums">
+            <code style="font-size:12px;font-weight:700;font-family:monospace">deck.synergy.render_floor</code>
+            <span style="border:1px solid #D8D0C8;color:#6B5B50;border-radius:5px;padding:1px 7px;font-size:9.5px;font-weight:700">OPS</span>
+            <span style="margin-left:auto;font-size:12.5px;font-weight:700">55</span><span style="font-size:10.5px;color:#8A7C72">bounds 50–70</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EBE5;background:#FDF6F6">
+            <code style="font-size:12px;font-weight:700;font-family:monospace">age.estimation.fail_line</code>
+            <span style="border:1px solid #ED4245;color:#ED4245;border-radius:5px;padding:1px 7px;font-size:9.5px;font-weight:700">FOUNDER-ONLY</span>
+            <span style="margin-left:auto;font-size:12.5px;font-weight:700">21.0</span><span style="font-size:10.5px;color:#8A7C72">bounds 19.5–23</span>
+          </div>
+          <div style="padding:12px 14px;background:#fff">
+            <div style="border:1px solid #ED4245;border-radius:8px;padding:11px 13px">
+              <b style="font-size:12px;font-weight:800;color:#ED4245">DANGEROUS CHANGE — lowering age.estimation.fail_line 21.0 → 20.5</b>
+              <div style="font-size:11.5px;font-weight:500;color:#26170F;line-height:1.6;margin-top:4px">Effect preview: ~4.1% fewer lockouts; est. +0.8% under-18 pass-through risk. Founder credential + reason required.</div>
+              <div style="border:1px solid #D8D0C8;border-radius:6px;padding:7px 10px;margin-top:6px;font-size:11px;color:#8A7C72">Reason (required, audited)…</div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <button style="background:#ED4245;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer">Confirm with reason</button>
+                <button style="background:#fff;border:1px solid #D8D0C8;border-radius:7px;padding:7px 14px;font-family:inherit;font-size:11.5px;font-weight:600;color:#6B5B50;cursor:pointer">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E8E3DD;border-radius:10px;padding:11px 14px;font-size:11.5px;font-weight:500;color:#6B5B50;line-height:1.6">Also here: data-export / deletion queue with statutory clocks (export 4d remaining ×2, deletion 22d ×1) · partner &amp; consultant query-audit views · email delivery health per category.</div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#8A7C72;line-height:1.5">Every gate metric live; category-density monitor drives 5.24's degraded merge; the config registry is typed, bounded, scope-badged, with the confirm-with-reason interstitial on dangerous entries.</div>
+  </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

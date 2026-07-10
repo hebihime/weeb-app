@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friki — Ink Run Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bubblegum:#FF7A3D;
+    --sky:#38BDF2;
+    --mikan:#F7568F;
+    --foil:#C99A2E;
+    --good:#3FB950;
+    --warn:#F5A623;
+    --danger:#ED4245;
+  }
+  [data-theme="light"]{
+    --ground:#FFFFFF;
+    --surface:#FFFFFF;
+    --surface-2:#F7F5F2;
+    --line:#E8E3DD;
+    --outline:#2B1B12;
+    --txt:#26170F;
+    --dim:#8A7C72;
+    --on-accent:#FFFFFF;
+  }
+  [data-theme="dark"]{
+    --ground:#1E1410;
+    --surface:#2A1D16;
+    --surface-2:#35251D;
+    --line:#48362B;
+    --outline:#F5EBE2;
+    --txt:#FBF3EC;
+    --dim:#B3A093;
+    --on-accent:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ground);color:var(--txt);
+    font-family:"M PLUS Rounded 1c",sans-serif;
+    line-height:1.65;transition:background .3s,color .3s;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  .display{font-weight:900;line-height:1.12;text-wrap:balance}
+  .num{font-weight:800;font-variant-numeric:tabular-nums}
+
+  header.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+  .wordmark{font-weight:900;font-size:1.35rem;color:var(--bubblegum)}
+  .wordmark small{font-size:.65rem;color:var(--dim);display:block;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .toggle{border:2px solid var(--line);background:var(--surface);color:var(--txt);border-radius:99px;padding:.5rem 1.1rem;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer}
+  .toggle:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+
+  .hero{padding:56px 0;border-bottom:2px solid var(--line);display:flex;gap:44px;align-items:center;flex-wrap:wrap}
+  .hero .words{flex:1;min-width:300px}
+  .hero .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--bubblegum);font-weight:800;margin-bottom:14px}
+  .hero h1{font-size:clamp(2.4rem,5.6vw,4.2rem);margin-bottom:18px}
+  .hero h1 .pink{color:var(--bubblegum)}
+  .hero p{max-width:56ch;color:var(--dim);font-size:1.02rem;font-weight:500}
+  .hero .mark{width:230px;flex:none}
+  .hero .mark img{width:100%;border-radius:28px;display:block}
+  .hero .mark figcaption{font-size:.7rem;color:var(--dim);margin-top:8px;text-align:center;font-weight:500}
+
+  section{padding:56px 0;border-bottom:2px solid var(--line)}
+  section:last-of-type{border-bottom:none}
+  .secno{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--bubblegum);font-weight:800;margin-bottom:6px}
+  h2.sec{font-weight:900;font-size:1.7rem;margin-bottom:8px}
+  .lede{color:var(--dim);max-width:66ch;margin-bottom:32px;font-weight:500}
+
+  /* type specimens */
+  .spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+  .card-ui{background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:24px}
+  .card-ui .role{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:800;margin-bottom:14px}
+  .card-ui .face{font-size:.78rem;color:var(--sky);margin-top:14px;font-weight:700}
+  .sample-display{font-weight:900;font-size:2rem;line-height:1.25}
+  .sample-display .jp{display:block;font-size:1.55rem;margin-top:4px}
+  .sample-body{font-size:.95rem;font-weight:500}
+  .sample-body .es,.sample-body .jp{display:block;color:var(--dim);margin-top:8px}
+  .sample-num{font-size:1.6rem;line-height:1.7;font-weight:800}
+  .sample-num .syn{color:var(--sky)}
+  .sample-num .svac{color:var(--foil)}
+
+  /* palette */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:34px}
+  .sw{border-radius:18px;border:2px solid var(--line);overflow:hidden}
+  .sw .chipcolor{height:76px}
+  .sw .info{padding:10px 12px;background:var(--surface)}
+  .sw .info b{display:block;font-size:.82rem;font-weight:800}
+  .sw .info code{font-size:.74rem;color:var(--dim);font-family:inherit;font-weight:500}
+  .sw .note{font-size:.68rem;color:var(--dim);display:block;margin-top:2px;font-weight:500}
+
+  /* components */
+  .comps{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+  .compcol{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px}
+  .btn{display:inline-block;border:none;border-radius:99px;padding:.78rem 1.5rem;font-family:inherit;font-size:.94rem;font-weight:800;cursor:pointer;text-align:center;color:var(--txt);background:var(--surface-2);border:2px solid var(--line)}
+  .btn.primary{background:var(--bubblegum);border-color:var(--bubblegum);color:var(--on-accent)}
+  .btn.secondary{background:var(--sky);border-color:var(--sky);color:var(--on-accent)}
+  .btn.quiet{background:transparent;border-color:transparent;color:var(--dim);font-weight:600}
+  .btn:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+  .chip{display:inline-block;padding:.26rem .75rem;border-radius:99px;font-size:.76rem;font-weight:700;border:2px solid var(--outline);background:var(--surface);margin:0 .3rem .3rem 0}
+  .chip.pink{background:var(--bubblegum);border-color:var(--bubblegum);color:var(--on-accent)}
+  .chip.sky{background:var(--sky);border-color:var(--sky);color:var(--on-accent)}
+  .chip.plain{border-color:var(--line)}
+  .alert{border-radius:16px;padding:.8rem 1rem;font-size:.85rem;border:2px solid;display:flex;gap:.6rem;align-items:baseline;font-weight:500}
+  .alert b{font-weight:800}
+  .alert.good{border-color:var(--good);color:var(--good);background:color-mix(in srgb, var(--good) 7%, var(--surface))}
+  .alert.warn{border-color:var(--warn);color:var(--warn);background:color-mix(in srgb, var(--warn) 7%, var(--surface))}
+  .alert.danger{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb, var(--danger) 7%, var(--surface))}
+  .field label{display:block;font-size:.78rem;font-weight:800;margin-bottom:.35rem}
+  .field input{width:100%;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:.7rem .95rem;color:var(--txt);font-family:inherit;font-size:.92rem;font-weight:500}
+  .field input:focus{outline:none;border-color:var(--sky)}
+  .field .hint{font-size:.72rem;color:var(--dim);margin-top:.3rem;font-weight:500}
+
+  /* phone mockups */
+  .phones{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+  .unit{width:310px}
+  .unit h3{font-size:.95rem;margin:.9rem 0 .3rem;font-weight:800}
+  .unit .why{font-size:.8rem;color:var(--dim);font-weight:500}
+  .phone{width:310px;height:648px;border:2px solid var(--line);border-radius:38px;background:var(--ground);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 14px 44px color-mix(in srgb, var(--outline) 10%, transparent)}
+  .status{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:.64rem;color:var(--dim);font-weight:700}
+
+  /* deck card mockup — sticker object: chocolate outline, big radius */
+  .deckwrap{flex:1;padding:12px;display:flex;flex-direction:column}
+  .deckcard{flex:1;border-radius:24px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;border:3px solid var(--outline);background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sky) 26%, var(--surface)) 0%, var(--surface-2) 60%, color-mix(in srgb, var(--outline) 12%, var(--surface)) 100%)}
+  .photo-note{position:absolute;top:36%;left:0;right:0;text-align:center;color:var(--dim);font-size:.68rem;font-weight:500}
+  .synergy{position:absolute;top:14px;right:14px;background:var(--surface);border:2.5px solid var(--outline);color:var(--txt);padding:.3rem .65rem;border-radius:99px;font-size:.86rem;font-weight:900}
+  .synergy em{font-style:normal;color:var(--sky)}
+  .cosnow{position:absolute;top:15px;left:14px}
+  .cardinfo{padding:16px;background:linear-gradient(180deg,transparent, color-mix(in srgb, var(--ground) 96%, transparent) 40%)}
+  .cardname{font-weight:900;font-size:1.35rem}
+  .cardmeta{font-size:.74rem;color:var(--dim);margin:.2rem 0 .5rem;font-weight:600}
+  .gestures{display:flex;justify-content:space-between;align-items:center;padding:12px 24px 18px;font-size:.62rem;color:var(--dim);text-align:center;font-weight:700}
+  .g b{display:block;font-size:1.05rem;color:var(--txt)}
+  .g.up b{color:var(--bubblegum)}
+
+  /* crew card mockup */
+  .crewwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px;gap:14px}
+  .crewcard{border-radius:24px;border:3px solid var(--foil);padding:22px;
+    background:linear-gradient(150deg, color-mix(in srgb, var(--foil) 9%, var(--surface)) 0%, var(--surface) 60%)}
+  .crewlabel{font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--foil);font-weight:800}
+  .crewname{font-weight:900;font-size:1.45rem;margin:.3rem 0 .2rem}
+  .crewage{font-size:.74rem;color:var(--foil);font-weight:800;letter-spacing:.06em}
+  .origin{font-size:.8rem;color:var(--dim);font-style:italic;margin-top:.8rem;border-left:3px solid var(--foil);padding-left:.8rem;font-weight:500}
+  .crewfoot{font-size:.68rem;color:var(--dim);font-weight:500}
+  .patina{display:flex;gap:8px;margin-top:12px}
+  .patina .badge{font-size:.66rem;font-weight:800;border:2px solid var(--line);border-radius:99px;padding:.25rem .6rem;color:var(--dim)}
+  .patina .badge.gold{border-color:var(--foil);color:var(--foil)}
+
+  /* neutral register mockup */
+  .neutralwrap{flex:1;display:flex;align-items:center;padding:18px;background:var(--surface-2)}
+  .modal-n{background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:22px;width:100%}
+  .modal-n h4{font-size:1.02rem;font-weight:800;margin-bottom:.5rem}
+  .modal-n p{font-size:.84rem;color:var(--dim);margin-bottom:1rem;font-weight:500}
+  .modal-n .btn{display:block;width:100%;margin-bottom:.6rem;border-radius:16px}
+  .modal-n .btn.report{background:var(--surface-2);border-color:var(--line);color:var(--txt);font-weight:700}
+  .modal-n .finelines{font-size:.72rem;color:var(--dim);margin-top:.4rem;font-weight:500}
+
+  .lawnote{background:var(--surface);border:2px solid var(--line);border-left:5px solid var(--bubblegum);border-radius:16px;padding:18px 20px;margin-top:30px;max-width:74ch}
+  .lawnote b{color:var(--bubblegum)}
+  .lawnote p{font-size:.88rem;color:var(--dim);font-weight:500}
+
+  footer{padding:40px 0 60px;color:var(--dim);font-size:.8rem;font-weight:500}
+
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+  @media (max-width:720px){
+    .phone{width:100%;max-width:310px}
+    .unit{width:100%;max-width:310px}
+    .hero .mark{width:180px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="wordmark">Friki<small>weeb app sibling — same sticker, different ink run</small></div>
+    <button class="toggle" id="themeToggle" aria-pressed="false">☾ Choco Dark</button>
+  </header>
+
+  <div class="hero">
+    <div class="words">
+      <div class="eyebrow">Friki ink run · token swap only — nothing structural</div>
+      <h1 class="display">Nakama <span class="pink">forever.</span></h1>
+      <p>The mark is the north star: candy color, chocolate outlines, zero irony. The UI around it is Cash-App clean — pure white, one loud color, bold rounded type — so the sticker energy pops instead of drowning. Time only adds value: origin lines stay forever, crew cards earn foil, nothing decays.</p>
+    </div>
+    <figure class="mark">
+      <img src="logo-reference.png" alt="Weeb App chibi mascot mark — reference direction">
+      <figcaption>The mark (reference direction) — the system is built to sit next to this.</figcaption>
+    </figure>
+  </div>
+
+  <section>
+    <div class="secno">01 / Type</div>
+    <h2 class="sec">One rounded family, weight does the talking</h2>
+    <p class="lede">M PLUS Rounded 1c carries English, Spanish, and Japanese natively in one family — Black 900 for display (rounded terminals echo the bubble-letter mark), 500 for body, 800 for stats. Kanji stay clean because the display face IS the body face. No novelty faces anywhere.</p>
+    <div class="spec">
+      <div class="card-ui">
+        <div class="role">Display · Black 900</div>
+        <div class="sample-display">Found your crew<span class="jp">クルー結成！</span></div>
+        <div class="face">M PLUS Rounded 1c Black — bubble-mark energy by weight and roundness, not decoration.</div>
+      </div>
+      <div class="card-ui">
+        <div class="role">Body / UI · the only voice safety surfaces get</div>
+        <div class="sample-body">You choose what this becomes — they'll never know if you say no.
+          <span class="es">Tú decides en qué se convierte esto — nunca sabrán si dices que no.</span>
+          <span class="jp">どうするかはあなた次第。断っても相手には伝わりません。</span>
+        </div>
+        <div class="face">M PLUS Rounded 1c 400/500 — calm and generous in all three languages.</div>
+      </div>
+      <div class="card-ui">
+        <div class="role">Stats · same family, heavier and colored</div>
+        <div class="sample-num">SYNERGY <span class="syn">87</span><br>$SVAC <span class="svac">1,240</span></div>
+        <div class="face">Weight 800 + color does the "game number" job. No retro fonts.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="secno">02 / Color</div>
+    <h2 class="sec">Candy over white, chocolate for ink</h2>
+    <p class="lede">Every color is sampled from the mark's world. Light mode is pure white so the candy reads like stickers on fresh paper; dark mode is the mark's chocolate outline as a ground. Danger is its own red, kept out of the playful register.</p>
+    <div class="swatches">
+      <div class="sw"><div class="chipcolor" style="background:#FF7A3D"></div><div class="info"><b>Tangerine</b><code>#FF7A3D</code><span class="note">primary — Friki's loud color (proposal, founder ratifies)</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:#38BDF2"></div><div class="info"><b>Sky</b><code>#38BDF2</code><span class="note">secondary — her hair; synergy &amp; links</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:#F7568F"></div><div class="info"><b>Bubblegum</b><code>#F7568F</code><span class="note">celebration accent — demoted from primary; quest &amp; streak moments</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:#C99A2E"></div><div class="info"><b>Foil</b><code>#C99A2E</code><span class="note">earned material only — never ranks people</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:#FFFFFF;border-bottom:2px solid var(--line)"></div><div class="info"><b>White</b><code>#FFFFFF</code><span class="note">light ground — fresh sticker paper</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:#1E1410"></div><div class="info"><b>Choco</b><code>#1E1410</code><span class="note">dark ground + light-mode ink/outlines — from the mark's linework</span></div></div>
+      <div class="sw"><div class="chipcolor" style="background:linear-gradient(90deg,#3FB950 33%,#F5A623 33%,#F5A623 66%,#ED4245 66%)"></div><div class="info"><b>Semantic</b><code>3FB950 · F5A623 · ED4245</code><span class="note">good / warn / danger</span></div></div>
+    </div>
+
+    <div class="comps">
+      <div class="compcol">
+        <button class="btn primary">Raise the flag</button>
+        <button class="btn secondary">Battle!</button>
+        <button class="btn">Check the schedule</button>
+        <button class="btn quiet">No thanks (they won't be told)</button>
+      </div>
+      <div class="compcol">
+        <div>
+          <span class="chip pink">Cosplaying today</span>
+          <span class="chip sky">Platonic / Non-Romantic</span>
+          <span class="chip">mecha</span><span class="chip">cosplay craft</span><span class="chip plain">rhythm games</span>
+        </div>
+        <div class="field">
+          <label for="crewname">Crew name</label>
+          <input id="crewname" value="Artist Alley Irregulars">
+          <div class="hint">The origin line is permanent. It appears on your crew card forever.</div>
+        </div>
+      </div>
+      <div class="compcol">
+        <div class="alert good"><b>Quest complete.</b> Chapter 3 of 5 — the hall knows your name.</div>
+        <div class="alert warn"><b>Verification expires soon.</b> Re-verify before the con starts.</div>
+        <div class="alert danger"><b>Couldn't send.</b> This didn't go through. Try something else.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="secno">03 / Proofs</div>
+    <h2 class="sec">Three screens in the system</h2>
+    <p class="lede">Real briefs from the superprompt. Grey photo areas stand in for verified real photographs — an illustration in the photo slot is itself the AI-character disclosure. Sticker components get the chocolate outline; the neutral register loses it.</p>
+    <div class="phones">
+
+      <div class="unit">
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>Anime NYC · Con Mode</span></div>
+          <div class="deckwrap">
+            <div class="deckcard">
+              <span class="synergy"><em>87</em></span>
+              <span class="chip pink cosnow">Cosplaying today</span>
+              <div class="photo-note">[ verified real photo — fills card ]</div>
+              <div class="cardinfo">
+                <div class="cardname">Mika, 22</div>
+                <div class="cardmeta">she/her · &lt;1 mi · Artist Alley zone</div>
+                <span class="chip sky">Platonic / Non-Romantic</span>
+                <span class="chip">mecha</span><span class="chip plain">rhythm games</span>
+              </div>
+            </div>
+            <div class="gestures">
+              <div class="g"><b>←</b>back to binder</div>
+              <div class="g"><b>↓</b>actions</div>
+              <div class="g up"><b>↑</b>romantic</div>
+              <div class="g"><b>→</b>connect</div>
+            </div>
+          </div>
+        </div>
+        <h3>Con Mode deck card</h3>
+        <p class="why">The atomic object as a sticker: chocolate outline, big radius, synergy in a pill. A pass returns the card to the binder — nobody is flung into a void.</p>
+      </div>
+
+      <div class="unit">
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>Crew</span></div>
+          <div class="crewwrap">
+            <div class="crewcard">
+              <div class="crewlabel">Crew card · foil earned</div>
+              <div class="crewname">Artist Alley Irregulars</div>
+              <div class="crewage">EST. 2026 · ONE YEAR HELD</div>
+              <div class="origin">"Founded at Anime NYC 2026, in the Artist Alley line, over one shared opinion about mecha."</div>
+              <div class="patina">
+                <span class="badge gold">FOIL · YEAR ONE</span>
+                <span class="badge">4 members</span>
+                <span class="badge">12 quests</span>
+              </div>
+            </div>
+            <div class="crewfoot">Come back after a year and your crew card is older and rarer. Counters only go up. Nothing resets. Still nakama.</div>
+          </div>
+        </div>
+        <h3>Crew card, one year on</h3>
+        <p class="why">Anti-decay made visible: foil accrues with tenure. Foil is a material for moments and crews — never a rank on a person.</p>
+      </div>
+
+      <div class="unit">
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>Weeb App</span></div>
+          <div class="neutralwrap">
+            <div class="modal-n">
+              <h4>Report this conversation</h4>
+              <p>Our safety team will see the messages between you and this person. They won't know you reported unless you tell them.</p>
+              <button class="btn report">Report and block</button>
+              <button class="btn report">Report only</button>
+              <button class="btn quiet">Cancel</button>
+              <div class="finelines">Reports are reviewed by a human when needed. You can check your report's status in Settings.</div>
+            </div>
+          </div>
+        </div>
+        <h3>Neutral register — by subtraction</h3>
+        <p class="why">Same tokens, candy removed: no Black weight, no outlines, no Bubblegum. Calm is achieved by removing, not by adding a "serious mode."</p>
+      </div>
+
+    </div>
+
+    <div class="lawnote">
+      <b>Token-layer law.</b>
+      <p>Foil, patina, and rarity treatments apply to moments, crews, and authored cards — never to a person's card. A human being's card getting "rarer" would read as ranking people, which collides with the never-exposed-reputation and anti-humiliation rulings. This is enforced in the token layer, not left to per-screen judgment.</p>
+    </div>
+  </section>
+
+  <footer>
+    Weeb App / Friki · design-consultation preview · 2026-07-09 · Tangerine, Sky, Bubblegum &amp; Foil over White and Choco · M PLUS Rounded 1c
+  </footer>
+
+</div>
+<script>
+  const t=document.getElementById('themeToggle');
+  t.addEventListener('click',()=>{
+    const h=document.documentElement;
+    const dark=h.getAttribute('data-theme')==='dark';
+    h.setAttribute('data-theme',dark?'light':'dark');
+    t.textContent=dark?'☾ Choco Dark':'☀ White';
+    t.setAttribute('aria-pressed',String(!dark));
+  });
+</script>
+</body>
+</html>

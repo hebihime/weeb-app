@@ -1,0 +1,67 @@
+# ---- OS / editor junk ----
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# ---- Claude Code / gstack local state ----
+.gstack/
+.claude/settings.local.json
+
+# ---- Design upload staging (zip is a binary artifact) ----
+claude-design-upload-weebapp.zip
+
+# ---- Secrets / env ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+appsettings.*.Local.json
+
+# ---- .NET (backend) ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+project.lock.json
+.vs/
+TestResults/
+
+# ---- Node / web funnel ----
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+*.log
+npm-debug.log*
+yarn-error.log*
+.pnp.*
+
+# ---- iOS (Swift) ----
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.build/
+Pods/
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+
+# ---- Android (Kotlin) ----
+*.iml
+.gradle/
+local.properties
+android/build/
+android/app/build/
+captures/
+*.apk
+*.aab
+*.keystore
+
+# ---- Infra ----
+*.tfstate
+*.tfstate.*
+.terraform/
