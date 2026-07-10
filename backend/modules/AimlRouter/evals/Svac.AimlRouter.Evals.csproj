@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.AimlRouter.Evals — SLICE_S2_CONTRACT.md §1a/§10.4. The periodic lane, `Category=Eval`,
+    threshold-gated, EXCLUDED from the pre-commit gate (build/scripts run `dotnet test
+    backend/Svac.sln`, which would pick this project up by default — the exclusion is the trait filter
+    below, applied at invocation time by whichever CI/nightly job runs the periodic lane, same shape as
+    `backend.yml`'s guarded per-project activation).
+    "The first real member of the periodic lane ... this harness is the reusable one every later latent
+    surface runs on" (§10.4) — S12/S13 evals become fixture files + thresholds against IT, not new
+    harnesses. Tooling: a dotnet test project, trait-filtered (S1's zero-dependency precedent, search-
+    before-building) rather than a bespoke eval framework.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AimlRouter.Evals</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Svac.AimlRouter.Contracts\Svac.AimlRouter.Contracts.csproj" />
+    <ProjectReference Include="..\Svac.AimlRouter\Svac.AimlRouter.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

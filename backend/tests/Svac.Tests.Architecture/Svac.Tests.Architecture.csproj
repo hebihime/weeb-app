@@ -37,6 +37,10 @@
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
     <ProjectReference Include="..\..\public-host\Svac.PublicApi\Svac.PublicApi.csproj" />
+    <!-- ProviderSdkArchTest.cs's SLICE_S2_CONTRACT.md §0/§10.1 strengthening pass: scans these two to
+         prove Contracts stays SDK-free and Svac.AimlRouter is the one real, non-vacuous allowlist member. -->
+    <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter.Contracts\Svac.AimlRouter.Contracts.csproj" />
+    <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter\Svac.AimlRouter.csproj" />
   </ItemGroup>
 
 </Project>

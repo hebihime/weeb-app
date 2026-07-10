@@ -1,0 +1,11 @@
+{
+  "_comment": "SLICE_S2_CONTRACT.md §10.4 — checked-in fixtures only; production content never becomes eval data. Build-phase (Phase 2) extends this to the full N=20 canary set with structured-output-schema conformance thresholds; this Scaffold-phase file ships the harness's first real, working entry so the shape is proven before the set grows.",
+  "prompts": [
+    {
+      "id": "canary-001",
+      "system": "Reply with exactly one word and nothing else.",
+      "userText": "Reply with exactly the single word: PONG",
+      "expectedSubstring": "PONG"
+    }
+  ]
+}

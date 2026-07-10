@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.AimlRouter.Contracts — SLICE_S2_CONTRACT.md §1a. The ONLY assembly future consumer modules
+    (T9->S12, T8->S13, vectors->S25, consultant->S36) may reference to reach the router. References only
+    Svac.DomainCore.Contracts; SDK-free forever (ProviderSdkArchTest.cs asserts this), so a consumer
+    pulling this in never transitively touches a vendor. Zero business logic here — signatures only.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AimlRouter.Contracts</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Deterministic\Svac.DomainCore.Deterministic.csproj" />
+  </ItemGroup>
+
+</Project>

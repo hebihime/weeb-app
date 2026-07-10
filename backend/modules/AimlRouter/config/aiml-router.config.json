@@ -1,0 +1,53 @@
+{
+  "_comment": "SLICE_S2_CONTRACT.md §4 — additive manifest file, union-merge friendly, sibling to backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json (never edits to that file's rows). CORRECTION 1 (§13 ratification) applied verbatim: v0 default model is the best-available Claude, claude-opus-4-8, in BOTH the allowlist's models[] and the routing policy's default_chain[0].model — never a smaller/cheaper model as the router-wide default (CLAUDE.md: no silent downgrades).",
+  "entries": [
+    {
+      "key": "aiml.provider_allowlist",
+      "scope": "founder",
+      "type": "json",
+      "value": [
+        {
+          "name": "anthropic",
+          "family": "claude",
+          "kinds": ["llm"],
+          "payload_class_ceiling": "Pseudonymous",
+          "dpa_signed": false,
+          "special_category_ok": false,
+          "residency": "global",
+          "models": ["claude-opus-4-8"]
+        }
+      ],
+      "requiresReason": true,
+      "consumer": "Svac.AimlRouter.Routing.Resolver (Automatic + Explicit paths) — OQ-A ratified conservative posture: ceiling pseudonymous, dpa_signed false, until counsel's L-1/L-3 confirms the Anthropic DPA + retention terms"
+    },
+    {
+      "key": "aiml.routing_policy",
+      "scope": "ops",
+      "type": "json",
+      "value": {
+        "version": 1,
+        "default_chain": [{ "provider": "anthropic", "model": "claude-opus-4-8" }],
+        "task_chains": {},
+        "residency_overrides": []
+      },
+      "requiresReason": true,
+      "consumer": "Svac.AimlRouter.Routing.Resolver.Resolve (Automatic path); desk-tunable per 15A"
+    },
+    {
+      "key": "aiml.invoke_timeout_seconds",
+      "scope": "ops",
+      "type": "int",
+      "value": 60,
+      "requiresReason": false,
+      "consumer": "Svac.AimlRouter.AimlRouterService per-hop invocation timeout; bounds [5, 300]; feeds the Timeout failure kind"
+    },
+    {
+      "key": "aiml.daily_call_ceiling",
+      "scope": "ops",
+      "type": "int",
+      "value": 10000,
+      "requiresReason": false,
+      "consumer": "Svac.AimlRouter.AimlRouterService budget circuit breaker (10A aiml.call.daily cap, §5)"
+    }
+  ]
+}

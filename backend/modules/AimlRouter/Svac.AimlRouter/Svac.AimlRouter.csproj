@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.AimlRouter — SLICE_S2_CONTRACT.md §1a. Internal implementation: AimlRouterService, the pure
+    resolver, provider adapters. THE SINGLE assembly allowlisted by the provider-SDK arch test
+    (ProviderSdkArchTest.cs) — no other backend assembly may reference Anthropic.SDK. No AimlDbContext
+    exists (§2: zero tables, zero migrations — the router persists nothing).
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AimlRouter</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The ONE provider-SDK reference permitted in the backend (15A, §1b/§8). Legal ONLY here — never in
+      Svac.AimlRouter.Contracts — enforced by ProviderSdkArchTest.cs's red-fixture-proven scan.
+    -->
+    <PackageReference Include="Anthropic.SDK" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Svac.AimlRouter.Contracts\Svac.AimlRouter.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Deterministic\Svac.DomainCore.Deterministic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Svac.Tests.AimlRouter" />
+    <InternalsVisibleTo Include="Svac.AimlRouter.Evals" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\config\aiml-router.config.json" Link="Config\aiml-router.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

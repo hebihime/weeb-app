@@ -27,11 +27,24 @@
 
     <!-- Hosting -->
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
 
     <!-- Test -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.4.0" />
+
+    <!--
+      AimlRouter (SLICE_S2_CONTRACT.md §1b/§8, 15A): the ONE provider SDK reference permitted anywhere
+      in the backend, and it is legal ONLY inside Svac.AimlRouter (never .Contracts) — ProviderSdkArchTest
+      enforces this both directions. Chosen over hand-rolled HttpClient calls to the Messages API
+      (search-before-building, CLAUDE.md): 220 GitHub stars, pushed within the last 5 months, 2.47M NuGet
+      downloads, ships a net10.0 target matching this solution's TFM exactly — no polyfill/netstandard
+      shim tax. Rejected: the "Anthropic" package (also on NuGet, similar download count) has a less
+      idiomatic/actively-maintained-for-.NET-10 surface; Anthropic.SDK's Messages API shape is what this
+      module's AnthropicApiTransport is written against.
+    -->
+    <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
   </ItemGroup>
 </Project>
