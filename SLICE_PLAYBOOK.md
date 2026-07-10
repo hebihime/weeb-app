@@ -113,3 +113,30 @@ deterministic math in pure libs with golden vectors, no LLM.
 **Green:** (exact numbers: arch + integration + client tests + live E2E + log sweep + security)
 **What worked:** ...
 **What we learned / changed:** ... (fold new gate/seam lessons UP into BUILD.md §8/§9 so the next slice inherits them)
+
+### S0 retro (repo-ci-iac — DONE, 2026-07-10)
+**Shipped:** ratified contract (SLICE_S0_CONTRACT.md) → 7 per-unit workflows (guarded activation, green
+on empty solution), infra/ Bicep ×9 files + 3 param sets (edge-guard L17 with UrlDecode-hardened rules,
+residency assertions), brands/*.json + drift gate, i18n/locales.json, 5 deterministic lint tools +
+secret-scan + compose-smoke, empty Svac.sln + Directory.Build.props, compose dev stack, CODEOWNERS,
+SECURITY_REVIEW_S0.md (15 fixNow remediated, 7 deferred with Skip-annotated proof tests, all lens tests
+wired into CI). B18 dead: flavorless first client commit is red by construction.
+**Green:** 126 node tests (119 pass, 7 deliberate skips = deferrals) ×2 runs · dotnet build 0 errors ·
+brand-gate OK · actionlint 0 · bicep 12/12 · compose fresh-boot ×3 clean (zero restarts/errors/warnings)
+· GitHub CI: six workflows green twice (push set + dispatched set); release lane proven fail-closed
+locally, un-greenable until OQ-1/OQ-3 by design.
+**What worked:** the contract's guarded-activation pattern (every gate green on the empty repo, arming
+itself as its consumer lands); the scaffolder explicitly deferring to the LOCKED contract over its
+generic prompt; adversarial lenses on pure tooling found 22 real breaks (edge-guard double-encoding
+bypass, ddl-lint blind to schema-qualified tables, opt-in lint markers = zero pressure); null-guard +
+retry absorbed two real 529 agent deaths (L28 validated).
+**What we learned / changed:** (1) L32 stringified Workflow args — parse + fail-fast now in the
+template. (2) L33 contract-beats-template — override clause appended to every execution-stage prompt
+after shared-wiring built S1's whole substrate during S0; quarantine-don't-trust any off-contract agent
+output. (3) Secret-scan shipped two real bugs: grep -q + pipefail FAILS OPEN on large diffs (SIGPIPE
+turns a match into pipeline failure), and inline pattern text self-matches the commit adding it — one
+shared tested scanner (secret-scan.mjs + secret-patterns.txt, exempting exactly the pattern file)
+replaced both inline scans; test vectors must be concatenation-built or they re-trip the scan. (4)
+Judgment-model pins in the build kit went stale (opus-era); playbook now says BEST AVAILABLE, re-check
+each model family. (5) Verify agent-claimed tool versions: the scaffolder's bicep validated in its
+sandbox but wasn't on the machine; the gate re-run caught it.
