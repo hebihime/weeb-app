@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Tests.Architecture — SLICE_S1_CONTRACT.md §1a/§10. Enforces every pillar boundary: 1A module
+    boundaries, 4A boot-refusal + deny-mode + generated action×axis matrix, 13A unregistered-store gate,
+    15A provider-SDK, L20 trust-DTO, DevSeams-not-in-prod-DI, Deterministic IO-isolation, append-only
+    trigger, consumer-DenyStandard-on-read. §10.1: "NON-VACUOUS: every enforcement rule proven by a red
+    fixture" — this is the CI gate build/scripts/ef-gate.sh + .github/workflows/backend.yml's
+    arch-suite job already reserve a slot for.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Tests.Architecture</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Underscore-delimited Given_When_Then test names are the idiomatic xUnit convention repo-wide
+         for this suite; CA1707 (no-underscores) is a style rule that fights the convention, not a
+         correctness rule — suppressed for test projects only. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Deterministic\Svac.DomainCore.Deterministic.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+    <ProjectReference Include="..\..\public-host\Svac.PublicApi\Svac.PublicApi.csproj" />
+  </ItemGroup>
+
+</Project>

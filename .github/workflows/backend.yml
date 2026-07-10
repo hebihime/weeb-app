@@ -82,20 +82,38 @@ jobs:
         run: dotnet tool install --global dotnet-ef --version 9.* || true
       - name: run ef-gate
         run: bash build/scripts/ef-gate.sh backend
+      - name: emit-ddl-script drift gate (regenerate + diff, guarded on a migration existing)
+        run: |
+          if find backend -type d -iname 'Migrations' 2>/dev/null | grep -q .; then
+            bash build/scripts/emit-ddl-script.sh
+          else
+            echo "emit-ddl-script SKIP: no Migrations/ directory yet"
+          fi
 
   thirteen-a-gate:
-    name: 13A store-registration gate (slot reserved for S1)
+    name: "13A store-registration gate (S1 - purge-registry drift + completeness)"
     runs-on: ubuntu-latest
     needs: build-test
     steps:
       - uses: actions/checkout@v4
-      - name: guarded — no store registry test project exists yet
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: guard — reserved slot until backend/domain-core/purge-registry.json exists
+        id: check
         run: |
-          if [ -d backend/tests/Svac.Tests.Architecture ]; then
-            echo "13A gate runs as part of arch-suite once backend/tests/Svac.Tests.Architecture lands"
+          if [ -f backend/domain-core/purge-registry.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "13A-gate SKIP: reserved slot, S1 lands the real check"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "13A-gate SKIP: backend/domain-core/purge-registry.json does not exist yet (guarded — S1 emits it)"
           fi
+      - name: emit-purge-registry drift gate (regenerate + diff)
+        if: steps.check.outputs.exists == 'true'
+        run: bash build/scripts/emit-purge-registry.sh
+      - name: completeness check (arch-suite already ran in build-test's dependency chain, but re-assert here as the 13A gate's own named job)
+        if: steps.check.outputs.exists == 'true'
+        run: dotnet test backend/tests/Svac.Tests.Architecture --configuration Release --filter "FullyQualifiedName~PurgeRegistryGateTests"
 
   contract-publish:
     name: publish openapi-contract-v0 artifact (guarded)
@@ -103,6 +121,9 @@ jobs:
     needs: build-test
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
       - name: check contract exists
         id: check
         run: |
@@ -112,6 +133,9 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "contract-publish SKIP: contracts/openapi.v0.json does not exist yet (guarded — S1 emits it)"
           fi
+      - name: emit-openapi-contract drift gate (regenerate + diff)
+        if: steps.check.outputs.exists == 'true'
+        run: bash build/scripts/emit-openapi-contract.sh
       - name: contract-lint
         if: steps.check.outputs.exists == 'true'
         run: node tools/contract-lint/contract-lint.mjs contracts/openapi.v0.json
@@ -130,9 +154,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: check for a host Dockerfile
+        id: check
         run: |
           if find backend -maxdepth 3 -iname "Dockerfile*" 2>/dev/null | grep -q .; then
-            echo "container-image: Dockerfile found — build step lands with the first host (S1)"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "container-image SKIP: no backend host Dockerfile exists yet (guarded — S1 is the first host)"
           fi
+      - name: build Svac.PublicApi image (build stage only — no registry push at S1)
+        if: steps.check.outputs.exists == 'true'
+        run: docker build -f backend/public-host/Svac.PublicApi/Dockerfile -t svac-public-api:ci .
+
+  compose-fresh-boot-and-substrate-e2e:
+    name: compose fresh-boot health + substrate e2e (SLICE_S1_CONTRACT.md §10.4, guarded)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: check for a public-api compose service
+        id: check
+        run: |
+          if grep -q "public-api:" docker-compose.yml; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "compose-fresh-boot-and-substrate-e2e SKIP: no public-api service in docker-compose.yml yet"
+          fi
+      - name: compose fresh-boot smoke (BUILD.md §8 clause 2)
+        if: steps.check.outputs.exists == 'true'
+        run: bash build/scripts/compose-smoke.sh
+      - name: substrate e2e against the live stack (SLICE_S1_CONTRACT.md §10.4)
+        if: steps.check.outputs.exists == 'true'
+        run: SUBSTRATE_E2E_TARGET=http://localhost:8090 node backend/e2e/substrate.e2e.mjs
+      - name: teardown
+        if: always()
+        run: docker compose down -v

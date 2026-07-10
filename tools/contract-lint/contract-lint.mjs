@@ -29,7 +29,10 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PATH = join(__dirname, "..", "..", "contracts", "openapi.v0.json");
 
-const TRUST_FIELD_RE = /^(verification|reputation|premium|moderation_state|age_estimate|trust|tier)/i;
+// MinorProt-F5 (SECURITY_REVIEW_S1.md) — mirrors backend/tests/Svac.Tests.Architecture/TrustDtoArchTest.cs's
+// TrustFieldPattern exactly: the canonical forgeable-18+ attest field names (age_verified, age_attested,
+// is_adult, adult_verified, birthdate_verified, minor_flag) were previously invisible to this gate.
+const TRUST_FIELD_RE = /^(verification|reputation|premium|moderation_state|age_estimate|age_?verified|age_?attested|is_?adult|adult_?verified|birthdate_?verified|minor_?flag|trust|tier)/i;
 const GATE_LEAK_RE = /(_locked|_disabled|_gated)$|^gate_state$|^locked_reason$|^upgrade_required$/i;
 
 // Mutation-class HTTP methods for rule 4's void-tell check (SECURITY_REVIEW_S0.md IDOR F2 / silent-

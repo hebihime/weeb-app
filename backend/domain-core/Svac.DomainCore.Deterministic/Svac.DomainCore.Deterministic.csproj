@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.DomainCore.Deterministic — SLICE_S1_CONTRACT.md §1a. Pure functions: con-day window math, quota
+    reset boundaries, ledger summation, the opaque-id (ULID) codec. Zero IO references (arch-tested): no
+    file/network/database/clock-ambient-read package may ever land in this ItemGroup. No wall-clock reads
+    INSIDE any function — every function that needs "now" takes it as a parameter. No LLM, ever. This is
+    where CLAUDE.md's deterministic-space rule lives for the whole backend.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.DomainCore.Deterministic</AssemblyName>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+<Project>
+  <!--
+    backend/Directory.Packages.props — Central Package Management (CPM), first real consumer S1.
+    One version per package, resolved identically across every project in the solution. Fixes the class
+    of MSB3277 "conflicting assembly version" warnings a multi-project solution gets the instant two
+    projects each pin the same transitive package (e.g. Microsoft.EntityFrameworkCore.Relational) to
+    slightly different floors — cheaper to prevent centrally than to re-pin per project as it recurs.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- EF Core / Npgsql -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+
+    <!-- ASP.NET Core / OpenAPI -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <!-- Pinned above Microsoft.AspNetCore.OpenApi's transitive Microsoft.OpenApi 2.0.0, which NuGet
+         audit flags as a known high-severity advisory (GHSA-v5pm-xwqc-g5wc) that TreatWarningsAsErrors
+         (Directory.Build.props) turns build-failing. -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.10.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+
+    <!-- Hosting -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+
+    <!-- Test -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.4.0" />
+  </ItemGroup>
+</Project>

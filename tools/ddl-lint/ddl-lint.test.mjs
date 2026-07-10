@@ -84,9 +84,17 @@ test("checkResidencyColumns: pattern matching is case-insensitive on table name"
   assert.equal(violations.length, 2);
 });
 
-test("loadConfig: seeded pii-patterns.json loads and matches the contract's patterns (five original + three minor-protection, SECURITY_REVIEW_S0.md minor F5)", () => {
+test("loadConfig: seeded pii-patterns.json loads and matches the contract's patterns (five original + three minor-protection, SECURITY_REVIEW_S0.md minor F5, +two S1 event/ledger patterns, SLICE_S1_CONTRACT.md §2)", () => {
   const config = loadConfig();
-  assert.deepEqual(config.patterns, ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*"]);
+  assert.deepEqual(config.patterns, [
+    "*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*",
+    "*events_*", "*ledger*",
+  ]);
   assert.deepEqual(config.required_columns, ["region", "lawful_basis"]);
-  assert.deepEqual(config.allowlist, []);
+  assert.deepEqual(config.allowlist, [
+    {
+      table: "ledger_balances",
+      reason: "SLICE_S1_CONTRACT.md §2: a rebuildable summation PROJECTION over events_ledger + ledger_entries (both of which DO carry region/lawful_basis on every row); the balance row itself is a derived aggregate, not an independently-personal-data-bearing row, so it is registered here with a reason rather than silently exempt.",
+    },
+  ]);
 });

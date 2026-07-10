@@ -1,0 +1,17 @@
+{
+  "_comment": "SLICE_S1_CONTRACT.md §1c — the canonical registry of server-emitted message keys, published beside contracts/openapi.v0.json. S1 seeds exactly the substrate set. i18n-lint extends (guarded activation, S0 pattern): every manifest key must exist x4 locales in each client catalog once client catalogs exist.",
+  "keys": [
+    {
+      "key": "limit_reached.generic",
+      "consumer": "LimitReached.message_key — the one 429 deny surface (10A / DR-7.3)"
+    },
+    {
+      "key": "error.generic",
+      "consumer": "Problem.message_key — the one generic error shape (token law 2)"
+    },
+    {
+      "key": "error.could_not_send",
+      "consumer": "Problem.message_key — reserved substrate key per SLICE_S1_CONTRACT.md §1c"
+    }
+  ]
+}

@@ -85,6 +85,27 @@ services:
   # Host ports 8090-8092 reserved for them (8080-8082 are claimed by another project's stack on
   # this dev machine — parallel-session boundary, CLAUDE.md).
 
+  public-api:
+    build:
+      context: .
+      dockerfile: backend/public-host/Svac.PublicApi/Dockerfile
+    environment:
+      ConnectionStrings__Core: "Host=postgres;Port=5432;Database=svac;Username=svac;Password=svac_dev_only"
+      SVAC_DEVSEAMS_ENABLED: "true"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    ports:
+      - "8090:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:

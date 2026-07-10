@@ -1,0 +1,506 @@
+[
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "entries survive as tombstones, user refs severed; balances rebuilt by Replay"
+  },
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+  },
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "MinorPurge",
+    "verb": "Tombstone",
+    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+  },
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "earn events are not consent-gated"
+  },
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+  },
+  {
+    "storeKey": "events_ledger",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "entries survive as tombstones, user refs severed; balances rebuilt by Replay"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "MinorPurge",
+    "verb": "Tombstone",
+    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "earn events are not consent-gated"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "entries survive as tombstones, user refs severed; balances rebuilt by Replay"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "MinorPurge",
+    "verb": "Tombstone",
+    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "earn events are not consent-gated"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "tombstone on account deletion"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "Art. 17 erasure \u2014 tombstone"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "window-bounded recompute verb declared; the recompute writer arrives at S16 \u2014 no reputation events exist to recompute against at S1"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "model_version-scoped retention lands with the S16 writer"
+  },
+  {
+    "storeKey": "events_reputation",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "AccountDeletion",
+    "verb": "Pseudonymize",
+    "reason": "OQ-1 interim posture (a): pseudonymize subject (irreversible re-key); revocation stays an EVENT on this stream, never a purge of it"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Pseudonymize",
+    "reason": "OQ-1 interim posture (a)"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "MinorPurge",
+    "verb": "Pseudonymize",
+    "reason": "OQ-1 interim posture (a)"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "revocation is an EVENT on this stream, never a purge of it"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "bounded instead by the founder-scope retention ceiling on the pseudonymized record, not a separate expiry sweep"
+  },
+  {
+    "storeKey": "events_consent",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "hard delete rows"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "ConsentRevocation",
+    "verb": "Delete",
+    "reason": "hard delete"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "retention window value set when the Metrics \u0026 Ops desk consumes it (S5) \u2014 mechanism is Delete regardless of the window\u0027s length"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "OQ-1 interim posture (a): tombstone actor PII in payload, record survives \u2014 the staff-action accountability trail is preserved"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "OQ-1 interim posture (a)"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "MinorPurge",
+    "verb": "Tombstone",
+    "reason": "OQ-1 interim posture (a)"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "audit rows are not consent-gated"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "statutory retention period governs; hard delete once the age threshold is reached"
+  },
+  {
+    "storeKey": "events_audit",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "full-history retention per profilemodel \u00A71c founder ruling \u2014 account deletion does not trigger heatmap-provenance deletion"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure overrides the full-history default"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge overrides the full-history default"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "not consent-gated"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "12 months / R2 (core.purge.sweep \u2014 cell_history_months config)"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "hard delete the subject\u0027s counters"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "quota counters are not consent-gated"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "delete expired windows (GC) \u2014 core.purge.sweep_interval_minutes"
+  },
+  {
+    "storeKey": "quota_counters",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "config_entries",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "AccountDeletion",
+    "verb": "CryptoShred",
+    "reason": "Key Vault purge-protection ON means shred = key destruction by re-wrap denial"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "StatutoryErasure",
+    "verb": "CryptoShred",
+    "reason": "Art. 17 erasure \u2014 crypto-shred"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "MinorPurge",
+    "verb": "CryptoShred",
+    "reason": "minor-protection purge \u2014 crypto-shred"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "key material is not consent-gated"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "keys are retired by explicit Shred, never a time-based sweep"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "AccountDeletion",
+    "verb": "CryptoShred",
+    "reason": "Key Vault purge-protection ON means shred = key destruction by re-wrap denial"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "StatutoryErasure",
+    "verb": "CryptoShred",
+    "reason": "Art. 17 erasure \u2014 crypto-shred"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "MinorPurge",
+    "verb": "CryptoShred",
+    "reason": "minor-protection purge \u2014 crypto-shred"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "key material is not consent-gated"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "keys are retired by explicit Shred, never a time-based sweep"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (purge-run receipts)"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (purge-run receipts)"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (purge-run receipts)"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (purge-run receipts)"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "purge_runs itself carries retention_expiry \u2014 the registry eats its own dog food"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "purge_runs",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (purge-run receipts)"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "non-PII operational metadata (per-consumer watermarks)"
+  }
+]

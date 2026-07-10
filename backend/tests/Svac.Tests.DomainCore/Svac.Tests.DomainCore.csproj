@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Tests.DomainCore — SLICE_S1_CONTRACT.md §1a/§11. Deterministic-space unit tests: golden vectors
+    for the ULID codec, con-day window math, and ledger summation (points/xp/svac invariants, negative-
+    svac-only-on-sink-purchase). Full DST/con-timezone golden-vector suites are Phase-2/hardened-gate
+    material (SLICE_PLAYBOOK.md phase split); this project ships the harness + a real, passing baseline
+    now so Phase 2 extends it rather than writing it from scratch.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Tests.DomainCore</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Underscore-delimited Given_When_Then test names are the idiomatic xUnit convention repo-wide
+         for this suite; CA1707 (no-underscores) is a style rule that fights the convention, not a
+         correctness rule — suppressed for test projects only. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Deterministic\Svac.DomainCore.Deterministic.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+  </ItemGroup>
+
+</Project>

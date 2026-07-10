@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.DomainCore.Contracts — SLICE_S1_CONTRACT.md §1a. The ONLY assembly future feature modules may
+    reference (arch test: cross-boundary references hit *.Contracts only). Interfaces, DTOs, policy-table
+    types, typed ids. No EF, no ASP.NET, no IO framework dependency — a module pulling this in pulls in
+    nothing but shapes.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.DomainCore.Contracts</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Svac.DomainCore.Deterministic\Svac.DomainCore.Deterministic.csproj" />
+  </ItemGroup>
+
+</Project>

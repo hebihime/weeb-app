@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Svac.PublicApi — SLICE_S1_CONTRACT.md §0/§12.1. The ONE minimal public API host S1 creates. Zero
+    business logic: health, one bootstrap GET, the 4A middleware, OpenAPI emit. backend/admin-host is
+    S5's unit and the partner host is S29's — pre-creating either here would violate unit ownership.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.PublicApi</AssemblyName>
+    <UserSecretsId>svac-public-api</UserSecretsId>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Pinned above Microsoft.AspNetCore.OpenApi's transitive Microsoft.OpenApi 2.0.0, which NuGet
+         audit flags as a known high-severity advisory (GHSA-v5pm-xwqc-g5wc) that TreatWarningsAsErrors
+         (Directory.Build.props) turns build-failing. -->
+    <PackageReference Include="Microsoft.OpenApi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+  </ItemGroup>
+
+  <!--
+    OpenAPI contract v0 emit (SLICE_S1_CONTRACT.md §1c): deliberately NOT wired through
+    Microsoft.Extensions.ApiDescription.Server's OpenApiGenerateDocumentsOnBuild MSBuild target, which
+    instantiates and runs the FULL Program.cs (including MigrationHostedService's live Postgres
+    connection and the L18 prod Key Vault guard) via reflection at every dotnet-build call, exactly the
+    opposite of a hermetic build step. Emission instead runs through this host's own emit-openapi CLI
+    mode (Program.cs), which maps the identical endpoints with zero DB/DomainCore wiring and writes
+    contracts/openapi.v0.json directly; see build/scripts/emit-openapi-contract.sh.
+  -->
+
+</Project>

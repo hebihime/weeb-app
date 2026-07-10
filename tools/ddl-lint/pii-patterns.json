@@ -1,6 +1,11 @@
 {
-  "_comment": "SLICE_S0_CONTRACT.md §2, L21 residency lint. A table name matching any pattern here must carry region + lawful_basis columns unless explicitly allowlisted with a stated reason. First real consumer is S1; seeded now so the gate predates the first feature store (B2 logic). age_attestation/birthdate/minor patterns added per SECURITY_REVIEW_S0.md minor F5 — age/birthdate/minor-purge tables are the central minor-protection datum and must not escape L21 residency by naming.",
-  "patterns": ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*"],
+  "_comment": "SLICE_S0_CONTRACT.md §2, L21 residency lint. A table name matching any pattern here must carry region + lawful_basis columns unless explicitly allowlisted with a stated reason. First real consumer is S1; seeded now so the gate predates the first feature store (B2 logic). age_attestation/birthdate/minor patterns added per SECURITY_REVIEW_S0.md minor F5 — age/birthdate/minor-purge tables are the central minor-protection datum and must not escape L21 residency by naming. *events_* and *ledger* added per SLICE_S1_CONTRACT.md §2: region+lawful_basis go on all six event streams + ledger_entries uniformly; a uniform invariant is testable where a selective one erodes.",
+  "patterns": ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*", "*events_*", "*ledger*"],
   "required_columns": ["region", "lawful_basis"],
-  "allowlist": []
+  "allowlist": [
+    {
+      "table": "ledger_balances",
+      "reason": "SLICE_S1_CONTRACT.md §2: a rebuildable summation PROJECTION over events_ledger + ledger_entries (both of which DO carry region/lawful_basis on every row); the balance row itself is a derived aggregate, not an independently-personal-data-bearing row, so it is registered here with a reason rather than silently exempt."
+    }
+  ]
 }

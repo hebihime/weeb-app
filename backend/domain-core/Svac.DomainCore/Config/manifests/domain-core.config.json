@@ -1,0 +1,37 @@
+{
+  "_comment": "SLICE_S1_CONTRACT.md §4 — additive manifest file, union-merge friendly. Only entries S1's own pillars consume. S5's ledger row owns seeding the eng-review §5 v0 batch; that manifest lands alongside this one as a sibling file, never edits to this file's rows.",
+  "entries": [
+    {
+      "key": "core.con_day_cutoff",
+      "scope": "set",
+      "type": "string",
+      "value": "04:00",
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Deterministic.ConDayWindow (con-day window math, eng review §5)"
+    },
+    {
+      "key": "privacy.lawful_basis_map_variant",
+      "scope": "founder",
+      "type": "string",
+      "value": "conservative_global_v0",
+      "requiresReason": true,
+      "consumer": "lawful-basis resolution (SLICE_S1_CONTRACT.md §1b) — counsel's L-1 map = new variant + audited config flip"
+    },
+    {
+      "key": "privacy.region_fallback",
+      "scope": "ops",
+      "type": "string",
+      "value": "ZZ",
+      "requiresReason": false,
+      "consumer": "IRegionResolver fallback — unknown region gets the strictest treatment, never the permissive one"
+    },
+    {
+      "key": "core.events.replay_batch_size",
+      "scope": "ops",
+      "type": "int",
+      "value": 1000,
+      "requiresReason": false,
+      "consumer": "projection runner (IEventStore.Replay batch size)"
+    }
+  ]
+}
