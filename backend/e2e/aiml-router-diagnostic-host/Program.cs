@@ -29,7 +29,12 @@ var appConnectionString = $"Host={pgHost};Port={pgPort};Username={pgUser};Passwo
 await EnsureDiagnosticDatabase(maintenanceConnectionString, dbName, freshBoot);
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls($"http://0.0.0.0:{httpPort}");
+// S2-B (SECURITY_REVIEW_S2.md): this route maps an unauthenticated request body onto IAimlRouter.
+// InvokeAsync under a hardcoded ActorRef.System, with no credential check at all — "test tooling, never
+// shipped" is a deployment CONVENTION (topology), not a structural guard. Its own only consumer
+// (backend/e2e/aiml-router.e2e.mjs) reaches it over loopback; binding every interface left an
+// unauthenticated forged-System-actor model egress reachable from any shared dev/CI network.
+builder.WebHost.UseUrls($"http://127.0.0.1:{httpPort}");
 builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "HH:mm:ss.fff "; });
 
 // devSeamsEnabled: true, ALWAYS — this whole process only exists under DevSeams (SLICE_S2_CONTRACT.md
@@ -118,7 +123,7 @@ app.MapPost("/invoke", async (InvokeDiagnosticRequest body, IAimlRouter router, 
 await app.StartAsync();
 await SeedDiagnosticConfig(app);
 ready = true;
-Console.WriteLine($"aiml-router-diagnostic-host READY on http://0.0.0.0:{httpPort} (db={dbName})");
+Console.WriteLine($"aiml-router-diagnostic-host READY on http://127.0.0.1:{httpPort} (db={dbName})");
 await app.WaitForShutdownAsync();
 return 0;
 

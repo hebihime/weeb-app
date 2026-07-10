@@ -28,7 +28,7 @@ public sealed class AimlRouterServiceTests
         Version: 7,
         DefaultChain: new[] { new TaskChainLink("seed", "seed-v0") },
         TaskChains: new Dictionary<string, IReadOnlyList<TaskChainLink>>(),
-        ResidencyOverrides: Array.Empty<string>());
+        ResidencyOverrides: Array.Empty<ResidencyOverride>());
 
     private static readonly string[] SeedModels = { "seed-v0" };
 

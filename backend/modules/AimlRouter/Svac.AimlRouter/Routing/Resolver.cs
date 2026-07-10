@@ -30,7 +30,7 @@ internal static class Resolver
         PayloadClass payloadClass,
         RegionCode region)
     {
-        var declaredChain = ChainFor(policy, task);
+        var declaredChain = ChainFor(policy, task, region);
         var hops = new List<ResolvedHop>(declaredChain.Count);
         var anyCeilingSkip = false;
 
@@ -48,6 +48,12 @@ internal static class Resolver
             if (!registeredProviderIds.Contains(link.Provider))
             {
                 continue; // no DI-registered IModelProvider for this environment -> skip.
+            }
+            if (!MatchesResidency(allowlisted.Residency, region))
+            {
+                continue; // PII-S2-F2: a non-"global" provider residency that does not match the call's
+                          // own region is not a lawful candidate for this call — residency-aware routing
+                          // is structural (§1b), not merely a first-class INPUT nobody reads.
             }
             if (ExceedsCeiling(payloadClass, allowlisted.PayloadClassCeiling))
             {
@@ -93,10 +99,31 @@ internal static class Resolver
         return new ProviderChain(new[] { new ResolvedHop(pin.Provider, pin.Model) });
     }
 
-    private static IReadOnlyList<TaskChainLink> ChainFor(RoutingPolicy policy, AimlTaskKind task) =>
-        policy.TaskChains.TryGetValue(task.ToString(), out var taskChain) && taskChain.Count > 0
-            ? taskChain
-            : policy.DefaultChain;
+    /// <summary>
+    /// TRUST-BREAK-5 (SECURITY_REVIEW_S2.md): "a kind with no policy chain fails closed" (AimlTaskKind's
+    /// own contract text) means an EXPLICITLY-declared empty task chain (the natural per-kind ops kill
+    /// switch) must resolve to that empty chain, never fall open to the default chain just because the
+    /// list happens to be empty — <c>TryGetValue</c> alone (no <c>Count > 0</c> gate) is exactly "declared
+    /// vs. undeclared", the distinction the fail-closed law needs. PII-S2-F2: a residency override, when
+    /// the call's region matches one, takes priority over both the per-task and the default chain — a
+    /// region pin is a stronger routing law than an unqualified task default.
+    /// </summary>
+    private static IReadOnlyList<TaskChainLink> ChainFor(RoutingPolicy policy, AimlTaskKind task, RegionCode region)
+    {
+        var regionOverride = policy.ResidencyOverrides.FirstOrDefault(
+            o => string.Equals(o.Region, region.Country, StringComparison.OrdinalIgnoreCase));
+        if (regionOverride is not null)
+        {
+            return regionOverride.Chain;
+        }
+
+        return policy.TaskChains.TryGetValue(task.ToString(), out var taskChain) ? taskChain : policy.DefaultChain;
+    }
+
+    /// <summary>PII-S2-F2: "global" always matches (the OQ-A v0 posture); anything else must match the call's own region country code.</summary>
+    private static bool MatchesResidency(string residency, RegionCode region) =>
+        string.Equals(residency, "global", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(residency, region.Country, StringComparison.OrdinalIgnoreCase);
 
     private static bool ExceedsCeiling(PayloadClass payloadClass, PayloadClass ceiling) => payloadClass > ceiling;
 }

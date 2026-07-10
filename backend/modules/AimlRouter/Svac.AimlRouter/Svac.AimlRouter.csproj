@@ -18,6 +18,10 @@
     -->
     <PackageReference Include="Anthropic.SDK" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <!-- TRUST-BREAK-2 (SECURITY_REVIEW_S2.md, Trust-F1 parity): AnthropicApiKeyGuard.Enforce allowlists
+         Development by NAME via Microsoft.Extensions.Hosting.Environments.Development, mirroring
+         ProdFieldKeyVaultGuard's own precedent (domain-core already takes this exact package). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

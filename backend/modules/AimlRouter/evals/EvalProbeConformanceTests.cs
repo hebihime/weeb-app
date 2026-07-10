@@ -208,7 +208,7 @@ public sealed class EvalProbeConformanceTests(ITestOutputHelper output)
             Version: 1,
             DefaultChain: new[] { new TaskChainLink("anthropic", SentinelInvalidModel), new TaskChainLink("anthropic", RealModel) },
             TaskChains: new Dictionary<string, IReadOnlyList<TaskChainLink>>(),
-            ResidencyOverrides: Array.Empty<string>());
+            ResidencyOverrides: Array.Empty<ResidencyOverride>());
 
         var config = new FakeConfigRegistry()
             .With("aiml.provider_allowlist", (IReadOnlyList<ProviderAllowlistEntry>)new[] { allowlistEntry })

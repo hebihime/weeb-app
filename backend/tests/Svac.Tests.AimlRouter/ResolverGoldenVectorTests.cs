@@ -28,7 +28,7 @@ public sealed class ResolverGoldenVectorTests
         Version: 1,
         DefaultChain: new[] { new TaskChainLink("anthropic", "claude-opus-4-8") },
         TaskChains: new Dictionary<string, IReadOnlyList<TaskChainLink>>(),
-        ResidencyOverrides: Array.Empty<string>());
+        ResidencyOverrides: Array.Empty<ResidencyOverride>());
 
     [Fact]
     public void Resolve_AutomaticPath_DefaultChain_ProducesOneHop()

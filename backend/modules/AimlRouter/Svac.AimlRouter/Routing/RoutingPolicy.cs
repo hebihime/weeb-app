@@ -21,9 +21,20 @@ public sealed record TaskChainLink(
     [property: JsonPropertyName("provider")] string Provider,
     [property: JsonPropertyName("model")] string Model);
 
+/// <summary>
+/// One residency override entry (SLICE_S2_CONTRACT.md §1b/§8; PII-S2-F2 retype, SECURITY_REVIEW_S2.md).
+/// "residency_overrides is a first-class policy input" needs a shape that can actually express "route DE
+/// here" — a bare <c>IReadOnlyList&lt;string&gt;</c> cannot deserialize a structured per-region override
+/// at all. This is that shape: readable by both <c>ConfigRegistry.SetValue</c> (so an ops-desk edit
+/// round-trips) and <c>Resolver.Resolve</c> (so the resolver can actually route by it).
+/// </summary>
+public sealed record ResidencyOverride(
+    [property: JsonPropertyName("region")] string Region,
+    [property: JsonPropertyName("chain")] IReadOnlyList<TaskChainLink> Chain);
+
 /// <summary>The 9A `aiml.routing_policy` shape (SLICE_S2_CONTRACT.md §4). Ops-scoped, desk-tunable per 15A.</summary>
 public sealed record RoutingPolicy(
     [property: JsonPropertyName("version")] int Version,
     [property: JsonPropertyName("default_chain")] IReadOnlyList<TaskChainLink> DefaultChain,
     [property: JsonPropertyName("task_chains")] IReadOnlyDictionary<string, IReadOnlyList<TaskChainLink>> TaskChains,
-    [property: JsonPropertyName("residency_overrides")] IReadOnlyList<string> ResidencyOverrides);
+    [property: JsonPropertyName("residency_overrides")] IReadOnlyList<ResidencyOverride> ResidencyOverrides);

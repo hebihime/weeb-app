@@ -19,9 +19,15 @@ public sealed class TrustDtoArchTest
     // birthdate_verified, minor_flag) — the exact client-forged-adulthood vector L20 and the minor stack
     // exist to kill. Each alternative's "_?" makes it match both snake_case wire-field spellings
     // ("age_verified") and PascalCase C# property spellings ("AgeVerified") under RegexOptions.IgnoreCase.
+    //
+    // TRUST-BREAK-4 (SECURITY_REVIEW_S2.md): extended with provider*/model*/payload_class — SLICE_S2_
+    // CONTRACT.md §1b/§8/§10.2's own promised extension ("an arch scan ... proves neither the receipt
+    // nor provider identity ever serializes into a user-bound DTO. A reported user can never probe
+    // moderation-provider health"). Same "_?" convention: matches "Provider"/"provider_id"/"Model"/
+    // "model_name"/"PayloadClass"/"payload_class" alike.
     private static readonly Regex TrustFieldPattern = new(
         "^(verification|reputation|premium|moderation_state|age_estimate|age_?verified|age_?attested|" +
-        "is_?adult|adult_?verified|birthdate_?verified|minor_?flag|trust|tier)",
+        "is_?adult|adult_?verified|birthdate_?verified|minor_?flag|trust|tier|provider|model|payload_?class)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     [Fact]
@@ -33,8 +39,15 @@ public sealed class TrustDtoArchTest
         // zero consumer mutation endpoints (§0), so there are zero real request DTOs today; the scan
         // runs unconditionally over every "*Request"-named type in the namespace so it activates the
         // instant one appears, matching the naming convention every future request DTO here will follow.
+        //
+        // TRUST-BREAK-4: also scans "*Response"-named types. §1b's actual promise ("neither the
+        // receipt nor provider identity ever serializes into a user-bound DTO") is a RESPONSE-shaped
+        // concern (a server->client leak), not a request-forgery concern — provider*/model*/
+        // payload_class fields on a would-be response DTO are exactly what this half of the scan exists
+        // to catch, the moment one is added.
         var apiTypes = typeof(Problem).Assembly.GetExportedTypes()
-            .Where(t => t.Namespace == typeof(Problem).Namespace && t.Name.EndsWith("Request", StringComparison.Ordinal));
+            .Where(t => t.Namespace == typeof(Problem).Namespace
+                && (t.Name.EndsWith("Request", StringComparison.Ordinal) || t.Name.EndsWith("Response", StringComparison.Ordinal)));
 
         var violations = new List<string>();
         foreach (var type in apiTypes)
