@@ -185,3 +185,56 @@ drift — a per-job runner shares no build output (`needs:` is ordering, not art
 must build first. Meta: run the deterministic suite AFTER every script edit (my ef-gate preflight broke
 its own fixture ordering because I ran the script's behavior by hand but not `node --test ef-gate.test
 .mjs` post-edit), and a path-filtered workflow won't re-run on an out-of-path fix — dispatch it.
+
+### S2 retro — aiml-router (G0) — DONE_WITH_CONCERNS
+
+**Shipped:** `backend/modules/AimlRouter` — the first `backend/modules/*` occupant (sets the 1A module
+template). `IAimlRouter.InvokeAsync` single verb; closed `AimlTaskKind`/`AimlFailure` unions; pure IO-free
+`Resolver` (allowlist ∩ registered, region/residency, failover, explicit-pin refusal, fail-closed empty
+chain); `anthropic` provider with two transports (`AnthropicApiTransport` API + `AnthropicLocalTransport`
+local CLI, `[DevSeamsOnly]`) + `SeedProvider` (test DI only); `IVendorEgressAuthorizer` refuse-all-
+special-category; one `aiml.route_decided` audit event per invoke (metadata-only, content NEVER in
+payload); `quota.aiml.call.daily.cap` circuit breaker; ProviderSdkArchTest ARMED (provider SDK legal only
+inside `Svac.AimlRouter`, red-fixture both directions). Zero DDL, zero OpenAPI paths, zero 13A rows — all
+drift-gate-asserted. Kills B4.
+**Green (verified by me, twice, never on agent word):** dotnet build 0/0 · AimlRouter 49 pass / 2 skip ·
+Architecture 130 pass / 4 skip · DomainCore 25/0 · node lints 99 pass / 5 skip · suite run TWICE
+identical (no flakiness) · ef-gate OK (zero schema delta, chain idempotent) · compose fresh-boot clean
+(zero restarts, zero error logs) · live substrate E2E green incl. behavioral read-back. Ratification
+Correction 1 (opus-4-8 default, no fable downgrade) and the budget-key fix both verified present in the
+shipped manifest. Security: 17 fixNow remediated to now-green tests (set-time config bounds didn't exist;
+resolver region-blind + un-deserializable residency override; subject-region not inherited on the audit
+row; model-door guard flag-collapse regressing S1 Trust-F1; keyless-prod guard fired at first-resolution
+not at build; caller-cancellation misrouted as failover = extra paid egress after the caller gave up;
+audit append killable by caller token = the "one event per invoke" law silently broken; **subject-bearing
+audit rows keyed by invocation-id so EVERY purge verb missed them — raw subject id + content hash survived
+forever while the purge receipt reported rowsAffected=0**). 3 defers (S2-A `aiml.invoke` not yet in the
+enforced PolicyTable / CONC-S2-4a quota+audit not one tx / CONC-S2-5 torn two-key config read) — none
+reachable at S2 (zero consumers), each with a Skip-annotated proof test.
+**What worked:** the live E2E (paid, real local CLI) surfaced FINDING 1 — a real shipped bug where the
+budget cap resolved a 9A key the manifest never seeded (`aiml.daily_call_ceiling` vs QuotaService's real
+`quota.aiml.call.daily.cap`), so every InvokeAsync threw KeyNotFoundException. Fixed + pinned by a fast
+deterministic regression test. The security phase again paid for itself: the purge-key finding is a GDPR
+Art.17 hole that only an adversarial purge-completeness lens finds.
+**What we learned / changed:** (1) A "green" security-review §3 that lists the gate lane is NOT the
+HARDENED GATE — the agents deliberately skip compose fresh-boot, the live E2E, and the suite-twice flaky
+check (correctly, as the paid/periodic lane) but that means I MUST run them; I did, all green. (2) DI's
+`ValidateOnBuild` proves constructor-graph resolvability only — it never invokes a factory lambda or a
+throwing constructor body, so a fail-closed guard MUST be modeled as an unresolvable typed dependency to
+fire at boot, not inside a factory (TRUST-BREAK-3). (3) The paid live-CLI E2E can't run under an OAuth-only
+local login once `CLAUDE_CONFIG_DIR` is isolated (PII-S2-F4 fix) — it needs `ANTHROPIC_API_KEY`; this
+session had neither, so the canary is deferred to the nightly/periodic lane (already validated live by the
+test-author — that's how FINDING 1 surfaced). (4) **CI billing block:** backend.yml + lints.yml went red
+mid-slice — not code, "recent account payments have failed / spending limit"; jobs never started. Local
+gate is the only signal until Julien fixes GitHub Billing & plans, then re-run both workflows on 6eb7bf7.
+
+### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
+
+| Finding | From | Severity | Carry to |
+|---|---|---|---|
+| Auth-F3 — 4A chokepoint can't convey the target resource id (IDOR) | S1 | MED | first client-reachable resource-scoped 4A slice |
+| Concurrency-F5 — quota Consume + guarded action not one tx | S1 | MED | S14 |
+| SilentRej-L4 — excluded-read vs absent-read timing channel | S1 | LOW | first policy-gated consumer read |
+| S2-A — `aiml.invoke` not spliced into the enforced PolicyTable (+ S1 catch-all-Map boot-refusal gap) | S2 | LOW | S12 (first router consumer) |
+| CONC-S2-4a — quota Consume + audit append are two unrelated txns | S2 | MED | first router consumer under real load (transactional-outbox shape) |
+| CONC-S2-5 — torn two-key config read (allowlist + routing policy) | S2 | LOW | when 9A gains an atomic multi-key snapshot read |
