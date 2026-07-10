@@ -73,6 +73,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: ef-gate fixture tests (guard/skip/clause-ordering, no docker or dotnet-ef needed)
+        run: node --test build/scripts/ef-gate.test.mjs
       - name: install dotnet-ef
         run: dotnet tool install --global dotnet-ef --version 9.* || true
       - name: run ef-gate
