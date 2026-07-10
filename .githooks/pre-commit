@@ -22,9 +22,12 @@ if echo "$STAGED" | grep -qE '(^|/)\.env(\.|$)'; then
     git check-ignore -q "$f" || fail "staged env file not gitignored: $f"
   done
 fi
-if git diff --cached -U0 | grep -qE '(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|DefaultEndpointsProtocol=https;AccountName=)'; then
-  fail "possible secret in staged diff (AWS key / private key / Stripe live key / Azure conn string)"
-fi
+# Patterns live in build/scripts/secret-patterns.txt (shared with lints.yml). NEVER inline a
+# `git diff | grep -q` scan here: under pipefail, grep -q's early exit SIGPIPEs git on large
+# diffs and the scan FAILS OPEN on match (shipped bug, caught at S0 — CI blocked what this
+# hook passed). The node scanner reads the full diff; see secret-scan.test.mjs regressions.
+git diff --cached -U0 | node build/scripts/secret-scan.mjs \
+  || fail "possible secret in staged diff (see pattern list in build/scripts/secret-patterns.txt)"
 
 # 2. Fast backend architecture + unit gate (the deterministic lane). Activates with S1.
 #    Svac.Tests.Architecture enforces: module boundaries (1A), no provider SDK outside the

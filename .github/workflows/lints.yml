@@ -22,16 +22,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Same scanner + pattern file as the pre-commit hook (build/scripts/secret-scan.mjs) —
+      # one pattern source, no inline pattern text (self-match) and no grep -q pipeline
+      # (pipefail fail-open on large diffs). Both were real shipped bugs; see the scanner's tests.
       - name: scan the diff for staged-secret patterns
         run: |
           set -e
           BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
           if ! git rev-parse "$BASE" >/dev/null 2>&1; then BASE="$(git rev-list --max-parents=0 HEAD)"; fi
-          if git diff "$BASE"..HEAD -U0 | grep -qE '(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|DefaultEndpointsProtocol=https;AccountName=)'; then
-            echo "secret-scan BLOCKED: possible secret in diff" >&2
-            exit 1
-          fi
-          echo "secret-scan OK"
+          git diff "$BASE"..HEAD -U0 | node build/scripts/secret-scan.mjs
 
   brand-drift-gate:
     name: brand-drift gate
