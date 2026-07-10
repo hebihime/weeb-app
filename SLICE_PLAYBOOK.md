@@ -173,4 +173,15 @@ NEGATIVE: a `grep --include=*.cs` that errored under zsh returned "no matches", 
 tool as "model drift" — added a preflight that BLOCKS with the real reason + remediation (tool-missing ≠
 drift). Same agent-claimed-tool-not-on-machine class as S0's bicep. (5) Agents committed AND pushed to
 master directly again — reviewed every commit rather than trusting; branch protection (contract §13,
-Julien's action) is what makes this structurally impossible going forward.
+Julien's action) is what makes this structurally impossible going forward. (6) LOCAL GATE GREEN != CI
+GREEN — always confirm CI on the ACTUAL pushed commit before DONE. The pipeline's "done" hid a backend
+CI that was red on multiple counts; CI then caught THREE things the local gate could not: (a) the DDL
+drift script was generated after only the 1st migration, so it silently omitted the 2nd (ddl-lint was
+linting SQL that wasn't what EF applies) — the CI regen-and-diff caught it; (b) backend.yml + emit-ddl
+-script.sh installed dotnet-ef 9.* against an EF Core 10 project (regenerates differently than local
+v10 → drift gate never converges) — pin the tool to the exact package version; (c) the ef-gate CI job
+ran on a fresh runner without building, so dotnet ef hit NETSDK1004 and ef-gate misreported it as model
+drift — a per-job runner shares no build output (`needs:` is ordering, not artifacts); the gate's caller
+must build first. Meta: run the deterministic suite AFTER every script edit (my ef-gate preflight broke
+its own fixture ordering because I ran the script's behavior by hand but not `node --test ef-gate.test
+.mjs` post-edit), and a path-filtered workflow won't re-run on an out-of-path fix — dispatch it.
