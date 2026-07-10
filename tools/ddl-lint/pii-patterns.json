@@ -1,0 +1,6 @@
+{
+  "_comment": "SLICE_S0_CONTRACT.md §2, L21 residency lint. A table name matching any pattern here must carry region + lawful_basis columns unless explicitly allowlisted with a stated reason. First real consumer is S1; seeded now so the gate predates the first feature store (B2 logic).",
+  "patterns": ["*consent*", "*profile*", "*identity*", "*location*", "*verification*"],
+  "required_columns": ["region", "lawful_basis"],
+  "allowlist": []
+}

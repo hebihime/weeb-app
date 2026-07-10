@@ -1,0 +1,91 @@
+name: release
+
+# SLICE_S0_CONTRACT.md §9. Per-brand fastlane lanes -> TestFlight internal x2 + Play internal x2, ONLY
+# inside the protected `release` GitHub environment (§13, Julien-executed). Secret posture (§12.4):
+# normal CI never attempts uploads (green on a fork with zero secrets); inside `release`, a missing
+# signing/store secret HARD-FAILS — never silently skips (L18 fail-closed at the money/store door).
+on:
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: "Brand to release"
+        required: true
+        type: choice
+        options: [weeb, friki]
+      platform:
+        description: "Platform to release"
+        required: true
+        type: choice
+        options: [ios, android, both]
+
+concurrency:
+  group: release-${{ github.event.inputs.brand }}-${{ github.event.inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  release-lane-brand-gate:
+    name: brand-gate in release-lane mode (hard-fails on any blank identity)
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node build/scripts/brand-gate.mjs --release-lane
+
+  ios-fastlane:
+    name: fastlane ios (${{ github.event.inputs.brand }}) -> TestFlight internal
+    runs-on: macos-14
+    needs: release-lane-brand-gate
+    if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both'
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - name: assert required secrets are present (fail closed, L18)
+        run: |
+          missing=()
+          [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY }}" ] && missing+=("APP_STORE_CONNECT_API_KEY")
+          [ -z "${{ secrets.MATCH_PASSWORD }}" ] && missing+=("MATCH_PASSWORD")
+          [ -z "${{ secrets.FASTLANE_MATCH_GIT_URL }}" ] && missing+=("FASTLANE_MATCH_GIT_URL")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ios-fastlane BLOCKED: missing secret(s) in the release environment: ${missing[*]}" >&2
+            echo "This is a HARD FAIL by design (L18) — the release environment never silently skips an upload." >&2
+            exit 1
+          fi
+          echo "required secrets present"
+      - name: guarded — ios/ + fastlane lanes land at S7
+        run: |
+          if [ -d ios/fastlane ]; then
+            echo "fastlane ios ${{ github.event.inputs.brand }} release lane runs here"
+          else
+            echo "ios-fastlane SKIP: ios/fastlane does not exist yet (guarded — S7). Note: this SKIP only fires because ios/ itself is absent, never because a secret is absent."
+          fi
+
+  android-fastlane:
+    name: fastlane android (${{ github.event.inputs.brand }}) -> Play internal
+    runs-on: ubuntu-latest
+    needs: release-lane-brand-gate
+    if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both'
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - name: assert required secrets are present (fail closed, L18)
+        run: |
+          missing=()
+          [ -z "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" ] && missing+=("PLAY_SERVICE_ACCOUNT_JSON")
+          [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ] && missing+=("ANDROID_KEYSTORE_BASE64")
+          [ -z "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" ] && missing+=("ANDROID_KEYSTORE_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "android-fastlane BLOCKED: missing secret(s) in the release environment: ${missing[*]}" >&2
+            echo "This is a HARD FAIL by design (L18) — the release environment never silently skips an upload." >&2
+            exit 1
+          fi
+          echo "required secrets present"
+      - name: guarded — android/ + fastlane lanes land at S7
+        run: |
+          if [ -d android/fastlane ]; then
+            echo "fastlane android ${{ github.event.inputs.brand }} release lane runs here"
+          else
+            echo "android-fastlane SKIP: android/fastlane does not exist yet (guarded — S7). Note: this SKIP only fires because android/ itself is absent, never because a secret is absent."
+          fi

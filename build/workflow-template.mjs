@@ -85,6 +85,16 @@ if (!RATIFIED) {
 }
 
 // ---------- Phase 1: scaffold (execution model) ----------
+// Every execution-stage prompt carries this override: the generic wording below describes a TYPICAL
+// slice; the ratified contract is LOCKED and wins. Scar: during S0 (whose contract scoped §1-§7 to
+// "None"), the shared-wiring agent followed the generic wording and built S1's entire domain
+// substrate off-contract. The contract must beat the template by instruction, not by agent judgment.
+const CONTRACT_OVERRIDES =
+  `\n\nIMPORTANT: ${CONTRACT_PATH} is LOCKED and OVERRIDES the generic task wording above. Build ` +
+  `ONLY what the contract's deliverables inventory assigns to your stage. If the contract scopes ` +
+  `your stage's area to "None"/"N-A", create NOTHING outside it: verify the existing state and ` +
+  `return "N/A per contract" with the verification output. Never create files owned by a LATER ` +
+  `slice's units (the contract's scope section names them).`
 phase('Scaffold')
 await agent(
   `Scaffold the empty-but-running skeleton for weeb-app slice "${SLICE}" per ${CONTRACT_PATH}: module ` +
@@ -92,7 +102,8 @@ await agent(
   `their 4A policy entries registered, 13A store registrations, compose wiring, OpenAPI emit, test ` +
   `harness. Migrations apply via the startup migration service under the advisory lock; stream consumers ` +
   `register AFTER it. Gate: dotnet build clean + trivial container test + compose health (/health 200 on ` +
-  `all hosts, contract emits). Re-run the gate yourself; return its actual output, not a narrative.`,
+  `all hosts, contract emits). Re-run the gate yourself; return its actual output, not a narrative.` +
+  CONTRACT_OVERRIDES,
   { label: 'scaffolder', phase: 'Scaffold', model: EXECUTION_MODEL }
 )
 
@@ -102,7 +113,8 @@ phase('Build')
 await agent(
   `Shared-wiring pre-step for weeb-app slice "${SLICE}": own the entrypoint + cross-cutting files ` +
   `(Program.cs/DI, policy+quota+config registrations, compose, OpenAPI regeneration) per ${CONTRACT_PATH}. ` +
-  `Leave each module's endpoint file + migration as a stub for its builder. dotnet build clean.`,
+  `Leave each module's endpoint file + migration as a stub for its builder. dotnet build clean.` +
+  CONTRACT_OVERRIDES,
   { label: 'shared-wiring', phase: 'Build', model: EXECUTION_MODEL }
 )
 // 2b: test-author FIRST (front-load the real end-to-end flow; bypasses banned), then builders.
@@ -114,7 +126,7 @@ await critical(
   `stub green. Assertions verify BEHAVIOR, never status codes. TWO API instances on one backplane for ` +
   `realtime. Every 3A stream consumer this slice adds gets a FOREIGN-event skip test. Negative proofs: ` +
   `anon mutation fails closed; smuggled trust field ignored; deny/void/exclusion/tier-floor unobservable; ` +
-  `13A purge classes assert zero against seeded stores. Own the test tree only.`,
+  `13A purge classes assert zero against seeded stores. Own the test tree only.` + CONTRACT_OVERRIDES,
   { label: 'test-author', phase: 'Build', model: EXECUTION_MODEL },
   'test-author'
 )
@@ -126,7 +138,7 @@ const buildOne = ctx => agent(
   `BUILD.md §9 seams: events in the same tx (3A), quotas via 10A Consume, tunables via 9A, model calls ` +
   `only through IAimlRouter, trust fields absent from request DTOs, idempotent-under-race writes, keyed ` +
   `strings x4 locales, absence-shaped responses (no leaking error codes). Make the test-author's red ` +
-  `tests green. Return the build+test result you re-ran yourself.`,
+  `tests green. Return the build+test result you re-ran yourself.` + CONTRACT_OVERRIDES,
   { label: `builder-${ctx}`, phase: 'Build', model: EXECUTION_MODEL }
 )
 if (SEQUENTIAL) { await buildOne(CONTEXTS[0]) }
@@ -135,7 +147,8 @@ await agent(
   `Wire the client(s) for weeb-app slice "${SLICE}" per ${CONTRACT_PATH}: regenerate typed clients from ` +
   `the OpenAPI contract (read-only; contract changes go back to backend), swap seed to API, wire the ` +
   `authed flow, hold DESIGN.md token laws + the absence law + silent rejection + one limit surface + ` +
-  `DR-6.1 a11y, keep BOTH brand flavors building. Return typecheck + tests + both-flavor build results.`,
+  `DR-6.1 a11y, keep BOTH brand flavors building. Return typecheck + tests + both-flavor build results.` +
+  CONTRACT_OVERRIDES,
   { label: 'integrator', phase: 'Build', model: EXECUTION_MODEL }
 )
 log('BUILD gate is THE HARDENED GATE (BUILD.md §8) — run it YOURSELF: build+tests both flavors, ' +

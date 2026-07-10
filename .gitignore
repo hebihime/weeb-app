@@ -18,8 +18,15 @@ claude-design-upload-weebapp.zip
 !.env.example
 *.pem
 *.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision
 secrets.json
 appsettings.*.Local.json
+fastlane/.env*
+fastlane/report.xml
+match-*.git-crypt
 
 # ---- .NET (backend) ----
 bin/

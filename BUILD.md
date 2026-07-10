@@ -58,8 +58,15 @@ RUNNING APP outranks all of them (§10).
 | Buy side (behind interfaces, never rebuilt) | IDV vendor (estimation-first, Yoti-class + Persona/Veriff appeal rail) · PhotoDNA + Azure AI Content Safety (one T9 vision stack) · MT vendor under DPA (T8) · hosted video (Mux / Cloudflare Stream class) · APNs/FCM · Apple/Google IAP (consumer) · Stripe Invoicing (B2B) — the two payment rails never mix | eng dispositions, ER-15, 6.1-A |
 | Web funnel stack | NOT ratified. Slice S9's Phase 0 decides it under the vanilla-by-default rule. Constraints: SSR/SSG for SEO + OG share cards, i18n ×4, client-side test scoring for the minor path (T10-A), two brand skins, same CI pipeline | this doc |
 
-Local facts: the repo currently holds docs only (CLAUDE.md, DESIGN.md, design/, BUILD kit). No solution
-file, no toolchain committed. Slice S0 establishes them; record the actual paths/ports here when it lands.
+Local facts (S0 landed): `backend/Svac.sln` — empty solution, `dotnet build` clean, .NET SDK `10.0.301`,
+TFM `net10.0` (`backend/Directory.Build.props`). Dev compose (`docker-compose.yml`, healthchecked):
+Postgres+PostGIS `localhost:5433` (remapped from 5432 — this dev machine runs another project's stack
+on the default port), Redis `localhost:6379`, Azurite `localhost:10000-10002`, Mailpit SMTP
+`localhost:1025` / web UI `localhost:8025`. Bicep CLI validated at `0.44.1`. Deterministic tools
+(`tools/contract-lint`, `tools/ddl-lint`, `tools/i18n-lint`, `build/scripts/{brand-gate,ef-gate,
+destructive-verb-check,compose-smoke}`) run on Node `24.12.0`, zero npm dependencies (`node:test` +
+stdlib only). No Azure subscription yet (OQ-3 pending); no DbContext yet (S1 is the first consumer of
+`ef-gate.sh`); no public host yet (S9 is the first consumer of `backend/e2e/edge-guard.mjs`).
 
 ## 2. Design system (DESIGN.md — LOCKED; read it before any visual decision)
 

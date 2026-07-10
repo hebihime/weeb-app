@@ -1,0 +1,16 @@
+{
+  "brand_key": "weeb",
+  "display_name": "Weeb App",
+  "bundle_id_ios": "",
+  "application_id_android": "",
+  "web_domain": "weeb.app",
+  "brand_primary": "#F7568F",
+  "brand_celebration": "#FF9838",
+  "wordmark_asset_ref": "design/assets/logo-weeb.png",
+  "string_pack_id": "weeb",
+  "store_metadata_path": "fastlane/metadata/weeb",
+  "store_listing_refs": {
+    "ios": "pending-OQ-1",
+    "android": "pending-OQ-1"
+  }
+}

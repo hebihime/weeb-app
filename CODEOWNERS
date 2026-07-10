@@ -1,0 +1,36 @@
+# CODEOWNERS — the parallel-session boundary made mechanical (SLICE_S0_CONTRACT.md §9, P2).
+# Maps each unit root + contracts/ to its lane. Update this file, not tribal knowledge, when a lane
+# changes owners. Lane letters match BUILD.md §7's ledger ("lane A: backend substrate->features; B:
+# ios/; C: android/; D: web/; E: CI/IaC; F: admin host").
+
+# Lane A — backend modular monolith (public/admin/partner hosts, domain-core, modules)
+/backend/                    @hebihime
+/contracts/                  @hebihime
+
+# Lane B — iOS (S7+)
+/ios/                        @hebihime
+
+# Lane C — Android (S7+)
+/android/                    @hebihime
+
+# Lane D — web funnel (S9+)
+/web/                        @hebihime
+
+# Lane E — CI / IaC
+/.github/                    @hebihime
+/infra/                      @hebihime
+/.githooks/                  @hebihime
+/tools/                      @hebihime
+/build/                      @hebihime
+
+# Lane F — admin host (Blazor, S5+) — subset of Lane A's backend/ tree, called out explicitly since it
+# is a distinct application boundary (4A: admin/partner hosts are separate boundaries, not hidden routes)
+/backend/admin-host/          @hebihime
+
+# Brand + i18n single-source files (build-time facts, never a runtime registry — §4)
+/brands/                      @hebihime
+/i18n/                        @hebihime
+
+# Root glue / docs
+/*.md                         @hebihime
+/docker-compose.yml            @hebihime

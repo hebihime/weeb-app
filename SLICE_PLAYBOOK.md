@@ -95,6 +95,12 @@ deterministic math in pure libs with golden vectors, no LLM.
   fixes.
 - Split Phase 2 when a slice mutates a DONE module: 2a mutation + byte-identical-behavior proof + rerun
   of the mutated module's existing E2E, then 2b builders fan out.
+- The CONTRACT beats the TEMPLATE, by instruction not by agent judgment (L33, cost a kill+cleanup at
+  S0): the template's generic stage prompts describe a typical slice; when a contract scopes a stage to
+  "None", an agent following the generic wording builds a LATER slice's units off-contract (shared-wiring
+  built S1's whole domain substrate during S0). Every execution-stage prompt now appends an explicit
+  contract-overrides clause; keep it when editing prompts, and quarantine-don't-trust any off-contract
+  output an agent produces anyway.
 - Parallel-lane waves (lanes A–F only): each lane in its own worktree with a port-isolated compose stack;
   the coordinator owns ALL git; the merge gate is its own stage (BUILD.md §8 clause 7).
 

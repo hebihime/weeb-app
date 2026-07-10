@@ -1,0 +1,80 @@
+name: web
+
+# SLICE_S0_CONTRACT.md §9. web/ + its stack are NOT ratified until S9 Phase 0 (vanilla-by-default
+# rule); this file stays toolchain-neutral (`npm run --if-present gate`) so S9 specializes the gate
+# script for the ratified stack with zero workflow rework. Lane D owns this file (CODEOWNERS).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "web/**"
+      - "brands/**"
+      - "i18n/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "brands/**"
+      - "i18n/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-both-brands:
+    name: build brand artifact (${{ matrix.brand }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        brand: [weeb, friki]
+    steps:
+      - uses: actions/checkout@v4
+      - name: guarded — web/ does not exist yet
+        run: |
+          if [ -f web/package.json ]; then
+            echo "web/package.json exists — brand build for ${{ matrix.brand }} lands at S9"
+          else
+            echo "web.yml SKIP (${{ matrix.brand }}): web/ does not exist yet (guarded — S9 Phase 0 picks the stack)"
+          fi
+
+  gate:
+    name: npm run --if-present gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: guarded gate
+        run: |
+          if [ -f web/package.json ]; then
+            (cd web && npm ci && npm run --if-present gate)
+          else
+            echo "web.yml gate SKIP: web/package.json does not exist yet (guarded — S9)"
+          fi
+
+  brand-gate:
+    name: brand-drift gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node build/scripts/brand-gate.mjs
+
+  prod-build-static-assertion:
+    name: h1/LCP static assertion on prod build (§8 clause 3, activates S9)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: guarded — no prod build artifact exists yet
+        run: |
+          if [ -f web/package.json ]; then
+            echo "prod-build assertion runs against the S9-ratified stack's build output — never dev-mode SSR (L12)"
+          else
+            echo "prod-build-static-assertion SKIP: no build artifact present (guarded — S9). This SKIPS, it never FAILS in absence."
+          fi

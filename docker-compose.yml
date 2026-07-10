@@ -1,0 +1,91 @@
+# docker-compose.yml — SLICE_S0_CONTRACT.md §9 root glue, the BUILD.md §8 clause-2 dev stack.
+#
+# S0 shipped the four infra dependencies with healthchecks. Backend hosts join at S1 (public/admin/
+# partner APIs) — "self-hosted SignalR for dev" is SignalR running IN-PROCESS inside those hosts,
+# backed by the `redis` service below as its backplane (TODOS.md: Azure SignalR Service is the
+# production exit ramp, tracked there so the choice never becomes silent lock-in). There is no separate
+# SignalR container.
+#
+# Fresh-boot health discipline (BUILD.md §8 clause 2, L13): after `docker compose down -v`, a fresh
+# `docker compose up` must show ZERO startup errors and ZERO restarts on every service, every time.
+# Each host applies its own EF migrations on startup under a Postgres advisory lock (scar L13) — safe
+# for two instances to boot concurrently against the same database.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    # postgis/postgis publishes no arm64 image; run amd64 under emulation DELIBERATELY so the
+    # fresh-boot log sweep stays warning-free. CI (ubuntu x64) runs it native.
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: svac
+      POSTGRES_PASSWORD: svac_dev_only
+      POSTGRES_DB: svac
+    ports:
+      # Host port 5433, not 5432: this dev machine runs other projects' compose stacks concurrently
+      # (parallel-session boundary, CLAUDE.md) that already claim 5432. Container port stays 5432.
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U svac -d svac"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: "azurite --silent --location /data --debug /data/debug.log --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0"
+    ports:
+      - "10000:10000" # blob
+      - "10001:10001" # queue
+      - "10002:10002" # table
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10000 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI
+    environment:
+      MP_MAX_MESSAGES: 5000
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025/livez"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  # Backend hosts (public/admin/partner APIs) join here at S1, per SLICE_S0_CONTRACT.md §9.
+  # Host ports 8090-8092 reserved for them (8080-8082 are claimed by another project's stack on
+  # this dev machine — parallel-session boundary, CLAUDE.md).
+
+volumes:
+  postgres-data:
+  redis-data:
+  azurite-data:

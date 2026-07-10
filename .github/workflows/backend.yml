@@ -1,0 +1,133 @@
+name: backend
+
+# SLICE_S0_CONTRACT.md §9. Path-filtered so parallel sessions in ios/, android/, web/, infra/ never touch
+# this file, and every leg is directory/file-guarded so the pipeline is green on the empty repo today.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/**"
+      - "contracts/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "contracts/**"
+      - ".github/workflows/backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # §8 clause 6: cap CI test parallelism at 4 to start; re-measured at S1.
+  DOTNET_TEST_PARALLELISM: 4
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build-test:
+    name: restore / build / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: restore
+        run: dotnet restore backend/Svac.sln
+      - name: build
+        run: dotnet build backend/Svac.sln --no-restore --configuration Release
+      - name: test
+        run: |
+          if find backend -name "*.Tests*.csproj" -o -name "*.Tests*.fsproj" 2>/dev/null | grep -q .; then
+            dotnet test backend/Svac.sln --no-build --configuration Release
+          else
+            echo "backend.yml SKIP: no test project exists yet (empty solution, S0 baseline)"
+          fi
+
+  arch-suite:
+    name: architecture test suite (1A/4A/13A/15A)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: run arch tests if the project exists
+        run: |
+          if [ -d backend/tests/Svac.Tests.Architecture ]; then
+            dotnet test backend/tests/Svac.Tests.Architecture --configuration Release
+          else
+            echo "arch-suite SKIP: backend/tests/Svac.Tests.Architecture does not exist yet (guarded — lands at S1)"
+          fi
+
+  ef-gate:
+    name: EF-migration CI gate (7A)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 9.* || true
+      - name: run ef-gate
+        run: bash build/scripts/ef-gate.sh backend
+
+  thirteen-a-gate:
+    name: 13A store-registration gate (slot reserved for S1)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: guarded — no store registry test project exists yet
+        run: |
+          if [ -d backend/tests/Svac.Tests.Architecture ]; then
+            echo "13A gate runs as part of arch-suite once backend/tests/Svac.Tests.Architecture lands"
+          else
+            echo "13A-gate SKIP: reserved slot, S1 lands the real check"
+          fi
+
+  contract-publish:
+    name: publish openapi-contract-v0 artifact (guarded)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: check contract exists
+        id: check
+        run: |
+          if [ -f contracts/openapi.v0.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "contract-publish SKIP: contracts/openapi.v0.json does not exist yet (guarded — S1 emits it)"
+          fi
+      - name: contract-lint
+        if: steps.check.outputs.exists == 'true'
+        run: node tools/contract-lint/contract-lint.mjs contracts/openapi.v0.json
+      - name: upload artifact
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-contract-v0
+          path: contracts/openapi.v0.json
+          retention-days: 30
+
+  container-image:
+    name: build container image (guarded on a host Dockerfile existing)
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: check for a host Dockerfile
+        run: |
+          if find backend -maxdepth 3 -iname "Dockerfile*" 2>/dev/null | grep -q .; then
+            echo "container-image: Dockerfile found — build step lands with the first host (S1)"
+          else
+            echo "container-image SKIP: no backend host Dockerfile exists yet (guarded — S1 is the first host)"
+          fi

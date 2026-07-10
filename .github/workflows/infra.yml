@@ -1,0 +1,112 @@
+name: infra
+
+# SLICE_S0_CONTRACT.md §9. `az bicep build` + linter run credential-free (day one, no secrets needed).
+# `what-if` activates only once Azure OIDC is configured; `deploy` is a separate, manually-dispatched,
+# environment-gated job. Lane E owns this file (CODEOWNERS).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy (dev/staging/prod) — deploy job only runs on manual dispatch"
+        required: false
+        type: choice
+        options: [dev, staging, prod]
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write # OIDC — zero long-lived cloud credentials in GitHub (§12.11)
+  contents: read
+
+jobs:
+  bicep-build-lint:
+    name: az bicep build + linter (credential-free)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest ships azure-cli preinstalled; `az bicep install` pulls the bundled bicep CLI —
+      # no separate third-party action needed, credential-free (no `az login` in this job).
+      - name: install bicep CLI
+        run: az bicep install
+      - name: bicep build every template
+        run: |
+          set -e
+          find infra -maxdepth 2 -name "*.bicep" -print0 | while IFS= read -r -d '' f; do
+            echo "building $f"
+            az bicep build --file "$f" --outfile "/tmp/$(basename "$f" .bicep).json"
+          done
+      - name: bicep lint
+        run: |
+          find infra -maxdepth 2 -name "*.bicep" -print0 | while IFS= read -r -d '' f; do
+            az bicep lint --file "$f"
+          done
+
+  edge-guard-residency-assertions:
+    name: edge-guard + residency unit assertions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs
+
+  what-if:
+    name: what-if against dev (guarded on Azure OIDC configured)
+    runs-on: ubuntu-latest
+    needs: bicep-build-lint
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - name: check OIDC secrets present
+        id: check
+        run: |
+          if [ -n "${{ secrets.AZURE_CLIENT_ID }}" ] && [ -n "${{ secrets.AZURE_TENANT_ID }}" ] && [ -n "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "what-if SKIP: Azure OIDC federation not configured yet (Julien-executed, §13)"
+          fi
+      - uses: azure/login@v2
+        if: steps.check.outputs.configured == 'true'
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: what-if
+        if: steps.check.outputs.configured == 'true'
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: az deployment group what-if --resource-group svac-dev-rg --template-file infra/main.bicep --parameters infra/params.dev.bicepparam
+
+  deploy:
+    name: deploy (manual dispatch only, environment-gated)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment != ''
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: deploy
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: |
+          az deployment group create \
+            --resource-group svac-${{ github.event.inputs.environment }}-rg \
+            --template-file infra/main.bicep \
+            --parameters infra/params.${{ github.event.inputs.environment }}.bicepparam

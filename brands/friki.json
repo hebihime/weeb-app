@@ -1,0 +1,16 @@
+{
+  "brand_key": "friki",
+  "display_name": "Friki App",
+  "bundle_id_ios": "",
+  "application_id_android": "",
+  "web_domain": "friki.app",
+  "brand_primary": "#FF7A3D",
+  "brand_celebration": "#F7568F",
+  "wordmark_asset_ref": "design/assets/logo-friki.png",
+  "string_pack_id": "friki",
+  "store_metadata_path": "fastlane/metadata/friki",
+  "store_listing_refs": {
+    "ios": "pending-OQ-1",
+    "android": "pending-OQ-1"
+  }
+}

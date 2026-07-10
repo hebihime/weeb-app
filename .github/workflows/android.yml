@@ -1,0 +1,97 @@
+name: android
+
+# SLICE_S0_CONTRACT.md §9. Matrix brand in {weeb, friki} per 7A. Directory-guarded end to end so this
+# workflow is green on the empty repo; android/ arrives at S7. Lane C owns this file (CODEOWNERS).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "android/**"
+      - "brands/**"
+      - "i18n/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - "brands/**"
+      - "i18n/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: gradlew test${{ matrix.brand }}DebugUnitTest
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        brand: [Weeb, Friki]
+    steps:
+      - uses: actions/checkout@v4
+      - name: guarded — android/ does not exist yet
+        run: |
+          if [ -d android ]; then
+            echo "android/ exists — ./gradlew test${{ matrix.brand }}DebugUnitTest lands at S7"
+          else
+            echo "android.yml SKIP (${{ matrix.brand }}): android/ does not exist yet (guarded — lands at S7)"
+          fi
+
+  brand-gate:
+    name: brand-drift gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node build/scripts/brand-gate.mjs
+
+  string-catalog-lint:
+    name: strings.xml / i18n key-parity (guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node tools/i18n-lint/i18n-lint.mjs
+
+  maestro-brand-smoke:
+    name: Maestro brand-smoke (${{ matrix.brand }}) — 14A slot
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        brand: [weeb, friki]
+    steps:
+      - uses: actions/checkout@v4
+      - name: guarded — Maestro harness lands at S7
+        run: |
+          if [ -d android/.maestro ]; then
+            echo "Maestro flows present for brand ${{ matrix.brand }} — running would happen here"
+          else
+            echo "maestro-brand-smoke SKIP (${{ matrix.brand }}): android/.maestro does not exist yet (guarded — S7, 14A)"
+          fi
+
+  codegen-openapi-client:
+    name: generate typed client from openapi-contract-v0 (guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: download contract artifact if published
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: openapi-contract-v0
+          path: /tmp/contract
+      - name: codegen
+        run: |
+          if [ -f /tmp/contract/openapi.v0.json ]; then
+            echo "codegen: openapi-contract-v0 artifact present — openapi-generator (kotlin client) step lands at S7"
+          else
+            echo "codegen-openapi-client SKIP: openapi-contract-v0 artifact not published yet (guarded — S1 emits it)"
+          fi

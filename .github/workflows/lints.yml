@@ -1,0 +1,122 @@
+name: lints
+
+# SLICE_S0_CONTRACT.md §9. brand-drift gate, contract-lint, ddl-lint, i18n-lint, secret scan (mirrors
+# .githooks/pre-commit block 1 so a bypassed local hook is still caught), actionlint on the workflows
+# themselves, compose-smoke. Runs on every push/PR regardless of path — this is the one workflow that
+# is NOT unit-scoped, since drift/secrets/compose health are cross-cutting by nature.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: lints-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: secret scan (mirrors pre-commit block 1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: scan the diff for staged-secret patterns
+        run: |
+          set -e
+          BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          if ! git rev-parse "$BASE" >/dev/null 2>&1; then BASE="$(git rev-list --max-parents=0 HEAD)"; fi
+          if git diff "$BASE"..HEAD -U0 | grep -qE '(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|DefaultEndpointsProtocol=https;AccountName=)'; then
+            echo "secret-scan BLOCKED: possible secret in diff" >&2
+            exit 1
+          fi
+          echo "secret-scan OK"
+
+  brand-drift-gate:
+    name: brand-drift gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test build/scripts/brand-gate.test.mjs
+      - run: node build/scripts/brand-gate.mjs
+
+  contract-lint:
+    name: contract-lint (guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/contract-lint/contract-lint.test.mjs
+      - run: node tools/contract-lint/contract-lint.mjs
+
+  ddl-lint:
+    name: ddl-lint (guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/ddl-lint/ddl-lint.test.mjs
+      - name: run against any committed migration SQL fixtures (guarded)
+        run: |
+          mapfile -d '' FILES < <(find backend -path "*/Migrations/*.sql" -print0 2>/dev/null || true)
+          if [ "${#FILES[@]}" -gt 0 ]; then
+            node tools/ddl-lint/ddl-lint.mjs "${FILES[@]}"
+          else
+            echo "ddl-lint SKIP: no migration SQL fixtures exist yet (guarded — S1 is the first consumer)"
+          fi
+
+  i18n-lint:
+    name: i18n-lint (guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/i18n-lint/i18n-lint.test.mjs
+      - run: node tools/i18n-lint/i18n-lint.mjs
+
+  destructive-verb-check:
+    name: destructive-verb check (golden vectors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test build/scripts/destructive-verb-check.test.mjs
+
+  edge-guard-assertions:
+    name: edge-guard + residency rendered-rule assertions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs
+
+  actionlint:
+    name: actionlint on the workflows themselves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: raven-actions/actionlint@v2
+
+  compose-smoke:
+    name: "compose-smoke: up -> health -> down -v -> fresh up -> log sweep"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash build/scripts/compose-smoke.sh
+      - name: teardown
+        if: always()
+        run: docker compose down -v
