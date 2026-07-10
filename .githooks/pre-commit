@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — the gate-test lane (deterministic, local, free, fast).
+# Enable once per clone: git config core.hooksPath .githooks
+#
+# CONTRACT (CLAUDE.md): runs on EVERY commit. Deterministic, never flaky, seconds not minutes.
+# This is the GATE-TEST lane, NOT the full suite. The integration + live-E2E gate (BUILD.md §8)
+# runs at slice sign-off, not here.
+#
+# Measured runtime: RECORD HERE when S1 lands (target < 2s; secret scan alone until then).
+# Each guarded block activates itself when its directory exists, so the hook is valid from the
+# docs-only repo state through the full build.
+
+set -euo pipefail
+
+fail() { echo "pre-commit BLOCKED: $1" >&2; exit 1; }
+
+STAGED="$(git diff --cached --name-only)"
+
+# 1. Never commit secrets (CLAUDE.md Safety). Tripwire on staged .env / obvious keys.
+if echo "$STAGED" | grep -qE '(^|/)\.env(\.|$)'; then
+  echo "$STAGED" | grep -E '(^|/)\.env(\.|$)' | while read -r f; do
+    git check-ignore -q "$f" || fail "staged env file not gitignored: $f"
+  done
+fi
+if git diff --cached -U0 | grep -qE '(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|DefaultEndpointsProtocol=https;AccountName=)'; then
+  fail "possible secret in staged diff (AWS key / private key / Stripe live key / Azure conn string)"
+fi
+
+# 2. Fast backend architecture + unit gate (the deterministic lane). Activates with S1.
+#    Svac.Tests.Architecture enforces: module boundaries (1A), no provider SDK outside the
+#    AI/ML Router (15A), no policy-less mutation endpoint (4A), 13A store registration.
+if [ -d backend/tests/Svac.Tests.Architecture ] && echo "$STAGED" | grep -q '^backend/'; then
+  dotnet test backend/tests/Svac.Tests.Architecture --nologo -v q \
+    || fail "architecture gate red — fix the boundary violation, never bypass the hook"
+fi
+
+# 3. Web funnel fast typecheck + unit lane. Activates with S9; specialize to the ratified
+#    web stack at that slice (keep it < 2s or move the slow part to sign-off).
+if [ -f web/package.json ] && echo "$STAGED" | grep -q '^web/'; then
+  (cd web && npm run --if-present gate) || fail "web gate red"
+fi
+
+# NOTE: iOS/Android builds are too slow for a commit hook by construction; their gate lanes run
+# in CI (per-flavor) and at slice sign-off (BUILD.md §8 clause 1). Do not add them here.
+
+echo "pre-commit OK"

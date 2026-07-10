@@ -35,6 +35,8 @@ TestResults/
 node_modules/
 dist/
 build/
+# /build at repo root holds build-kit scripts (workflow templates), not build output
+!/build/
 .next/
 .turbo/
 *.log
