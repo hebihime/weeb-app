@@ -83,6 +83,13 @@ jobs:
         # both misbehaves against ef-gate and regenerates the emit-ddl-script drift file differently
         # than local v10 tooling — a guaranteed drift-gate false-positive. Pin exactly, not a loose major.
         run: dotnet tool install --global dotnet-ef --version 10.0.9 || true
+      - name: restore + build the DbContext project
+        # `dotnet ef` (has-pending-model-changes, migrations script, database update) loads the compiled
+        # model, which needs obj/project.assets.json + the built assembly. This job runs on a fresh runner
+        # (needs: build-test does NOT share build output across jobs), so without this step dotnet ef hits
+        # NETSDK1004 "assets file not found" and exits non-zero — which ef-gate.sh's loop then misreports
+        # as "model drift". Build the DbContext project (pulls its project references) before the gate.
+        run: dotnet build backend/domain-core/Svac.DomainCore -c Debug
       - name: run ef-gate
         run: bash build/scripts/ef-gate.sh backend
       - name: emit-ddl-script drift gate (regenerate + diff, guarded on a migration existing)

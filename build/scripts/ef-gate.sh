@@ -67,8 +67,12 @@ fi
 
 for proj in $FOUND_PROJECTS; do
   echo "ef-gate: dotnet ef migrations has-pending-model-changes for $proj"
+  # A non-zero here is USUALLY real model drift — but dotnet ef also exits non-zero when the project is
+  # not restored/built (NETSDK1004 assets-file-not-found, "Unable to retrieve project metadata"). If you
+  # see those lines above, the fix is `dotnet restore`/`dotnet build`, NOT `migrations add` — the caller
+  # (CI job / local) must build the project before this gate runs.
   ( cd "$(dirname "$proj")" && dotnet ef migrations has-pending-model-changes ) \
-    || fail "model drift without a migration in $proj — run 'dotnet ef migrations add' before merging"
+    || fail "model drift in $proj — run 'dotnet ef migrations add' (UNLESS the log above shows a restore/build error like NETSDK1004: then build the project first, this is not drift)"
 done
 
 # --- (b) idempotent reapply against a fresh throwaway Postgres+PostGIS container ---
