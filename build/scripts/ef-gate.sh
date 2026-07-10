@@ -47,6 +47,18 @@ else
   echo "ef-gate: no Migrations/ directories yet, skipping destructive-verb check"
 fi
 
+# Preflight: the dotnet-ef tool must be reachable BEFORE the checks below. Without this, a missing or
+# not-on-PATH `dotnet ef` makes `has-pending-model-changes` exit non-zero, which the loop below would
+# misreport as "model drift" — sending someone to chase a migration that isn't the problem (a real
+# scar: the tool was installed but ~/.dotnet/tools was off the gate's inherited PATH). Fail with the
+# real reason and the exact remediation instead.
+if ! dotnet ef --version >/dev/null 2>&1; then
+  fail "dotnet-ef tool not found or not on PATH (this is NOT model drift). Install the version matching
+your EF Core pin and ensure ~/.dotnet/tools is on PATH:
+  dotnet tool install --global dotnet-ef --version <EFCoreVersion>
+  export PATH=\"\$PATH:\$HOME/.dotnet/tools\""
+fi
+
 # --- (a) pending-model-changes per context ---
 FOUND_PROJECTS="$(find "$BACKEND_DIR" -name '*.csproj' -exec grep -l 'Microsoft.EntityFrameworkCore' {} \; 2>/dev/null || true)"
 if [ -z "$FOUND_PROJECTS" ]; then

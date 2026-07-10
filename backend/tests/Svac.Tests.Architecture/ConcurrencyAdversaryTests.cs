@@ -269,7 +269,9 @@ public sealed class ConcurrencyAdversaryTests : IAsyncLifetime
     // stage the row, and the loser crashes at SaveChanges — boot failure instead of the documented
     // "idempotent ... never clobbers" union-merge behavior.
     // ------------------------------------------------------------------------------------------------
-    [Fact(Skip = "deferred: SECURITY_REVIEW_S1.md Concurrency-F6 — ConfigSeedLoader.cs:47-54 check-then-insert races itself on concurrent multi-host boot; fix is ON CONFLICT DO NOTHING or a caught duplicate-key, routed defer per triage rule (not trust/residency/minor) but a strong candidate to pull forward.")]
+    [Fact] // Concurrency-F6 FIXED (SECURITY_REVIEW_S1.md): ConfigSeedLoader now catches the raced
+           // config_entries 23505 and treats it as the idempotent no-op its doc-comment promises,
+           // instead of crashing the losing host at boot. Pulled forward from defer — proof, not a Skip.
     public async Task F6_ConcurrentSeedFromFile_SameManifest_BothLoadersMustCompleteIdempotently()
     {
         var key = $"fixture.seed.{Guid.NewGuid():N}";

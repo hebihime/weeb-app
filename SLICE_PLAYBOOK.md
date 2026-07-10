@@ -140,3 +140,37 @@ replaced both inline scans; test vectors must be concatenation-built or they re-
 Judgment-model pins in the build kit went stale (opus-era); playbook now says BEST AVAILABLE, re-check
 each model family. (5) Verify agent-claimed tool versions: the scaffolder's bicep validated in its
 sandbox but wasn't on the machine; the gate re-run caught it.
+
+### S1 retro (domain-substrate — DONE, 2026-07-10)
+**Shipped:** the whole domain core in one slice — 3A event substrate (6 typed streams, append-only
+in-DB trigger, GlobalSeq replay), 4A policy engine (closed deny-mode union, startup boot-refusal +
+request-time refusal), 9A config registry (typed, manifest-seeded at boot, dead-tunable lint), 10A quota
+(atomic UPSERT-where, one LimitReached shape), 13A purge registry + CI gate (closed class taxonomy,
+CryptoShred verb, custody_hold), ledger (quest-ready, xp=points CHECK, summation-only balances),
+region/lawful-basis on all six streams, field encryption (per-subject keys, Key Vault seam), IPaymentService
+stub (B12), behavioral stream, one minimal `Svac.PublicApi` host, `contracts/openapi.v0.json` +
+`message-keys.json` (B17), non-vacuous arch suite (every rule red-fixture-proven). Kills B1 B2 B3 B12 B17.
+**Green (verified by me, twice, never on agent word):** dotnet build 0/0 · Architecture 108 pass / 3 skip
+(skips == the 3 legit defers) · DomainCore 25/0 · node 126 (119 pass / 7 S0-defer skips) · ef-gate
+idempotent (2 migrations apply + no-op re-apply) · compose fresh-boot ×2 clean (zero restarts, one
+exact-text-excluded benign EF migration-history probe) · live substrate E2E ×2 green incl. behavioral
+read-back · OpenAPI + purge-registry drift byte-identical. Security: 5 CRITICAL + 10 HIGH the build
+agents shipped, all remediated to now-green tests (crypto-shred blast radius, replay cross-subject data
+loss, pseudonymize never re-keying stream_id, ledger balance lost-update, Reverse violating the points
+CHECK). 3 defers (Auth-F3 IDOR / Concurrency-F5 quota-tx / SilentRej-L4 timing) — none reachable at S1,
+each carried to the slice that first adds its surface (S2, S14, first policy-gated read).
+**What worked:** the security phase paid for itself many times over on pure substrate; the contract's
+guarded-activation + "mechanism not product" discipline held (zero feature modules, no scope creep);
+the design panel's minimal-host scope call was correct and provable.
+**What we learned / changed:** (1) RUN THE LIVE E2E FOR REAL, every slice — it caught the §10.4
+behavioral-emit gap the whole "done" report hid (handler never Emit'd; the seam was a stub). L30
+validated hard. Wiring it needed `[FromServices]` so the DB-free OpenAPI emitter still generates. (2)
+Don't defer a REACHABLE cheap fix: Concurrency-F6 (config-seed boot race) was triaged to defer but the
+host seeds config at boot and two instances race it — pulled forward, fixed, un-skipped. (3) Verify the
+NEGATIVE: a `grep --include=*.cs` that errored under zsh returned "no matches", nearly producing a wrong
+"F6 unreachable" call; the fresh-boot logs disproved it. A grep that errored is not evidence of absence.
+(4) `dotnet-ef` was installed but off the gate's inherited PATH, and ef-gate.sh misreported the missing
+tool as "model drift" — added a preflight that BLOCKS with the real reason + remediation (tool-missing ≠
+drift). Same agent-claimed-tool-not-on-machine class as S0's bicep. (5) Agents committed AND pushed to
+master directly again — reviewed every commit rather than trusting; branch protection (contract §13,
+Julien's action) is what makes this structurally impossible going forward.

@@ -51,7 +51,7 @@ public sealed class ConfigSeedLoader(CoreDbContext db, Svac.DomainCore.Contracts
             }
 
             var now = DateTimeOffset.UtcNow;
-            db.ConfigEntries.Add(new ConfigEntryEntity
+            var staged = new ConfigEntryEntity
             {
                 Key = entry.Key,
                 Type = entry.Type,
@@ -62,13 +62,42 @@ public sealed class ConfigSeedLoader(CoreDbContext db, Svac.DomainCore.Contracts
                 RequiresReason = entry.RequiresReason,
                 UpdatedAt = now,
                 UpdatedBy = ctx.Actor.ToString(),
-            });
+            };
+            db.ConfigEntries.Add(staged);
 
             var payload = JsonSerializer.Serialize(new { key = entry.Key, value = entry.Value, seeded = true });
-            await eventStore.Append(StreamType.Audit, streamId: entry.Key, eventType: "config.seeded", payloadJson: payload, ctx, ExpectedVersion.AnyVersion, ct);
-            seeded++;
+            try
+            {
+                // The config row and its audit event ride ONE SaveChanges inside Append (same-tx outbox),
+                // so both commit or neither does.
+                await eventStore.Append(StreamType.Audit, streamId: entry.Key, eventType: "config.seeded", payloadJson: payload, ctx, ExpectedVersion.AnyVersion, ct);
+                seeded++;
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                // Concurrency-F6 (SECURITY_REVIEW_S1.md): two hosts booting concurrently both saw "key
+                // absent" and staged the same config_entries PK; the loser's SaveChanges (inside Append)
+                // hits 23505. That IS the idempotent outcome the doc-comment promises — the winner's row
+                // AND its single audit event stand (both rolled back atomically for the loser, so no
+                // orphan audit event). Detach our doomed staged row and treat the key as already-seeded;
+                // a raced boot must never crash. Mirrors PostgresEventStore.Append's own seq-race catch.
+                db.Entry(staged).State = EntityState.Detached;
+                if (!await db.ConfigEntries.AnyAsync(e => e.Key == entry.Key, ct))
+                {
+                    throw; // some OTHER unique violation — the key is still absent; never swallow it.
+                }
+            }
         }
 
         return seeded;
     }
+
+    /// <summary>
+    /// True if <paramref name="ex"/> is (or wraps) Postgres' 23505 unique-violation. EF Core's default
+    /// execution strategy can re-wrap the provider exception, so the real PostgresException may be the
+    /// direct exception or its InnerException — checks both (same shape as PostgresEventStore).
+    /// </summary>
+    private static bool IsUniqueViolation(DbUpdateException ex) =>
+        (ex.InnerException as Npgsql.PostgresException ?? ex.InnerException?.InnerException as Npgsql.PostgresException)?.SqlState
+            == Npgsql.PostgresErrorCodes.UniqueViolation;
 }

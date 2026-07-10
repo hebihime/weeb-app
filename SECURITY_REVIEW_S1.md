@@ -7,9 +7,11 @@ functional break — a new regression test) encoding the CORRECT behavior and RE
 Each finding is now remediated and its test is green. Every `defer` finding keeps its test in the tree,
 `Skip`-annotated with its reason, so the gap stays documented and provable without failing the gate.
 
-**Final gate result:** see [§3](#3-gate-result-actual). **111 architecture tests: 107 pass, 0 fail, 4
-skipped** (skips == the 4 deferred findings below, one test each) + **25 domain-core unit tests: all
-pass** + **28 contract-lint node tests: all pass** (2 pre-existing, unrelated skips). Zero fails.
+**Final gate result:** see [§3](#3-gate-result-actual) (remediation-agent lane) and [§5](#5-post-review-gate-remediations-orchestrator)
+(orchestrator lane, run during the HARDENED GATE). **111 architecture tests: 108 pass, 0 fail, 3
+skipped** (skips == the 3 deferred findings below, one test each — Concurrency-F6 was pulled forward
+to a live test, see §5) + **25 domain-core unit tests: all pass** + **28 contract-lint node tests: all
+pass** (2 pre-existing, unrelated skips). Zero fails.
 
 ---
 
@@ -336,7 +338,9 @@ pass** + **28 contract-lint node tests: all pass** (2 pre-existing, unrelated sk
 
 ---
 
-## 2. Deferred — 4 findings, proof kept in code, `Skip`-annotated
+## 2. Deferred — 3 findings, proof kept in code, `Skip`-annotated
+
+(Concurrency-F6 was originally deferred here; it was pulled forward and fixed during the gate — see §5.)
 
 ### Auth-F3 (MEDIUM, expensive) — 4A chokepoint cannot convey the real target resource id
 
@@ -354,14 +358,6 @@ pass** + **28 contract-lint node tests: all pass** (2 pre-existing, unrelated sk
   ambient EF transaction (the same shape `LedgerService` now uses for its own atomicity) — a real
   API-contract change, not a one-line fix.
 - **Skip-annotated:** `ConcurrencyAdversaryTests.F5_Consume_FailedGuardedActionInSameUnitOfWork_MustNotCharge`.
-
-### Concurrency-F6 (MEDIUM) — `ConfigSeedLoader` check-then-insert races itself
-
-- **Where:** `ConfigSeedLoader.cs:47-54`.
-- **Why deferred:** routed defer per the triage rule (not trust/residency/minor-protection); noted as a
-  near-one-line fix (`ON CONFLICT DO NOTHING` or catch the duplicate-key) and therefore a strong candidate
-  to pull forward opportunistically in a follow-up pass.
-- **Skip-annotated:** `ConcurrencyAdversaryTests.F6_ConcurrentSeedFromFile_SameManifest_BothLoadersMustCompleteIdempotently`.
 
 ### SilentRej-L4 (MEDIUM, expensive) — excluded-read/genuine-404 timing/code-path channel
 
@@ -427,3 +423,44 @@ test each, each carrying its `Skip` reason inline.
 - **`PurgePipeline`'s constructor gained an `IFieldKeyVault` parameter** (the pseudonymization HMAC
   secret). All 4 test-file `BuildPipeline` helpers were updated; DI resolves it automatically in
   production (already registered, DevSeams-gated or fail-closed-throwing).
+
+---
+
+## 5. Post-review gate remediations (orchestrator)
+
+Two gaps the remediation agent did not close were found and fixed while I ran THE HARDENED GATE
+(BUILD.md §8) myself — the agents' "green" is a lead, not proof. Both are proven by a now-green test.
+
+### Behavioral-emit gap — §10.4 "written AND received" was RED end-to-end
+
+- **Where:** `backend/public-host/Svac.PublicApi/Endpoints.cs`, `GET /v1/client-config`.
+- **Break:** the handler never called `IBehavioralStream.Emit`, so a real request landed ZERO rows in
+  `core.events_behavioral`. The live E2E's read-back assertion (the contract's §10.4 sign-off list and
+  §8's "analytics written AND received, verify the sink receives" seam — the exact hmg emit-without-sink
+  scar) was red on purpose, flagged by the test-author as out of "own the test tree only" scope. A
+  "done" report was hiding a stubbed end-to-end piece (SLICE_PLAYBOOK L30), caught only because the live
+  E2E was run for real.
+- **Fix:** the handler now `Emit`s `client_config.fetched` before returning, via `[FromServices]`
+  `IBehavioralStream` + `IRequestContextAccessor`. `[FromServices]` is load-bearing: the OpenAPI
+  contract emitter (`OpenApiContractEmitter.cs`) boots DB-free with no DomainCore wiring, so without an
+  explicit binding source minimal-API inference treated the new params as a GET request body and 500'd
+  doc generation; `[FromServices]` excludes them from the wire contract (drift gate stays byte-identical)
+  and needs no registration at emit time.
+- **Proof:** `backend/e2e/substrate.e2e.mjs` behavioral read-back — green (records 1 row), on a real
+  fresh-boot compose stack, twice.
+
+### Concurrency-F6 pulled forward (was deferred) — `ConfigSeedLoader` boot race
+
+- **Where:** `backend/domain-core/Svac.DomainCore/Config/ConfigSeedLoader.cs`.
+- **Why pulled forward:** it was reachable AT S1 (the host runs `ConfigSeedLoader` at boot to seed the
+  §4 domain-core config entries — confirmed in the fresh-boot logs), and with two API instances on one
+  backplane a concurrent boot would race check-then-insert and crash the losing host. The security
+  review itself called the fix near-one-line. Deferring a reachable, cheap boot-crash fix violates
+  CLAUDE.md ("never leave a dangling thread when tying it off takes five more minutes").
+- **Fix:** the per-key stage+Append now catches the raced `config_entries` 23505 unique-violation,
+  detaches the doomed staged row, and re-verifies the key is now present (else re-throws — never swallow
+  an unrelated unique violation) — the idempotent no-op the doc-comment already promised. The config row
+  and its audit event ride one `SaveChanges`, so the loser's audit event rolls back with it (no orphan).
+  Mirrors `PostgresEventStore.Append`'s own seq-race catch pattern.
+- **Proof:** `ConcurrencyAdversaryTests.F6_ConcurrentSeedFromFile_SameManifest_BothLoadersMustCompleteIdempotently`
+  — un-skipped, now a live `[Fact]`, green against real Postgres (Testcontainers). Deferred count 4 → 3.
