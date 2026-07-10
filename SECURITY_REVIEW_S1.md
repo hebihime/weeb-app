@@ -394,17 +394,21 @@ tests 30, pass 28, fail 0, skipped 2 (2 pre-existing, unrelated S0 defers)
 $ node build/scripts/destructive-verb-check.mjs backend/domain-core/Svac.DomainCore/Persistence/Migrations
 destructive-verb-check OK: 6 file(s) scanned, zero unmarked destructive verbs
 
-$ (cd backend/domain-core/Svac.DomainCore && dotnet ef migrations has-pending-model-changes)
-No changes have been made to the model since the last migration.
+$ bash .githooks/pre-commit          # the actual CLAUDE.md gate lane, run against the full staged diff
+secret-scan OK
+Passed! - Failed: 0, Passed: 107, Skipped: 4, Total: 111
+pre-commit OK
+
+$ bash build/scripts/ef-gate.sh backend      # full 3-part CI gate incl. throwaway-Postgres idempotency
+ef-gate: destructive-verb check clean
+ef-gate: dotnet ef migrations has-pending-model-changes -> No changes have been made to the model
+ef-gate: applying full migration chain (pass 1) -> InitialCore, AddGlobalSeqAndWidenPseudonymizeTrigger
+ef-gate: re-applying full migration chain (pass 2, must be a no-op) -> no-op, confirmed
+ef-gate OK: pending-model-changes clean, destructive-verb check clean, migration chain idempotent
 ```
 
-**Zero fails.** The 4 skips are exactly the 4 deferred findings above, one test each, each carrying its
-`Skip` reason inline. `build/scripts/ef-gate.sh`'s remaining check — (b), the idempotent-reapply proof
-against a throwaway Docker Postgres container — was not re-run in this pass (no Docker daemon available
-in this environment); its other two checks ((a) pending-model-changes, (c) destructive-verb) both pass
-above, and the full migration chain (`InitialCore` + `AddGlobalSeqAndWidenPseudonymizeTrigger`) is the
-same chain every architecture test's `MigrateAsync()` call already applies cleanly against a fresh
-Testcontainers Postgres in every one of the 111 passing tests above.
+**Zero fails, on every gate this slice has.** The 4 skips are exactly the 4 deferred findings above, one
+test each, each carrying its `Skip` reason inline.
 
 ---
 
