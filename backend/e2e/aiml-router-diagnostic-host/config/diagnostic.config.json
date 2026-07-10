@@ -1,0 +1,66 @@
+{
+  "_comment": "backend/e2e/aiml-router.e2e.mjs's own 9A seed, loaded into the DIAGNOSTIC HOST'S ISOLATED database only (never the shared `svac` database the real Svac.PublicApi host reads/seeds from backend/modules/AimlRouter/config/aiml-router.config.json). Same shape/rules as the real manifest (SLICE_S2_CONTRACT.md §4): family stays 'claude', ceiling stays 'pseudonymous', the real default model claude-opus-4-8 is still the first candidate everywhere a chain resolves without a task override. The ONE addition is a second, deliberately-nonexistent model name so the failover drill can force a REAL provider-level failure (the local `claude` CLI genuinely returns is_error:true for an unrecognized --model, verified empirically while writing this fixture: `claude -p ping --output-format json --model claude-opus-4-8-aiml-e2e-diagnostic-invalid-model` -> {\"is_error\":true,...} at $0 cost, exit 0) rather than faking a failure via a kill-switch or mock — AnthropicLocalTransport.cs's own IsError check throws on exactly this shape, and AimlRouterService's real chain-walk catches it and tries the next hop for real.",
+  "entries": [
+    {
+      "key": "aiml.provider_allowlist",
+      "scope": "founder",
+      "type": "json",
+      "value": [
+        {
+          "name": "anthropic",
+          "family": "claude",
+          "kinds": ["llm"],
+          "payload_class_ceiling": "Pseudonymous",
+          "dpa_signed": false,
+          "special_category_ok": false,
+          "residency": "global",
+          "models": ["claude-opus-4-8", "claude-opus-4-8-aiml-e2e-diagnostic-invalid-model"]
+        }
+      ],
+      "requiresReason": true,
+      "consumer": "backend/e2e/aiml-router.e2e.mjs diagnostic drills only — mirrors the shipped v0 allowlist (SLICE_S2_CONTRACT.md §4) plus one sentinel model string that no real Claude deployment serves, used to force a real (not simulated) provider-level failure in the failover drill"
+    },
+    {
+      "key": "aiml.routing_policy",
+      "scope": "ops",
+      "type": "json",
+      "value": {
+        "version": 1,
+        "default_chain": [{ "provider": "anthropic", "model": "claude-opus-4-8" }],
+        "task_chains": {
+          "EvalProbe": [
+            { "provider": "anthropic", "model": "claude-opus-4-8-aiml-e2e-diagnostic-invalid-model" },
+            { "provider": "anthropic", "model": "claude-opus-4-8" }
+          ]
+        },
+        "residency_overrides": []
+      },
+      "requiresReason": true,
+      "consumer": "backend/e2e/aiml-router.e2e.mjs diagnostic drills only — EvalProbe's task_chain names the sentinel model FIRST so the happy-path AND the failover drill both walk a real failed hop before the real claude-opus-4-8 hop, both audited (SLICE_S2_CONTRACT.md §10.3: 'both hops audited'); default_chain is untouched and would resolve identically to the shipped v0 policy if anything other than EvalProbe were invoked here"
+    },
+    {
+      "key": "aiml.invoke_timeout_seconds",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "requiresReason": false,
+      "consumer": "backend/e2e/aiml-router.e2e.mjs diagnostic drills only — short enough that a genuinely-hung local CLI call fails the drill instead of hanging the whole E2E run"
+    },
+    {
+      "key": "aiml.daily_call_ceiling",
+      "scope": "ops",
+      "type": "int",
+      "value": 3,
+      "requiresReason": false,
+      "consumer": "backend/e2e/aiml-router.e2e.mjs budget drill — deliberately tiny (3, vs the real v0 default of 10000) so the drill exhausts it with a handful of real IQuotaService.Consume calls against real Postgres instead of ten thousand. NEVER ACTUALLY READ AT RUNTIME — see the next entry's comment; kept here only so this fixture still matches the real manifest's (buggy) declared shape 1:1."
+    },
+    {
+      "key": "quota.aiml.call.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 3,
+      "requiresReason": false,
+      "consumer": "REAL RUNTIME KEY — Svac.DomainCore.Quota.QuotaService.Consume resolves the cap from `quota.<quotaKey>.cap` (QuotaService.cs:24), and AimlRouterQuotaKeys.CallDaily = \"aiml.call.daily\" (SLICE_S2_CONTRACT.md §5), so THIS is the key AimlRouterService's budget check actually reads. The shipped backend/modules/AimlRouter/config/aiml-router.config.json seeds `aiml.daily_call_ceiling` instead, which QuotaService.Consume never reads — confirmed empirically while building this diagnostic host: every InvokeAsync call against the real manifest throws an unhandled KeyNotFoundException(\"9A config key 'quota.aiml.call.daily.cap' is not registered\") straight out of AimlRouterService.ConsumeDailyBudget, on EVERY call, success or failure path alike, since the budget check runs before resolve/dispatch. backend/tests/Svac.Tests.AimlRouter/BudgetCapConfigKeyWiringTests.cs pins this down as a permanent, fast, deterministic regression test against the REAL manifest file. This diagnostic fixture seeds the CORRECT key so the E2E can still exercise everything downstream of the budget gate while that real bug gets fixed."
+    }
+  ]
+}

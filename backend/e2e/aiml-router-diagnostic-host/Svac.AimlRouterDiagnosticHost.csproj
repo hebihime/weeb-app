@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Svac.AimlRouterDiagnosticHost — SLICE_S2_CONTRACT.md §1c / §10.3's "test-host diagnostic canary,
+    never shipped in the contract." This is TEST TOOLING, not a fourth production host: it lives entirely
+    under backend/e2e/ (test-author's owned tree, SLICE_PLAYBOOK.md Phase 2), is never referenced by
+    Svac.PublicApi/Svac.Sln's production hosts, ships no Dockerfile, and is not part of any release train.
+    Its only job is to give backend/e2e/aiml-router.e2e.mjs a real HTTP surface to drive IAimlRouter.
+    InvokeAsync end-to-end (real Postgres, real IEventStore/IConfigRegistry/IQuotaService, real
+    AnthropicLocalTransport shelling to the local `claude` CLI) without adding a single line to
+    Svac.PublicApi/Program.cs or Endpoints.cs — S2 ships ZERO HTTP endpoints in the real product (§0),
+    and this project is how the E2E proves the MODULE works without violating that law.
+
+    Talks to its OWN isolated Postgres database (created/dropped by Program.cs) on the SAME compose-
+    managed Postgres server the real stack uses (localhost:5433 by default) — real Postgres, zero
+    crosstalk with whatever `svac` (the real host's database) holds.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AimlRouterDiagnosticHost</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <NoWarn>$(NoWarn);CA1050</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Npgsql.EntityFrameworkCore.PostgreSQL's own dependency graph brings the bare Npgsql client
+         library transitively (used directly below for the one-time CREATE/DROP DATABASE bootstrap,
+         which must run against the `postgres` maintenance database BEFORE EF's Migrate() can open a
+         connection to a database that may not exist yet). No new central package version pin needed. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter.Contracts\Svac.AimlRouter.Contracts.csproj" />
+    <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter\Svac.AimlRouter.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sdk.Web auto-includes files under the project directory as Content already (NETSDK1022 fires
+         on a duplicate explicit Include) — Update only adds the copy-to-output metadata. -->
+    <Content Update="config\diagnostic.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
