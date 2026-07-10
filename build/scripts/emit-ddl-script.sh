@@ -17,7 +17,10 @@ fail() { echo "emit-ddl-script BLOCKED: $1" >&2; exit 1; }
 OUT="backend/domain-core/Svac.DomainCore/Persistence/Migrations/InitialCore.sql"
 BEFORE_HASH="$( [ -f "$OUT" ] && shasum -a 256 "$OUT" | awk '{print $1}' || echo "MISSING" )"
 
-command -v dotnet-ef >/dev/null 2>&1 || dotnet tool install --global dotnet-ef --version 9.* >/dev/null 2>&1 || true
+# dotnet-ef MUST match the EF Core package pin (Directory.Packages.props: 10.0.9). A v9 tool on a v10
+# project regenerates the script differently than v10 tooling, so a byte-diff drift gate is only
+# deterministic when local and CI use the SAME tool version — pin it exactly, never a loose major.
+command -v dotnet-ef >/dev/null 2>&1 || dotnet tool install --global dotnet-ef --version 10.0.9 >/dev/null 2>&1 || true
 export PATH="$PATH:$HOME/.dotnet/tools"
 
 echo "emit-ddl-script: regenerating $OUT"

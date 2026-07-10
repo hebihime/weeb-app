@@ -79,7 +79,10 @@ jobs:
       - name: ef-gate fixture tests (guard/skip/clause-ordering, no docker or dotnet-ef needed)
         run: node --test build/scripts/ef-gate.test.mjs
       - name: install dotnet-ef
-        run: dotnet tool install --global dotnet-ef --version 9.* || true
+        # MUST match the EF Core pin (Directory.Packages.props: 10.0.9). A v9 tool on a v10 project
+        # both misbehaves against ef-gate and regenerates the emit-ddl-script drift file differently
+        # than local v10 tooling — a guaranteed drift-gate false-positive. Pin exactly, not a loose major.
+        run: dotnet tool install --global dotnet-ef --version 10.0.9 || true
       - name: run ef-gate
         run: bash build/scripts/ef-gate.sh backend
       - name: emit-ddl-script drift gate (regenerate + diff, guarded on a migration existing)
