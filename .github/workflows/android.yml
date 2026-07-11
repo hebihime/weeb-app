@@ -179,16 +179,14 @@ jobs:
           disable-animations: true
           # APK_PATH / FLOW_PATH were resolved in the assemble step (correct context) and passed via
           # $GITHUB_ENV — the action's own script has an unreliable CWD/$GITHUB_WORKSPACE.
+          # Each command on ONE line — the action's script executor mangles `\` line continuations
+          # (a continued `maestro test "$FLOW_PATH" \` was parsed with the backslash stuck to the path:
+          # "Flow path does not exist: .../\").
           script: |
             set -e
-            echo "APK_PATH=$APK_PATH"
             test -n "$APK_PATH"
             adb install -r "$APK_PATH"
-            maestro test "$FLOW_PATH" \
-              -e APP_ID=${{ matrix.app_id }} \
-              -e BRAND=${{ matrix.brand }} \
-              -e WORDMARK=${{ matrix.wordmark }} \
-              -e ES_HANDLE_TITLE="${{ matrix.es_handle_title }}"
+            maestro test "$FLOW_PATH" -e APP_ID=${{ matrix.app_id }} -e BRAND=${{ matrix.brand }} -e WORDMARK=${{ matrix.wordmark }} -e ES_HANDLE_TITLE="${{ matrix.es_handle_title }}"
       - uses: actions/upload-artifact@v4
         if: always() && steps.guard.outputs.present == 'true'
         with:
