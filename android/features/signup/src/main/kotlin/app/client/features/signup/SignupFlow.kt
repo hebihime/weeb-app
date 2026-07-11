@@ -124,6 +124,9 @@ fun SignupFlow(
                                 AgeGateResult.Allowed -> Step.Avatar
                                 AgeGateResult.RefusedUnder18 -> Step.AgeRefusalNeutral
                                 AgeGateResult.RefusedCoppaUnder13 -> Step.AgeRefusalCoppa
+                                // Future/invalid date: stay on the step so the user re-enters — never
+                                // route a data error to an age-refusal state (SEC-S7-F1).
+                                AgeGateResult.Invalid -> Step.Birthdate
                             }
                         }
                     },

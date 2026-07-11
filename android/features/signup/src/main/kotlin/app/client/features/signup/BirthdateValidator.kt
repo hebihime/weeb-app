@@ -13,7 +13,7 @@ import java.time.format.DateTimeParseException
  * 18+ app whose signup shell lets a 15-year-old through the form is a fabricated-honesty defect (L6)
  * caught here for the cost of one validation rule.
  */
-enum class AgeGateResult { Allowed, RefusedUnder18, RefusedCoppaUnder13 }
+enum class AgeGateResult { Allowed, RefusedUnder18, RefusedCoppaUnder13, Invalid }
 
 object BirthdateValidator {
     private val ISO = DateTimeFormatter.ISO_LOCAL_DATE
@@ -25,6 +25,11 @@ object BirthdateValidator {
     }
 
     fun evaluate(birthdate: LocalDate, today: LocalDate = LocalDate.now()): AgeGateResult {
+        // A birthdate in the future is invalid INPUT (a typo / bad year), never an age verdict. Without
+        // this guard, Period.between(future, today).years is negative -> age < 13 -> the hard COPPA
+        // refusal copy fires on a data error. Route it to Invalid so the flow keeps the user on the step
+        // to re-enter, matching iOS's .invalidFormat (Validation.swift), never a fabricated minor verdict.
+        if (birthdate.isAfter(today)) return AgeGateResult.Invalid
         val age = Period.between(birthdate, today).years
         return when {
             age < 13 -> AgeGateResult.RefusedCoppaUnder13

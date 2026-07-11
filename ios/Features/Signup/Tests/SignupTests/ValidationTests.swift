@@ -74,6 +74,18 @@ struct BirthdateValidationTests {
         #expect(outcome == .ok)
     }
 
+    @Test("a future birthdate is invalidFormat, never a COPPA/age verdict (SEC-S7-F1)")
+    func futureDateIsInvalidNotCOPPA() {
+        // year = 2026 - (-5) = 2031, same month/day -> 5 years in the FUTURE.
+        let future = birthdate(yearsBeforeReference: -5)
+        #expect(BirthdateValidation.evaluate(birthdate: future, now: referenceNow) == .invalidFormat)
+        // And through the text path (the shipping entry point).
+        #expect(BirthdateValidation.evaluate(text: "2031-07-11", now: referenceNow) == .invalidFormat)
+        // Boundary: a birthdate of exactly `now` is age 0, refused as under-13 — NOT invalid (it is a
+        // real, if absurd, past-or-present date). Proves the guard fires only strictly in the future.
+        #expect(BirthdateValidation.evaluate(birthdate: referenceNow, now: referenceNow) == .refusedUnder13COPPA)
+    }
+
     @Test("malformed date text -> invalidFormat, never silently treated as any age")
     func malformedTextIsInvalidFormat() {
         #expect(BirthdateValidation.evaluate(text: "not-a-date", now: referenceNow) == .invalidFormat)

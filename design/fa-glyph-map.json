@@ -1,0 +1,38 @@
+{
+  "$comment": "Canonical, cross-platform mapping from the S7 semantic Glyph vocabulary (ios/DesignKit Iconography.swift `Glyph`, android/designkit Iconography.kt `Glyph`) to Font Awesome Pro 7.3.0 icon names + Unicode PUA codepoints. GENERATED deterministically from the licensed FA metadata (icons.yml); tools/fa-map-lint keeps its glyph keys in exact sync with the `Glyph` enums in both Iconography.swift and Iconography.kt. This file is DATA (safe + committed); the FA Pro .otf binaries are NOT committed (paid license, public repo — see .gitignore + the Fonts/ pointer READMEs). DESIGN.md Iconography: playful register = Solid (900) face, neutral register + list rows = Regular (400) face; both faces render the SAME codepoint. Duotone (empty/celebration) is a follow-up (needs two-layer render); until then empty states use the Solid face at the mapped codepoint.",
+  "faVersion": "7.3.0",
+  "source": "fontawesome-pro-7.3.0-desktop/metadata/icons.yml",
+  "faces": {
+    "playful": { "family": "Font Awesome 7 Pro", "postScriptName": "FontAwesome7Pro-Solid", "file": "FontAwesome7Pro-Solid-900.otf", "weight": 900 },
+    "neutral": { "family": "Font Awesome 7 Pro", "postScriptName": "FontAwesome7Pro-Regular", "file": "FontAwesome7Pro-Regular-400.otf", "weight": 400 }
+  },
+  "glyphs": {
+    "tabConnect": { "fa": "users", "unicode": "f0c0" },
+    "tabExplore": { "fa": "compass", "unicode": "f14e" },
+    "tabCrews": { "fa": "people-group", "unicode": "e533" },
+    "tabInbox": { "fa": "inbox", "unicode": "f01c" },
+    "tabProfile": { "fa": "circle-user", "unicode": "f2bd" },
+    "emptyDeck": { "fa": "layer-group", "unicode": "f5fd" },
+    "emptyExplore": { "fa": "binoculars", "unicode": "f1e5" },
+    "emptyCrews": { "fa": "people-group", "unicode": "e533" },
+    "emptyInbox": { "fa": "inbox", "unicode": "f01c" },
+    "emptyProfile": { "fa": "circle-question", "unicode": "f059" },
+    "gatePending": { "fa": "clock", "unicode": "f017" },
+    "presenceFallback": { "fa": "wifi", "unicode": "f1eb" },
+    "battlePause": { "fa": "circle-pause", "unicode": "f28b" },
+    "connectivityOffline": { "fa": "wifi-slash", "unicode": "f6ac" },
+    "contractMismatch": { "fa": "arrows-rotate", "unicode": "f021" },
+    "dignityShield": { "fa": "shield-halved", "unicode": "f3ed" },
+    "preFirstCon": { "fa": "ticket", "unicode": "f145" },
+    "signupHandle": { "fa": "at", "unicode": "40" },
+    "signupEmail": { "fa": "envelope", "unicode": "f0e0" },
+    "signupBirthdate": { "fa": "calendar", "unicode": "f133" },
+    "signupAvatar": { "fa": "camera", "unicode": "f030" },
+    "signupFandom": { "fa": "tag", "unicode": "f02b" },
+    "limitReached": { "fa": "hourglass-half", "unicode": "f252" },
+    "problemGeneric": { "fa": "triangle-exclamation", "unicode": "f071" },
+    "couldNotSend": { "fa": "paper-plane", "unicode": "f1d8" },
+    "chevronForward": { "fa": "chevron-right", "unicode": "f054" },
+    "checkmark": { "fa": "circle-check", "unicode": "f058" }
+  }
+}

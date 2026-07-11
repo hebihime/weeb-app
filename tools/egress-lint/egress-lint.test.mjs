@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 import {
   extractUrlHosts,
   isAllowedHost,
+  isPackageHost,
   findDisallowedHosts,
   findTrackerDependencies,
+  findManifestEgressHosts,
   isManifest,
   isRuntimeSource,
 } from "./egress-lint.mjs";
@@ -89,4 +91,41 @@ test("a legit github SPM/plugin URL in a manifest is NOT a runtime-egress violat
   // ...and it must NEVER be fed to the runtime-host allowlist scan (that would wrongly flag github.com).
   // The collector (isRuntimeSource) is what excludes it; assert the classifier that drives it.
   assert.equal(isRuntimeSource("Package.swift"), false);
+});
+
+// ---------- manifest egress-host scan: prod host smuggled into a build file (SEC-S7-F2) ----------
+
+test("isPackageHost: package registries + source forges pass; app/prod hosts do not", () => {
+  assert.ok(isPackageHost("github.com"));
+  assert.ok(isPackageHost("raw.githubusercontent.com"));
+  assert.ok(isPackageHost("repo.maven.apache.org"));
+  assert.ok(isPackageHost("dl.google.com"));
+  assert.equal(isPackageHost("api.evil.com"), false);
+  assert.equal(isPackageHost("weeb.app"), false); // app host, handled by isAllowedHost, not a pkg host
+  assert.equal(isPackageHost("github.com.evil.com"), false); // suffix-spoof must NOT pass
+});
+
+test("GREEN: a manifest referencing only package hosts + loopback passes the manifest egress scan", () => {
+  const files = [
+    { path: "ios/ApiKit/Package.swift", content: `.package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.0.0")` },
+    { path: "android/app/build.gradle.kts", content: `buildConfigField("String","API_BASE_URL","\\"http://10.0.2.2:8080\\"")` },
+    { path: "ios/Package.resolved", content: `{"location":"https://github.com/mattpolzin/OpenAPIKit"}` },
+  ];
+  assert.deepEqual(findManifestEgressHosts(files), []);
+});
+
+test("RED: a prod/egress host hardcoded in a .gradle.kts is caught by the manifest egress scan (SEC-S7-F2)", () => {
+  const files = [{ path: "android/app/build.gradle.kts", content: `buildConfigField("String","API","\\"https://api.tracking-vendor.com/collect\\"")` }];
+  const v = findManifestEgressHosts(files);
+  assert.equal(v.length, 1);
+  assert.match(v[0], /api\.tracking-vendor\.com/);
+  // ...and Scan 1 (runtime source) would MISS it because a .gradle.kts is not runtime source.
+  assert.equal(isRuntimeSource("build.gradle.kts"), false);
+});
+
+test("RED: an app-allowlisted host in a manifest is fine; a look-alike prod host is not", () => {
+  const ok = [{ path: "x/build.gradle.kts", content: `val u = "https://api.weeb.app/v1"` }];
+  assert.deepEqual(findManifestEgressHosts(ok), []);
+  const bad = [{ path: "x/build.gradle.kts", content: `val u = "https://weeb.app.evil.com/beacon"` }];
+  assert.equal(findManifestEgressHosts(bad).length, 1);
 });

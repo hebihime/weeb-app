@@ -55,6 +55,11 @@ public enum BirthdateValidation {
     /// `now` is injectable so the 17->refuse / 18->pass / 12->COPPA boundary is exactly, deterministically
     /// testable instead of depending on the wall clock the test happens to run on.
     public static func evaluate(birthdate: Date, now: Date = Date()) -> Outcome {
+        // A birthdate in the future is invalid INPUT (a typo / bad year), never an age verdict. Without
+        // this guard, `completeElapsedYears` returns a negative number, which trips `years < 13` and
+        // mis-renders the hard COPPA-under-13 refusal on what is really a data error — wrong copy, and a
+        // minor-protection verdict fabricated from a fat-fingered date. Treat it as invalidFormat.
+        if birthdate > now { return .invalidFormat }
         let years = completeElapsedYears(from: birthdate, to: now)
         if years < 13 { return .refusedUnder13COPPA }
         if years < 18 { return .refusedUnder18 }

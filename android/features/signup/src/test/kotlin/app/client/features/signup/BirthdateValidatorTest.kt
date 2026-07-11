@@ -45,6 +45,14 @@ class BirthdateValidatorTest {
     }
 
     @Test
+    fun `a future birthdate is Invalid, never a COPPA verdict (SEC-S7-F1)`() {
+        val future = today.plusYears(5)
+        assertEquals(AgeGateResult.Invalid, BirthdateValidator.evaluate(future, today))
+        // Boundary: today itself is age 0 -> COPPA-refused (a real past-or-present date), NOT Invalid.
+        assertEquals(AgeGateResult.RefusedCoppaUnder13, BirthdateValidator.evaluate(today, today))
+    }
+
+    @Test
     fun `parse accepts ISO dates and rejects garbage`() {
         assertEquals(LocalDate.of(2000, 1, 1), BirthdateValidator.parse("2000-01-01"))
         assertNull(BirthdateValidator.parse("not-a-date"))

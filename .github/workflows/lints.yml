@@ -123,6 +123,17 @@ jobs:
       - run: node --test tools/egress-lint/egress-lint.test.mjs
       - run: node tools/egress-lint/egress-lint.mjs
 
+  fa-map-lint:
+    name: fa-map-lint (S7 — FA glyph→codepoint map ↔ iOS/Android Glyph enums in sync)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/fa-map-lint/fa-map-lint.test.mjs
+      - run: node tools/fa-map-lint/fa-map-lint.mjs
+
   destructive-verb-check:
     name: destructive-verb check (golden vectors + adversarial lens)
     runs-on: ubuntu-latest

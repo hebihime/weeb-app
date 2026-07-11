@@ -30,6 +30,16 @@ export const TRACKER_DENYLIST = [
   "instabug", "branch.io", "io.branch", "onesignal", "appsflyer", "com.google.gms",
 ];
 
+// Hosts a dependency manifest legitimately contacts to RESOLVE build deps — package registries and
+// source forges, never app egress. A manifest may reference these; any OTHER host in a manifest is a
+// prod/egress host smuggled into a build file to dodge the .swift/.kt source scan (SEC-S7-F2).
+export const PACKAGE_HOST_ALLOWLIST = [
+  "github.com", "raw.githubusercontent.com", "objects.githubusercontent.com", "codeload.github.com",
+  "plugins.gradle.org", "repo.maven.apache.org", "repo1.maven.org", "dl.google.com", "maven.google.com",
+  "central.sonatype.com", "oss.sonatype.org", "jitpack.io", "jcenter.bintray.com",
+  "swift.org", "download.swift.org", "cocoapods.org", "cdn.cocoapods.org",
+];
+
 const URL_RE = /\b(?:https?|wss?):\/\/([a-zA-Z0-9._-]+)/g;
 
 /** Every host referenced by a URL literal in the content. */
@@ -46,6 +56,10 @@ export function isAllowedHost(host) {
   return ALLOW_DOMAINS.some((d) => host === d || host.endsWith("." + d));
 }
 
+export function isPackageHost(host) {
+  return PACKAGE_HOST_ALLOWLIST.some((h) => host === h || host.endsWith("." + h));
+}
+
 /** Scan 1: disallowed runtime hosts. files: [{path, content}]. */
 export function findDisallowedHosts(files) {
   const violations = [];
@@ -54,6 +68,22 @@ export function findDisallowedHosts(files) {
       if (!isAllowedHost(host)) {
         violations.push(`${path}: egress host "${host}" not on the allowlist (weeb.app / friki.app / dev-loopback only) — no third-party egress (§9f)`);
       }
+    }
+  }
+  return violations;
+}
+
+/**
+ * Scan 3 (SEC-S7-F2): a runtime/prod EGRESS host smuggled into a dependency manifest to dodge Scan 1
+ * (which only runs on .swift/.kt). A manifest may reference package-resolution hosts (github/maven/…)
+ * and the app allowlist (weeb.app/friki.app/loopback); ANY other URL host in a build file is flagged.
+ */
+export function findManifestEgressHosts(files) {
+  const violations = [];
+  for (const { path, content } of files) {
+    for (const host of extractUrlHosts(content)) {
+      if (isAllowedHost(host) || isPackageHost(host)) continue;
+      violations.push(`${path}: host "${host}" in a dependency manifest is neither an app host (weeb.app/friki.app/dev-loopback) nor a known package-resolution host — a prod/egress host hidden in a build file dodges the source host-scan (§9f / SEC-S7-F2)`);
     }
   }
   return violations;
@@ -133,6 +163,7 @@ async function main() {
     scanned += src.length + manifests.length;
     violations.push(...findDisallowedHosts(src));
     violations.push(...findTrackerDependencies(manifests));
+    violations.push(...findManifestEgressHosts(manifests));
   }
 
   if (violations.length > 0) {
