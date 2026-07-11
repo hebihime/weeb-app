@@ -71,4 +71,8 @@
     <string name="email_email_changed_notice_body">你的账户邮箱已更改。如果不是你本人操作,请立即撤销你的会话。</string>
     <string name="email_export_ready_subject">你的 Weeb 数据导出已完成</string>
     <string name="email_export_ready_body">你请求的数据导出已准备好,可以下载了。</string>
+    <string name="email_deletion_scheduled_subject">你的 Weeb 账户删除已安排</string>
+    <string name="email_deletion_scheduled_body">你的账户将于 {{scheduledFor}} 被删除。你可以在此之前随时取消。</string>
+    <string name="email_deletion_completed_subject">你的 Weeb 账户已被删除</string>
+    <string name="email_deletion_completed_body">根据你的请求，你的账户及其数据已被删除。</string>
 </resources>

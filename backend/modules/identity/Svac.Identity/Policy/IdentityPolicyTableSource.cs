@@ -318,5 +318,30 @@ public sealed class IdentityPolicyTableSource : IPolicyTableSource
             ReasonKey: "policy.denied.identity_deletion_execute",
             StaffRoleAllowlistNote: "system only (the deletion worker, Pass 2) — the job row is provenance",
             TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.OwnedResource("account")).Validate(),
+
+        // --- DevSeams-only diagnostic triggers (Program.cs's /internal/devseams/* routes, S1 canary
+        // pattern) — NOT part of SLICE_S3_CONTRACT.md §3b's table (they carry no OpenAPI path, are
+        // excluded from Endpoints.MapAll, and only ever get mapped when devSeamsEnabled). They are still
+        // real HTTP-mapped mutation endpoints, so StartupPolicyCoverage.RequireMutationsPolicyMapped
+        // refuses to boot without a row exactly like any other mutation route (B1: "a consumer-reachable,
+        // policy-less mutation is a contract violation, not a gap" applies uniformly, dev-only or not).
+        // Anonymous is the actually-resolved actor kind for these calls (the E2E hits them with no bearer
+        // token) — DenyAsAbsence rather than DenyStandard so a disabled/misconfigured DevSeams boot still
+        // renders the SAME absence shape as the route simply not existing, never a distinct 403 oracle.
+        new PolicyTableEntry(
+            Action: "identity.devseams.deletion_sweep_trigger",
+            ActorKinds: Anonymous,
+            Axes: PolicyAxis.None,
+            DenyMode: PolicyDenyMode.DenyAsAbsence,
+            RequiresReason: false,
+            ReasonKey: "n/a").Validate(),
+
+        new PolicyTableEntry(
+            Action: "identity.devseams.grace_days_override",
+            ActorKinds: Anonymous,
+            Axes: PolicyAxis.None,
+            DenyMode: PolicyDenyMode.DenyAsAbsence,
+            RequiresReason: false,
+            ReasonKey: "n/a").Validate(),
     };
 }

@@ -61,14 +61,29 @@ public sealed class EmailChallengeMachine(
 {
     private static readonly IReadOnlyDictionary<string, string> EmptyModel = new Dictionary<string, string>();
 
-    /// <summary>POST /v1/signup/email-verification (SLICE_S3_CONTRACT.md §1c). Never persists a row for an already-registered email — "you already have an account" is a MAIL, not a code.</summary>
+    /// <summary>
+    /// POST /v1/signup/email-verification (SLICE_S3_CONTRACT.md §1c). Never persists a row for an
+    /// already-registered email — "you already have an account" is a MAIL, not a code.
+    ///
+    /// "Already registered" is <c>account_state &lt;&gt; 'deleted'</c> — the SAME predicate as
+    /// <c>ux_accounts_email</c>'s partial unique index (§2 DDL) — never <c>tombstoned_at IS NULL</c>. A
+    /// Phase-L-deleted account (§2: "the user DISAPPEARS from the product now") has already freed its
+    /// email for the index's purposes; gating this check on <c>tombstoned_at</c> instead would keep
+    /// blocking a fresh signup for the ENTIRE grace window (up to 30 days) even though the DB would
+    /// happily accept the new row, and — more importantly — it would make OQ-3's ban-evasion consult
+    /// (<see cref="Svac.Identity.Auth.SignupCompletionService.Complete"/>) UNREACHABLE during grace: no
+    /// challenge is ever issued to confirm, so the HMAC lookup never runs. <see
+    /// cref="Svac.Identity.Deletion.AccountLifecycle.RequestDeletion"/>'s own comment explains why the ref
+    /// is captured at REQUEST time rather than at the (up to 30-days-later) purge — that only pays off if
+    /// this check lets the re-registration attempt reach <c>Complete</c> immediately, not just post-purge.
+    /// </summary>
     public async Task<string> IssueForSignup(string emailLower, string locale, RequestContext ctx, CancellationToken ct)
     {
         var quotaAllowed = await ConsumeMailboxQuota(emailLower, ctx, ct);
         var now = DateTimeOffset.UtcNow;
 
         var existingAccountId = await db.Accounts
-            .Where(a => a.Email != null && a.Email == emailLower && a.TombstonedAt == null)
+            .Where(a => a.Email != null && a.Email == emailLower && a.AccountState != "deleted")
             .Select(a => a.AccountId)
             .FirstOrDefaultAsync(ct);
 

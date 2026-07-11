@@ -9,6 +9,7 @@ using Svac.DomainCore.Contracts.Policy;
 using Svac.DomainCore.Deterministic;
 using Svac.DomainCore.Hosting;
 using Svac.Identity.Auth;
+using Svac.Identity.Config;
 using Svac.Identity.Persistence;
 
 namespace Svac.Identity.Endpoints;
@@ -50,6 +51,7 @@ public static class SignupEndpoints
     private static async Task<IResult> GetHandleAvailability(
         [FromQuery] string? handle,
         [FromServices] IdentityDbContext db,
+        [FromServices] Svac.DomainCore.Contracts.Config.IConfigRegistry config,
         CancellationToken ct)
     {
         // Reserved, retired, and taken all render IDENTICALLY {available:false} — no reserved-list, no
@@ -67,9 +69,14 @@ public static class SignupEndpoints
         }
 
         var canonical = validation.Canonical!;
+        // OQ-2 (RATIFIED (b)): a retired handle past its retirement_days quarantine window reads as
+        // available — mirrors SignupCompletionService's own enforcement so this GET never lies about
+        // what POST /v1/signup/complete would actually accept.
+        var retirementDays = await config.GetValue<int>(IdentityConfigKeys.HandleRetirementDays, ct);
+        var retirementCutoff = DateTimeOffset.UtcNow.AddDays(-retirementDays);
         var taken = await db.Accounts.AnyAsync(a => a.Handle == canonical && a.AccountState != "deleted", ct)
             || await db.ReservedHandles.AnyAsync(h => h.Handle == canonical, ct)
-            || await db.RetiredHandles.AnyAsync(h => h.Handle == canonical, ct);
+            || await db.RetiredHandles.AnyAsync(h => h.Handle == canonical && h.RetiredAt > retirementCutoff, ct);
 
         return Results.Ok(new HandleAvailabilityResponse(!taken));
     }

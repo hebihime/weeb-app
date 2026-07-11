@@ -2378,6 +2378,122 @@
           }
         }
       }
+    },
+    "email.deletion_scheduled.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb account deletion is scheduled"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La eliminación de tu cuenta de Weeb está programada"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A exclusão da sua conta Weeb está agendada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 账户删除已安排"
+          }
+        }
+      }
+    },
+    "email.deletion_scheduled.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account is scheduled for deletion on {{scheduledFor}}. You can cancel any time before then."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu cuenta está programada para eliminación el {{scheduledFor}}. Puedes cancelar en cualquier momento antes de esa fecha."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua conta está agendada para exclusão em {{scheduledFor}}. Você pode cancelar em qualquer momento antes disso."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的账户将于 {{scheduledFor}} 被删除。你可以在此之前随时取消。"
+          }
+        }
+      }
+    },
+    "email.deletion_completed.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb account has been deleted"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu cuenta de Weeb ha sido eliminada"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua conta Weeb foi excluída"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 账户已被删除"
+          }
+        }
+      }
+    },
+    "email.deletion_completed.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account and its data have been deleted, as requested."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu cuenta y sus datos han sido eliminados, según lo solicitado."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua conta e seus dados foram excluídos, conforme solicitado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据你的请求，你的账户及其数据已被删除。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

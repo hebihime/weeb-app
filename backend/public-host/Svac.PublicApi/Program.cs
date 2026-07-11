@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Svac.DomainCore.Config;
 using Svac.DomainCore.DependencyInjection;
 using Svac.DomainCore.DevSeams;
@@ -82,6 +83,67 @@ app.UseRateLimiter();
 app.MapOpenApi("/openapi/{documentName}.json");
 Endpoints.MapAll(app);
 
+// SLICE_S3_CONTRACT.md §3 (Phase P): a DevSeams-gated diagnostic trigger to run the deletion sweep on
+// demand — the S1 canary pattern, NEVER in the shipped contract (excluded from Endpoints.MapAll, which
+// the --emit-openapi emitter also calls, so this route can never leak into contracts/openapi.v0.json;
+// gated a SECOND time by devSeamsEnabled itself, so a prod boot never maps it even if that ever changed).
+if (devSeamsEnabled)
+{
+    app.MapPost("/internal/devseams/deletion-sweep", async (
+            [FromServices] Svac.Identity.Deletion.DeletionPhysicalPurgeWorker worker,
+            CancellationToken ct) =>
+        {
+            var processed = await worker.RunDueSweepAsync(ct);
+            return Results.Ok(new { processed });
+        })
+        .WithName("DevSeamsDeletionSweep")
+        .ExcludeFromDescription()
+        // Still a real HTTP-mapped mutation endpoint — StartupPolicyCoverage.RequireMutationsPolicyMapped
+        // below refuses to boot without this (identical law to every other mutation route; see
+        // IdentityPolicyTableSource's matching "DevSeams-only diagnostic triggers" rows for why Anonymous).
+        .RequirePolicyAction("identity.devseams.deletion_sweep_trigger");
+
+    // SLICE_S3_CONTRACT.md §4/§10.3: a SECOND DevSeams-gated diagnostic, same shape/gating as the sweep
+    // trigger above — sets identity.deletion.grace_days (bounds-legal [0,30]) on demand. identity.e2e.mjs
+    // needs BOTH a real (nonzero) grace window — so its cancel drill has a genuine future effective_at to
+    // cancel against — AND grace_days=0 for the LATER request it means to have the sweep physically
+    // purge; those two needs cannot share one boot-time value. ConfigSeedLoader's seed pass is
+    // deliberately idempotent (§4: never clobbers an already-seeded row) and there is no S5 ops desk yet,
+    // so this is the only lever that exists before the desk ships. Routes through the real
+    // IConfigRegistry.SetValue (ConfigBounds' [0,30] check still runs — an out-of-range request 400s
+    // exactly like a real desk edit would), never a second config-loading mechanism.
+    app.MapPost("/internal/devseams/deletion-grace-days", async (
+            [FromBody] DevSeamsGraceDaysRequest body,
+            [FromServices] Svac.DomainCore.Contracts.Config.IConfigRegistry config,
+            CancellationToken ct) =>
+        {
+            // identity.deletion.grace_days' [0,30] bound (SLICE_S3_CONTRACT.md §4) is declared in the
+            // manifest but has no ConfigBounds.ValidateAsync rule yet (that switch only covers the three
+            // AimlRouter keys S2 shipped) — enforced HERE so this diagnostic can never push a real desk
+            // value out of its own contract-stated range, same spirit as a real desk edit would apply.
+            if (body.Days < 0 || body.Days > 30)
+            {
+                return Results.BadRequest(new { error = $"identity.deletion.grace_days bounds are [0,30] (SLICE_S3_CONTRACT.md §4); got {body.Days}." });
+            }
+
+            var systemActor = new Svac.DomainCore.Contracts.Ids.ActorRef(
+                Svac.DomainCore.Contracts.Ids.OpaqueId.New(Svac.DomainCore.Contracts.Ids.IdPrefixes.System, DateTimeOffset.UtcNow, Random.Shared),
+                Svac.DomainCore.Contracts.Ids.ActorKind.System);
+            var ctx = Svac.DomainCore.Contracts.RequestContext.System(systemActor, correlationId: "devseams-grace-days-override");
+            await config.SetValue(
+                Svac.Identity.Config.IdentityConfigKeys.DeletionGraceDays,
+                body.Days,
+                "DevSeams E2E override (SLICE_S3_CONTRACT.md §10.3)",
+                systemActor,
+                ctx,
+                ct);
+            return Results.Ok(new { graceDays = body.Days });
+        })
+        .WithName("DevSeamsDeletionGraceDays")
+        .ExcludeFromDescription()
+        .RequirePolicyAction("identity.devseams.grace_days_override");
+}
+
 // 4A fail-closed boot refusal (§3): throws if any non-GET endpoint lacks a mapped policy row. S1 ships
 // zero consumer mutation endpoints, so this call is expected to pass vacuously today and refuse to boot
 // the moment a future module maps a policy-less mutation endpoint onto this host. Pure endpoint-metadata
@@ -143,3 +205,6 @@ async Task SeedConfigOnStartup(WebApplication webApp)
         Log.ConfigSeedingFailed(webApp.Logger, ex);
     }
 }
+
+/// <summary>Request body for <c>POST /internal/devseams/deletion-grace-days</c> (DevSeams-gated, never in the shipped contract).</summary>
+internal sealed record DevSeamsGraceDaysRequest(int Days);

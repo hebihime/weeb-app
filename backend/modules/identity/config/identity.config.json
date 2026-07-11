@@ -136,6 +136,38 @@
       "value": 2,
       "requiresReason": false,
       "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.export.request.daily\") — the fixed quota.<key>.cap convention; mirrors identity.export.daily_cap"
+    },
+    {
+      "key": "identity.deletion.grace_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 14,
+      "requiresReason": true,
+      "consumer": "Svac.Identity deletion request (POST /v1/me/deletion) — deletion_effective_at = now + grace_days; bounds [0,30], 0 is bounds-legal so the E2E's worker executes live"
+    },
+    {
+      "key": "identity.deletion.sweep_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 15,
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Deletion deletion/expiry worker interval (Pass 2b) — DevSeams-only diagnostic trigger runs the sweep on demand in the shipped build; the value is the documented real interval a future scheduled host would poll at"
+    },
+    {
+      "key": "identity.export.pre_deletion_wait_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 72,
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Deletion Phase P worker — caps how long the physical purge waits for a pending export job to finish before proceeding"
+    },
+    {
+      "key": "identity.handle.retirement_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 365,
+      "requiresReason": true,
+      "consumer": "Svac.Identity handle-availability + signup/complete's reserved/retired check (OQ-2) — a retired handle past this quarantine window is treated as available again (lazy expiry, no background sweep needed)"
     }
   ]
 }

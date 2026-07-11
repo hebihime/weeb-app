@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // backend/e2e/identity.e2e.mjs — SLICE_S3_CONTRACT.md §10.3. Covers the signup/auth foundation (Pass A),
-// the /v1/me/* account-management surface (Pass B), and the data-export subsystem (Pass C, §6b) — the
-// export leg exercises POST/GET/download live end-to-end, incl. the export⋈purge registry cross-check
-// (every store export-registry.json declares Contributes for must have a file in the real zip) and the
-// OwnedResource(export) IDOR drill. Deletion remains the NEXT pass, per the build's own DO-NOT list.
+// the /v1/me/* account-management surface (Pass B), the data-export subsystem (Pass C, §6b), and the
+// deletion/purge pipeline (Pass D, §2/§6c) — the export leg exercises POST/GET/download live end-to-end,
+// incl. the export⋈purge registry cross-check (every store export-registry.json declares Contributes for
+// must have a file in the real zip) and the OwnedResource(export) IDOR drill; the deletion leg drives a
+// dedicated account through Phase L (request/grace/cancel) and Phase P (physical purge) live, incl. the
+// `events_heatmap_provenance` full-history purge verb's first real invocation.
 //
 // Live E2E against the compose stack's Svac.PublicApi host — REAL HTTP endpoints, REAL Mailpit (REST
 // oracle at :8025, never SMTP-side inspection), REAL 3A events read back via a real `docker compose exec
@@ -22,12 +24,20 @@
 // random id, victim session survives) -> email change + confirm (old address gets email.email_changed_
 // notice in Mailpit) -> login via auth/email-code + auth/session -> GET /v1/me -> logout -> under-18 +
 // under-13 refusal drills (wire byte-identical, DB row count unchanged, under-13 challenge row
-// destroyed).
+// destroyed) -> DELETION LEG on its own dedicated account: request (real grace) -> email.deletion_
+// scheduled in Mailpit -> grace-law drill (GET /v1/me + export download still work, settings PATCH
+// denies as absence) -> cancel -> GET /v1/me + PATCH work normally again -> DevSeams grace_days=0
+// override -> re-request -> DevSeams sweep trigger -> email.deletion_completed in Mailpit -> purge
+// read-back via psql (tombstoned account, retired+unavailable handle, freed+re-registrable email, zero
+// sessions/devices/email_challenges, pseudonymized consent, gone export artifact, purge_run receipts
+// incl. events_heatmap_provenance) -> old access token dies.
 //
 // Usage: IDENTITY_E2E_TARGET=http://localhost:8090 node backend/e2e/identity.e2e.mjs
 //        (no IDENTITY_E2E_TARGET set -> SKIP, not a lie)
 //        Requires a local `docker compose` with this repo's postgres + mailpit services up (the DB read-
-//        back probes and the Mailpit REST calls both need them).
+//        back probes and the Mailpit REST calls both need them), and SVAC_DEVSEAMS_ENABLED=true on the
+//        target host (already the docker-compose.yml default) for the two /internal/devseams/* triggers
+//        the deletion leg needs — never reachable outside a DevSeams-enabled boot (L18).
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -156,6 +166,79 @@ async function consentPayloadsFor(accountId) {
 async function sessionRevokedAt(sessionId) {
   const out = await psql(`SELECT revoked_at FROM identity.sessions WHERE session_id = '${sessionId}';`);
   return out; // empty string means NULL
+}
+
+// ---------- deletion/purge read-back probes (SLICE_S3_CONTRACT.md §2/§6a/§6c/§10.3) ----------
+
+async function countRows(sql) {
+  return Number.parseInt(await psql(sql), 10);
+}
+
+/** {accountState, tombstoned, emailIsNull, handle} for one accounts row — the tombstone shape itself (§2 Phase P step 6). */
+async function accountRow(accountId) {
+  const out = await psql(
+    `SELECT account_state, (tombstoned_at IS NOT NULL), (email IS NULL), handle FROM identity.accounts WHERE account_id = '${accountId}';`
+  );
+  const [accountState, tombstonedRaw, emailIsNullRaw, handle] = out.split("|");
+  return { accountState, tombstoned: tombstonedRaw === "t", emailIsNull: emailIsNullRaw === "t", handle };
+}
+
+async function retiredHandleExists(handle) {
+  return (await countRows(`SELECT count(*) FROM identity.retired_handles WHERE handle = '${handle}';`)) > 0;
+}
+
+async function countSessionsForAccount(accountId) {
+  return countRows(`SELECT count(*) FROM identity.sessions WHERE account_id = '${accountId}';`);
+}
+
+async function countDevicesForAccount(accountId) {
+  return countRows(`SELECT count(*) FROM identity.devices WHERE account_id = '${accountId}';`);
+}
+
+async function countEmailChallengesForEmail(email) {
+  return countRows(`SELECT count(*) FROM identity.email_challenges WHERE email_lower = lower('${email}');`);
+}
+
+async function countConsentCurrentForAccount(accountId) {
+  return countRows(`SELECT count(*) FROM identity.consent_current WHERE account_id = '${accountId}';`);
+}
+
+/** Zero rows here proves the RAW account id was severed from core.events_consent (Pseudonymize re-keys stream_id, §6a). */
+async function countEventsConsentForStreamId(accountId) {
+  return countRows(`SELECT count(*) FROM core.events_consent WHERE stream_id = '${accountId}';`);
+}
+
+async function countExportJobsForAccount(accountId) {
+  return countRows(`SELECT count(*) FROM identity.export_jobs WHERE account_id = '${accountId}';`);
+}
+
+/** Must be captured BEFORE the sweep runs — Phase P pseudonymizes deletion_jobs.account_id as part of the SAME purge pass (§6a: "the receipt SURVIVES — proof deletion ran"), so a post-sweep lookup by account_id would find nothing. */
+async function latestDeletionJobId(accountId) {
+  const out = await psql(`SELECT deletion_id FROM identity.deletion_jobs WHERE account_id = '${accountId}' ORDER BY requested_at DESC LIMIT 1;`);
+  assert(out.length > 0, `no identity.deletion_jobs row found for account ${accountId}`);
+  return out;
+}
+
+/**
+ * Post-sweep read of the SAME job row by its immutable PK (deletion_id) — survives the account_id
+ * pseudonymization above. Three separate scalar queries rather than one multi-column row: purge_run_ids'
+ * own JSON text could in principle contain psql's "|" unaligned-output field separator, and a single
+ * query would then split ambiguously.
+ */
+async function deletionJobById(deletionId) {
+  const state = await psql(`SELECT state FROM identity.deletion_jobs WHERE deletion_id = '${deletionId}';`);
+  const purgeRunIdsJson = await psql(`SELECT coalesce(purge_run_ids::text, '') FROM identity.deletion_jobs WHERE deletion_id = '${deletionId}';`);
+  const executed = (await psql(`SELECT (executed_at IS NOT NULL) FROM identity.deletion_jobs WHERE deletion_id = '${deletionId}';`)) === "t";
+  return { state, purgeRunIdsJson, executed };
+}
+
+/** The DIRECT receipt-table read-back (core.purge_runs, §6c) — independent of the deletion_jobs JSON blob's own copy of the same fact, scoped to runs started at/after `sinceIso` so a long-lived compose stack's PRIOR e2e pass never makes this vacuously true. */
+async function purgeRunReceiptExists(storeKey, sinceIso) {
+  return (
+    (await countRows(
+      `SELECT count(*) FROM core.purge_runs WHERE store_key = '${storeKey}' AND started_at >= '${sinceIso}';`
+    )) > 0
+  );
 }
 
 // ---------- export⋈purge registry + zip helpers (SLICE_S3_CONTRACT.md §6b) ----------
@@ -597,6 +680,158 @@ async function stageEighteenthBirthdayBoundary(baseUrl) {
   assert(typeof session.accountId === "string", `18th-birthday-today vector was refused, expected acceptance: ${JSON.stringify(session)}`);
 }
 
+// ---------- deletion/purge leg (SLICE_S3_CONTRACT.md §2/§6a/§6c/§10.3) ----------
+//
+// Runs on its OWN dedicated account (never the shared journey account above) so purge-completeness
+// assertions never have to untangle handle/email changes another leg already made. Two DevSeams-gated
+// triggers do the otherwise-impossible-without-an-admin-desk work: flipping identity.deletion.grace_days
+// at runtime (POST /internal/devseams/deletion-grace-days) and running the physical-purge worker on
+// demand (POST /internal/devseams/deletion-sweep, the S1 canary pattern the prior agent built). The
+// journey needs BOTH a real (nonzero) grace window — so the cancel drill has a genuine future
+// effective_at to cancel against, since grace_days=0 makes cancellation mathematically impossible by
+// design (effective_at == requested_at exactly; see AccountLifecycle.CancelDeletion) — AND grace_days=0
+// for the request that must actually reach the worker live; those two needs cannot share one boot-time
+// config value, hence the runtime flip mid-journey.
+
+/** POST /internal/devseams/deletion-grace-days {days} — never in the shipped contract; DevSeams-gated identically to the sweep trigger. */
+async function devSeamsSetGraceDays(baseUrl, days) {
+  const { status, body } = await postJson(baseUrl, "/internal/devseams/deletion-grace-days", { days });
+  assert(status === 200, `POST /internal/devseams/deletion-grace-days {days:${days}} -> HTTP ${status}: ${JSON.stringify(body)}`);
+  assert(body.graceDays === days, `devseams grace-days override echoed ${JSON.stringify(body)}, expected graceDays:${days}`);
+}
+
+/** POST /internal/devseams/deletion-sweep — runs DeletionPhysicalPurgeWorker.RunDueSweepAsync on demand; returns the number of jobs processed. */
+async function devSeamsTriggerSweep(baseUrl) {
+  const { status, body } = await postJson(baseUrl, "/internal/devseams/deletion-sweep", {});
+  assert(status === 200, `POST /internal/devseams/deletion-sweep -> HTTP ${status}: ${JSON.stringify(body)}`);
+  return body.processed;
+}
+
+async function stageDeletionLeg(baseUrl) {
+  const email = uniqueEmail("deletion");
+  const { handle: originalHandle, session } = await stageSignupThroughSession(baseUrl, email, "1990-01-01");
+  const { accessToken, accountId } = session;
+  const headers = { authorization: `Bearer ${accessToken}` };
+
+  // Give the account real rows in every store the purge registry says AccountDeletion touches, so the
+  // "zero afterward" assertions below are non-vacuous: a device + a push-category consent write (mirrors
+  // stageDeviceAndPushConsent's own real-write-then-read-back discipline), and a real export job+artifact.
+  await stageDeviceAndPushConsent(baseUrl, accessToken, accountId);
+  const { status: preExportPostStatus, body: preExportPostBody } = await postJson(baseUrl, "/v1/me/export", {}, headers);
+  assert(preExportPostStatus === 202, `POST /v1/me/export (deletion leg) -> HTTP ${preExportPostStatus}: ${JSON.stringify(preExportPostBody)}`);
+  const preDeletionExportId = preExportPostBody.exportId;
+  const { status: preExportStatus, body: preExportBody } = await getJson(baseUrl, `/v1/me/export/${preDeletionExportId}`, headers);
+  assert(preExportStatus === 200 && preExportBody.state === "ready", `export not ready immediately after POST (deletion leg, synchronous worker): ${JSON.stringify(preExportBody)}`);
+
+  // --- Phase L, request #1: real (nonzero, manifest v0=14d) grace — this is the one the cancel drill needs. ---
+  const { status: post1Status, body: post1Body } = await postJson(baseUrl, "/v1/me/deletion", {}, headers);
+  assert(post1Status === 200, `POST /v1/me/deletion (request #1) -> HTTP ${post1Status}: ${JSON.stringify(post1Body)}`);
+  assert(post1Body.exportOffered === true, `POST /v1/me/deletion response missing exportOffered:true (§1c export-offered-first): ${JSON.stringify(post1Body)}`);
+  assert(typeof post1Body.effectiveAt === "string" && new Date(post1Body.effectiveAt).getTime() > Date.now(), `POST /v1/me/deletion effectiveAt is not safely in the future (grace_days=0 would make the cancel drill below impossible): ${JSON.stringify(post1Body)}`);
+
+  const scheduledMail = await findLatestMailpitMessage(email, "deletion is scheduled");
+  assert(scheduledMail, "email.deletion_scheduled never arrived in Mailpit after request #1");
+
+  // --- Grace-law drill (§2 Phase L): the RIGHTS SET stays reachable; everything else denies as absence. ---
+  const { status: graceGetMeStatus, body: graceGetMeBody } = await getJson(baseUrl, "/v1/me", headers);
+  assert(graceGetMeStatus === 200, `GET /v1/me during grace -> HTTP ${graceGetMeStatus}, expected 200 (me.read survives grace)`);
+  assert(typeof graceGetMeBody.deletionScheduledFor === "string", `GET /v1/me during grace missing deletionScheduledFor: ${JSON.stringify(graceGetMeBody)}`);
+
+  const graceExportDownloadRes = await fetch(new URL(`/v1/me/export/${preDeletionExportId}/download`, baseUrl), { headers });
+  assert(graceExportDownloadRes.status === 200, `export download during grace -> HTTP ${graceExportDownloadRes.status}, expected 200 (export survives grace, §2)`);
+
+  const gracePatchRes = await fetch(new URL("/v1/me", baseUrl), {
+    method: "PATCH",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify({ locale: "en" }),
+  });
+  assert(gracePatchRes.status === 404, `PATCH /v1/me during grace -> HTTP ${gracePatchRes.status}, expected 404 (identity.settings.update denies outside active/suspended as absence, §3b)`);
+
+  // --- Cancel: the ONE deleted->active transition, grace-only. ---
+  const cancelRes = await fetch(new URL("/v1/me/deletion", baseUrl), { method: "DELETE", headers });
+  assert(cancelRes.status === 204, `DELETE /v1/me/deletion (cancel) -> HTTP ${cancelRes.status}, expected 204`);
+
+  const { status: postCancelStatusHttp, body: postCancelStatusBody } = await getJson(baseUrl, "/v1/me/deletion", headers);
+  assert(postCancelStatusHttp === 200 && postCancelStatusBody.state === "canceled", `GET /v1/me/deletion after cancel -> ${JSON.stringify(postCancelStatusBody)}, expected state:"canceled"`);
+
+  const { status: postCancelMeStatus, body: postCancelMeBody } = await getJson(baseUrl, "/v1/me", headers);
+  assert(postCancelMeStatus === 200, `GET /v1/me after cancel -> HTTP ${postCancelMeStatus}, expected 200 (works normally again)`);
+  assert(postCancelMeBody.deletionScheduledFor == null, `GET /v1/me after cancel still carries deletionScheduledFor: ${JSON.stringify(postCancelMeBody)}`);
+
+  const postCancelPatchRes = await fetch(new URL("/v1/me", baseUrl), {
+    method: "PATCH",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify({ locale: "en" }),
+  });
+  assert(postCancelPatchRes.status === 200, `PATCH /v1/me after cancel -> HTTP ${postCancelPatchRes.status}, expected 200 (active again, settings.update works normally)`);
+
+  // --- Phase L, request #2: flip to grace_days=0 (bounds-legal, [0,30]) so THIS request's effective_at
+  // is due immediately, then re-request and let the DevSeams sweep trigger run Phase P live. ---
+  await devSeamsSetGraceDays(baseUrl, 0);
+  const purgeWindowStart = new Date().toISOString();
+
+  const { status: post2Status, body: post2Body } = await postJson(baseUrl, "/v1/me/deletion", {}, headers);
+  assert(post2Status === 200, `POST /v1/me/deletion (request #2, grace_days=0) -> HTTP ${post2Status}: ${JSON.stringify(post2Body)}`);
+
+  // Captured BEFORE the sweep — Phase P pseudonymizes deletion_jobs.account_id in the SAME pass.
+  const deletionId = await latestDeletionJobId(accountId);
+
+  const processed = await devSeamsTriggerSweep(baseUrl);
+  assert(processed >= 1, `DevSeams deletion-sweep processed ${processed} job(s), expected >= 1 (request #2's job should have been immediately due)`);
+
+  const completedMail = await findLatestMailpitMessage(email, "has been deleted");
+  assert(completedMail, "email.deletion_completed never arrived in Mailpit after the sweep");
+
+  // --- Old access token is dead (session revoked as part of Phase P step 4). ---
+  const { status: postPurgeMeStatus } = await getJson(baseUrl, "/v1/me", headers);
+  assert(postPurgeMeStatus === 404, `GET /v1/me with the purged account's access token -> HTTP ${postPurgeMeStatus}, expected 404 (absence)`);
+
+  // --- Purge read-back: real psql reads against the live Postgres, never a stub (L30). ---
+  const account = await accountRow(accountId);
+  assert(account.accountState === "deleted", `post-purge accounts.account_state = "${account.accountState}", expected "deleted" (tombstoned rows stay pinned deleted, §2 step 6)`);
+  assert(account.tombstoned === true, `post-purge accounts.tombstoned_at is NULL — the account was never physically purged`);
+  assert(account.emailIsNull === true, `post-purge accounts.email is NOT NULL — PII column was not nulled at tombstone`);
+  assert(account.handle !== originalHandle, `post-purge accounts.handle ("${account.handle}") still equals the pre-purge handle "${originalHandle}" — handle-to-retired-handles move never happened`);
+
+  assert(await retiredHandleExists(originalHandle), `identity.retired_handles has no row for "${originalHandle}" (OQ-2)`);
+  const { status: availAfterStatus, body: availAfterBody } = await getJson(baseUrl, `/v1/signup/handle-availability?handle=${originalHandle}`);
+  assert(availAfterStatus === 200 && availAfterBody.available === false, `GET handle-availability for the retired handle "${originalHandle}" -> ${JSON.stringify(availAfterBody)}, expected available:false — a retired handle must render identically to reserved/taken`);
+
+  assert((await countSessionsForAccount(accountId)) === 0, `identity.sessions still has row(s) for account ${accountId} after purge`);
+  assert((await countDevicesForAccount(accountId)) === 0, `identity.devices still has row(s) for account ${accountId} after purge`);
+  assert((await countEmailChallengesForEmail(email)) === 0, `identity.email_challenges still has row(s) for "${email}" after purge (keyed-by-email purge-reaches-it, the S2 invocation-id scar)`);
+  assert((await countConsentCurrentForAccount(accountId)) === 0, `identity.consent_current still has row(s) for account ${accountId} after purge`);
+  assert((await countEventsConsentForStreamId(accountId)) === 0, `core.events_consent still has row(s) keyed by the RAW account id ${accountId} after purge — Pseudonymize must re-key stream_id, not just actor_ref`);
+  assert((await countExportJobsForAccount(accountId)) === 0, `identity.export_jobs still has row(s) (incl. the artifact bytea) for account ${accountId} after purge`);
+
+  // The deletion_jobs receipt SURVIVES (pseudonymized subject, §6a) — read back by immutable PK.
+  const job = await deletionJobById(deletionId);
+  assert(job.state === "complete", `identity.deletion_jobs[${deletionId}].state = "${job.state}", expected "complete"`);
+  assert(job.executed === true, `identity.deletion_jobs[${deletionId}].executed_at is NULL, expected a real completion timestamp`);
+  assert(job.purgeRunIdsJson.includes("events_heatmap_provenance"), `identity.deletion_jobs[${deletionId}].purge_run_ids does not mention "events_heatmap_provenance" — the full-history purge verb's registry entry was never reached: ${job.purgeRunIdsJson}`);
+
+  // The SAME fact, independently confirmed against the actual receipt table (core.purge_runs), never
+  // just the deletion_jobs row's own JSON copy of it — this is THE events_heatmap_provenance full-history
+  // purge verb's first real invocation (SLICE_S3_CONTRACT.md §2 step 5 / the ledger row's own anchor).
+  assert(
+    await purgeRunReceiptExists("events_heatmap_provenance", purgeWindowStart),
+    `core.purge_runs has no row for store_key="events_heatmap_provenance" started at/after ${purgeWindowStart} — the purge orchestrator never reached the heatmap-provenance registry entry`
+  );
+
+  // The freed email is genuinely re-registrable, not merely NULLed on the dead row (SLICE_S3_CONTRACT.md
+  // §2: "email freed by the partial index") — a fresh signup attempt gets a REAL code, never the
+  // already-registered anti-enumeration branch this exact address used to trigger pre-purge.
+  const { status: reissueStatus, body: reissueBody } = await postJson(baseUrl, "/v1/signup/email-verification", { email, locale: "en" });
+  assert(reissueStatus === 202, `POST email-verification for the freed email -> HTTP ${reissueStatus}: ${JSON.stringify(reissueBody)}`);
+  const freshCodeMail = await findLatestMailpitMessage(email, "verification code");
+  assert(freshCodeMail, `the freed email "${email}" did not receive a fresh email.verify_code mail — it is still being treated as already-registered`);
+
+  // Leave the shared founder-scope 9A row exactly as this leg found it (manifest v0=14d) — the same
+  // discipline DeletionPipelineTests.cs's SetGraceDays helper applies, so a second run of this SAME
+  // script against a long-lived compose stack starts its own cancel drill with a real grace window too.
+  await devSeamsSetGraceDays(baseUrl, 14);
+}
+
 // ---------- runner ----------
 
 async function main() {
@@ -715,13 +950,18 @@ async function main() {
     stageMinorProtectionDrills(TARGET)
   );
 
+  await run(
+    "deletion/purge: request (real grace) -> email.deletion_scheduled -> grace-law drill -> cancel -> works normally -> re-request (grace_days=0) -> DevSeams sweep -> email.deletion_completed -> purge read-back incl. events_heatmap_provenance receipt -> old token dies",
+    () => stageDeletionLeg(TARGET)
+  );
+
   if (failures.length > 0) {
     console.error("identity e2e FAILED:");
     for (const f of failures) console.error(`  - ${f}`);
     process.exitCode = 1;
     return;
   }
-  console.log("identity e2e OK: signup, verification, session, refresh rotation, login, logout, and minor-protection drills all green live.");
+  console.log("identity e2e OK: signup, verification, session, refresh rotation, login, logout, export, minor-protection drills, and the deletion/purge leg all green live.");
 }
 
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;

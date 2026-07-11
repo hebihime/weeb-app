@@ -764,6 +764,55 @@
           }
         }
       }
+    },
+    "/v1/me/deletion": {
+      "post": {
+        "tags": [
+          "DeletionEndpoints"
+        ],
+        "operationId": "PostMeDeletion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionRequested"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DeletionEndpoints"
+        ],
+        "operationId": "DeleteMeDeletion",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "DeletionEndpoints"
+        ],
+        "operationId": "GetMeDeletion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionStatus"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -921,6 +970,41 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        }
+      },
+      "DeletionRequested": {
+        "required": [
+          "effectiveAt",
+          "exportOffered"
+        ],
+        "type": "object",
+        "properties": {
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "exportOffered": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DeletionStatus": {
+        "required": [
+          "state",
+          "scheduledFor"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "scheduledFor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -1338,6 +1422,9 @@
     },
     {
       "name": "ExportEndpoints"
+    },
+    {
+      "name": "DeletionEndpoints"
     }
   ]
 }

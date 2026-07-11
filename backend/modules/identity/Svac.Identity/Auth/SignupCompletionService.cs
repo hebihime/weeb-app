@@ -48,6 +48,7 @@ public abstract record SignupCompleteOutcome
 public sealed class SignupCompletionService(
     IdentityDbContext db,
     IFieldEncryptor fieldEncryptor,
+    Svac.DomainCore.Contracts.FieldEncryption.IFieldKeyVault fieldKeyVault,
     IConfigRegistry config,
     Svac.DomainCore.Contracts.Streams.IEventStore eventStore,
     ConsentCurrentProjection consentCurrentProjection,
@@ -165,6 +166,19 @@ public sealed class SignupCompletionService(
             return SignupCompleteOutcome.RefusedAgeFloor;
         }
 
+        // OQ-3 (RATIFIED (a), §11/§13): consult identity.ban_evasion_refs to refuse re-registration by a
+        // previously-banned email — WIRE-UNIFORM with the age-floor refusal (the SAME outcome type, same
+        // 422 + signup.refused_age_floor key, same zero-persistence shape) so the wire never distinguishes
+        // "you're underage" from "this email is banned" — no oracle. A distinct BEHAVIORAL event (never
+        // exposed to the client) preserves server-side operational visibility.
+        var banEvasionRef = await Svac.Identity.Deletion.BanEvasionRefs.ComputeHmacRef(fieldKeyVault, challenge.EmailLower, ct);
+        if (await scope.Db.BanEvasionRefs.AnyAsync(b => b.HmacEmail == banEvasionRef, ct))
+        {
+            await scope.Events.Append(StreamType.Behavioral, ctx.Actor.Id.ToString(), "identity.signup_refused_ban_evasion", "{}", ctx, ExpectedVersion.AnyVersion, ct);
+            await scope.CommitAsync(ct);
+            return SignupCompleteOutcome.RefusedAgeFloor;
+        }
+
         var handleValidation = HandleRules.Validate(handleRaw);
         if (!handleValidation.IsValid)
         {
@@ -173,8 +187,14 @@ public sealed class SignupCompletionService(
         }
         var canonicalHandle = handleValidation.Canonical!;
 
+        // OQ-2 (RATIFIED (b), §11/§13): a retired handle past its retirement_days quarantine window is
+        // available again — lazy expiry (no background sweep needed), mirroring ExportEndpoints' own
+        // lazy-expiry posture. Mirrored in SignupEndpoints.GetHandleAvailability so the availability
+        // check and this enforcement never disagree.
+        var retirementDays = await config.GetValue<int>(IdentityConfigKeys.HandleRetirementDays, ct);
+        var retirementCutoff = now.AddDays(-retirementDays);
         var reservedOrRetired = await scope.Db.ReservedHandles.AnyAsync(h => h.Handle == canonicalHandle, ct)
-            || await scope.Db.RetiredHandles.AnyAsync(h => h.Handle == canonicalHandle, ct);
+            || await scope.Db.RetiredHandles.AnyAsync(h => h.Handle == canonicalHandle && h.RetiredAt > retirementCutoff, ct);
         if (reservedOrRetired)
         {
             await scope.RollbackAsync(ct);

@@ -76,6 +76,22 @@
     {
       "key": "email.export_ready.body",
       "consumer": "IEmailSender template — the data-export-ready notification (SLICE_S3_CONTRACT.md §1d/§6b/§7), sent by Svac.Identity.Export.ExportWorker when a requested export reaches state=ready"
+    },
+    {
+      "key": "email.deletion_scheduled.subject",
+      "consumer": "IEmailSender template — POST /v1/me/deletion (SLICE_S3_CONTRACT.md §2/§7): grace end date, cancel path, export offer; sent at request time"
+    },
+    {
+      "key": "email.deletion_scheduled.body",
+      "consumer": "IEmailSender template — POST /v1/me/deletion (SLICE_S3_CONTRACT.md §2/§7): grace end date, cancel path, export offer; sent at request time"
+    },
+    {
+      "key": "email.deletion_completed.subject",
+      "consumer": "IEmailSender template — the Phase P deletion worker (SLICE_S3_CONTRACT.md §2/§7): the LAST outbound act before the crypto-shred"
+    },
+    {
+      "key": "email.deletion_completed.body",
+      "consumer": "IEmailSender template — the Phase P deletion worker (SLICE_S3_CONTRACT.md §2/§7): the LAST outbound act before the crypto-shred"
     }
   ]
 }

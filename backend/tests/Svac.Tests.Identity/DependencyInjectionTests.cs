@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Svac.DomainCore.DependencyInjection;
 using Svac.Identity.Contracts;
 using Svac.Identity.DependencyInjection;
+using Svac.Identity.Email;
 using Xunit;
 
 namespace Svac.Tests.Identity;
@@ -23,9 +24,12 @@ public sealed class DependencyInjectionTests
         services.AddDomainCore("Host=localhost;Database=svac-di-check-only", devSeamsEnabled: true);
         // BUILD phase: AddIdentityModule now takes IdentityDbContext's own connection string (mirrors
         // AddDomainCore's shape). AddDbContext<T> registers lazily, so building the provider still never
-        // opens a real Postgres connection — no smtpOptions passed, so IEmailSender's fail-closed throw
-        // registration is exercised too (never resolved by this test, so it never fires).
-        services.AddIdentityModule("Host=localhost;Database=svac-di-check-only");
+        // opens a real Postgres connection. Pass 2b's real IAccountLifecycle (AccountLifecycle, replacing
+        // the Phase-1 throwing stub) legitimately needs IEmailSender at construction (RequestDeletion
+        // sends email.deletion_scheduled) — smtpOptions is passed now so resolving IAccountLifecycle below
+        // does not trip L18's fail-closed IEmailSender throw; DevSeamsNotInProdDiTests.cs +
+        // DeletionEndpointsHttpTests.cs separately prove the no-smtp-configured throw itself still fires.
+        services.AddIdentityModule("Host=localhost;Database=svac-di-check-only", SmtpTransportOptions.MailpitDefault());
 
         using var provider = services.BuildServiceProvider();
 

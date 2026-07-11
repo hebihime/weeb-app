@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Svac.DomainCore.Contracts;
@@ -28,11 +27,22 @@ public sealed class PurgePipeline(
     IPurgeRegistry registry,
     IFieldEncryptor fieldEncryptor,
     IPolicyEngine policyEngine,
-    IFieldKeyVault keyVault)
+    IFieldKeyVault keyVault,
+    IEnumerable<IPurgeStoreExecutor>? storeExecutors = null)
     : IPurgePipeline
 {
     private static readonly Dictionary<string, StreamType> EventStoreKeys = CoreDbContext.StreamTables
         .ToDictionary(kv => kv.Value, kv => kv.Key);
+
+    /// <summary>
+    /// The extraction seam (SLICE_S3_CONTRACT.md §6c): every registered store OUTSIDE the six native
+    /// event streams / ledger pair / quota_counters / crypto-shred pair routes here by storeKey. Empty at
+    /// S1/S2 (no registrants) — identity is the first real registrant (§6a), and this dictionary is built
+    /// once per pipeline instance from whatever <see cref="IPurgeStoreExecutor"/>s DI supplies, exactly
+    /// like <see cref="Svac.DomainCore.Policy.PolicyEngine"/>'s own ownership-resolver dictionary.
+    /// </summary>
+    private readonly Dictionary<string, IPurgeStoreExecutor> _storeExecutorsByKey =
+        (storeExecutors ?? Enumerable.Empty<IPurgeStoreExecutor>()).ToDictionary(e => e.StoreKey);
 
     /// <summary>Never destroyed by Shred(purpose, subjectScope) — a separate namespace from the per-(purpose, subject) crypto-shred keys.</summary>
     private const string PseudonymizeHmacKeyName = "purge-pseudonymize-hmac-v1";
@@ -54,7 +64,7 @@ public sealed class PurgePipeline(
         [StreamType.Audit] = TimeSpan.FromDays(365 * 7),
     };
 
-    public async Task<IReadOnlyList<PurgeReport>> Run(PurgeClass purgeClass, SubjectRef subject, ActorRef actor, RequestContext ctx, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PurgeReport>> Run(PurgeClass purgeClass, SubjectRef subject, ActorRef actor, RequestContext ctx, IReadOnlySet<string>? heldStoreKeys = null, CancellationToken ct = default)
     {
         var decision = await policyEngine.Authorize(actor, "core.purge.execute", TargetRef.ForAction("core.purge.execute"), ct);
         if (!decision.IsAllowed)
@@ -81,7 +91,12 @@ public sealed class PurgePipeline(
         var pseudonymizedSubjectRef = $"{subject.ResourceType}:{PseudonymizeRef(subject.ResourceId, purgeClass, hmacKey)}";
 
         var reports = new List<PurgeReport>();
-        foreach (var storeKey in registry.RegisteredStoreKeys)
+        // First-occurrence (registration) order, never the unordered RegisteredStoreKeys set (SLICE_S3_
+        // CONTRACT.md §6a): a store's purge can depend on ANOTHER store's row still being live (identity's
+        // email_challenges-by-email S2 scar reads the account's still-live email before accounts' own
+        // Tombstone nulls it) — the registry's declared order is now load-bearing, not incidental.
+        var orderedStoreKeys = registry.Entries.Select(e => e.StoreKey).Distinct().ToList();
+        foreach (var storeKey in orderedStoreKeys)
         {
             var entry = registry.EntriesFor(storeKey).SingleOrDefault(e => e.PurgeClass == purgeClass);
             if (entry is null)
@@ -89,9 +104,11 @@ public sealed class PurgePipeline(
                 continue; // registry gap for this (store, class) pair — the arch test's completeness suite catches this, not a silent skip here.
             }
 
+            var isHeld = heldStoreKeys is { Count: > 0 } && heldStoreKeys.Contains(storeKey);
+
             var runId = MintRunId(DateTimeOffset.UtcNow);
             var startedAt = DateTimeOffset.UtcNow;
-            var rowsAffected = entry.Verb == PurgeVerb.NotApplicable
+            var rowsAffected = isHeld || entry.Verb == PurgeVerb.NotApplicable
                 ? 0
                 : await ExecuteVerb(storeKey, entry.Verb, subject, purgeClass, hmacKey, ct);
             var completedAt = DateTimeOffset.UtcNow;
@@ -105,10 +122,15 @@ public sealed class PurgePipeline(
                 RowsAffected = rowsAffected,
                 StartedAt = startedAt,
                 CompletedAt = completedAt,
-                EvidenceJson = JsonSerializer.Serialize(new { verb = entry.Verb.ToString(), reason = entry.Reason }),
+                // ER-14 (SLICE_S3_CONTRACT.md §2 Phase P step 1): a held store's receipt records the verb
+                // as "Held" with the documented basis, never silently running (or silently skipping with
+                // no evidence at all) the registry's own declared verb.
+                EvidenceJson = isHeld
+                    ? JsonSerializer.Serialize(new { verb = "Held", reason = entry.Reason, custodyHold = true })
+                    : JsonSerializer.Serialize(new { verb = entry.Verb.ToString(), reason = entry.Reason }),
             });
 
-            var auditPayload = JsonSerializer.Serialize(new { runId, storeKey, purgeClass = purgeClass.ToString(), verb = entry.Verb.ToString(), rowsAffected });
+            var auditPayload = JsonSerializer.Serialize(new { runId, storeKey, purgeClass = purgeClass.ToString(), verb = isHeld ? "Held" : entry.Verb.ToString(), rowsAffected });
             await eventStore.Append(StreamType.Audit, streamId: runId, eventType: "purge.run", payloadJson: auditPayload, auditCtx, ExpectedVersion.AnyVersion, ct);
 
             reports.Add(new PurgeReport(runId, storeKey, purgeClass, rowsAffected, startedAt, completedAt));
@@ -130,11 +152,14 @@ public sealed class PurgePipeline(
             "ledger_balances" => await ExecuteOnLedgerBalances(verb, subject, ct),
             "quota_counters" => await ExecuteOnQuotaCounters(verb, subject, ct),
             "data_protection_keys" or "field_key_refs" => await ExecuteCryptoShred(storeKey, verb, subject, ct),
-            // config_entries (NotApplicable by construction), purge_runs/projection_checkpoints
-            // (operational metadata, never subject-scoped) — no direct subject-scoped mutation; their
-            // registry cells for a reachable class are NotApplicable in every row this pipeline is ever
-            // called with in practice.
-            _ => 0,
+            // Every OTHER registered store (SLICE_S3_CONTRACT.md §6c extraction seam): a DI-registered
+            // IPurgeStoreExecutor for this exact key, if one exists. config_entries (NotApplicable by
+            // construction), purge_runs/projection_checkpoints (operational metadata, never subject-
+            // scoped) have no executor registered and no reachable non-NotApplicable cell in practice, so
+            // the fallback 0 below preserves S1's original byte-identical behavior for them.
+            _ => _storeExecutorsByKey.TryGetValue(storeKey, out var executor)
+                ? await executor.ExecuteAsync(verb, purgeClass, subject, hmacKey, ct)
+                : 0,
         };
     }
 
@@ -354,12 +379,8 @@ public sealed class PurgePipeline(
     /// is entirely supplied by the keyed hash, so the result is deterministic given (purgeClass,
     /// original, key) — required so re-running the SAME purge idempotently re-derives the SAME pseudonym.
     /// </summary>
-    private static string PseudonymizeRef(string original, PurgeClass purgeClass, byte[] hmacKey)
-    {
-        var bytes = HMACSHA256.HashData(hmacKey, Encoding.UTF8.GetBytes($"{purgeClass}:{original}"));
-        var body = Ulid.Encode(0, bytes.AsSpan(0, 10));
-        return Ulid.WithPrefix(IdPrefixes.Pseudonym, body);
-    }
+    private static string PseudonymizeRef(string original, PurgeClass purgeClass, byte[] hmacKey) =>
+        PurgePseudonymizer.Pseudonymize(original, purgeClass, hmacKey);
 
     private static string MintRunId(DateTimeOffset now)
     {

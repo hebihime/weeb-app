@@ -71,4 +71,8 @@
     <string name="email_email_changed_notice_body">Se cambió el correo de tu cuenta. Si no fuiste tú, revoca tus sesiones de inmediato.</string>
     <string name="email_export_ready_subject">Tu exportación de datos de Weeb está lista</string>
     <string name="email_export_ready_body">La exportación de datos que solicitaste ya está lista para descargar.</string>
+    <string name="email_deletion_scheduled_subject">La eliminación de tu cuenta de Weeb está programada</string>
+    <string name="email_deletion_scheduled_body">Tu cuenta está programada para eliminación el {{scheduledFor}}. Puedes cancelar en cualquier momento antes de esa fecha.</string>
+    <string name="email_deletion_completed_subject">Tu cuenta de Weeb ha sido eliminada</string>
+    <string name="email_deletion_completed_body">Tu cuenta y sus datos han sido eliminados, según lo solicitado.</string>
 </resources>

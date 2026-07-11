@@ -15,6 +15,21 @@ public static class IdentityConfigKeys
     public const string ExportLinkTtlHours = "identity.export.link_ttl_hours";
     /// <summary>[export build] The Art. 12(3) statutory clock (SLICE_S3_CONTRACT.md §4) — real consumer: ExportWorker's manifest.json `statutoryDeadlineAt` annotation (the S5 desk's future render target).</summary>
     public const string ExportStatutoryDeadlineDays = "identity.export.statutory_deadline_days";
+    /// <summary>[deletion build] identity.email_challenges' 13A retention_expiry sweep window (SLICE_S3_CONTRACT.md §4) — real consumer: EmailChallengesPurgeStoreExecutor's RetentionExpiry age gate.</summary>
+    public const string EmailChallengeRetentionHours = "identity.email_challenge.retention_hours";
+    /// <summary>[deletion build] Post-deletion identity.handle_history sweep window (SLICE_S3_CONTRACT.md §4, impersonation-defense) — real consumer: HandleHistoryPurgeStoreExecutor's RetentionExpiry age gate.</summary>
+    public const string HandleHistoryRetentionMonths = "identity.handle_history.retention_months";
+
+    // --- Deletion pipeline (SLICE_S3_CONTRACT.md §2/§4, THIS build) ---
+
+    /// <summary>Phase L grace window: deletion_effective_at = now + grace_days, bounds [0,30] — 0 is bounds-legal so the E2E's worker executes live (§4).</summary>
+    public const string DeletionGraceDays = "identity.deletion.grace_days";
+    /// <summary>Deletion/expiry worker interval (SLICE_S3_CONTRACT.md §4) — real consumer: the sweep worker's polling cadence.</summary>
+    public const string DeletionSweepMinutes = "identity.deletion.sweep_minutes";
+    /// <summary>Phase P's cap on waiting for a pending export to finish before proceeding with the purge (SLICE_S3_CONTRACT.md §2/§4).</summary>
+    public const string ExportPreDeletionWaitHours = "identity.export.pre_deletion_wait_hours";
+    /// <summary>OQ-2's quarantine window before a retired handle is eligible for release (SLICE_S3_CONTRACT.md §4) — registered/consumed at the config layer even though the dedicated global release sweep is out of this pass's scope (see IdentityPurgeRegistrySource's identity.retired_handles RetentionExpiry reason).</summary>
+    public const string HandleRetirementDays = "identity.handle.retirement_days";
 }
 
 /// <summary>The 10A quota keys this build's endpoints consume (SLICE_S3_CONTRACT.md §5).</summary>

@@ -71,4 +71,8 @@
     <string name="email_email_changed_notice_body">Your account email was changed. If this wasn\'t you, revoke your sessions immediately.</string>
     <string name="email_export_ready_subject">Your Weeb data export is ready</string>
     <string name="email_export_ready_body">Your requested data export is ready to download.</string>
+    <string name="email_deletion_scheduled_subject">Your Weeb account deletion is scheduled</string>
+    <string name="email_deletion_scheduled_body">Your account is scheduled for deletion on {{scheduledFor}}. You can cancel any time before then.</string>
+    <string name="email_deletion_completed_subject">Your Weeb account has been deleted</string>
+    <string name="email_deletion_completed_body">Your account and its data have been deleted, as requested.</string>
 </resources>

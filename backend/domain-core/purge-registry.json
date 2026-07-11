@@ -502,5 +502,473 @@
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
     "reason": "non-PII operational metadata (per-consumer watermarks)"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "keyed by email, not account_id (\u00A76a S2 scar) \u2014 hard delete every row matching the account\u0027s own account_id (login/email_change) or its still-live email (signup)"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete; the in-tx under-13 hard delete already happens PRE-pipeline at signup refusal (\u00A71g) \u2014 this cell covers a LATER minor-purge trigger (e.g. S18) against a challenge row that survived"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "challenges are not consent-gated"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "identity.email_challenge.retention_hours sweep"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "AccountDeletion",
+    "verb": "Tombstone",
+    "reason": "PII columns -\u003E NULL/sentinel; state pinned \u0027deleted\u0027; handle -\u003E identity.retired_handles; birthdate field key crypto-shredded via field_key_refs\u0027/data_protection_keys\u0027 existing global (purpose,subject) registration \u2014 no separate row needed here"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "Art. 17 erasure \u2014 same tombstone mechanism as AccountDeletion"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "confirmed-minor: enumerated purge, no tombstone identity survives (the legal-hold copy is S12\u0027s store, not ours)"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "account existence isn\u0027t consent-gated"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "n/a \u2014 accounts have no time-based expiry independent of deletion"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "n/a \u2014 not a blob store"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "keyed by session_id, not account_id \u2014 hard delete every row whose session belongs to this account"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "refresh tokens are not consent-gated"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "expired/consumed GC past 30 days"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "hard delete"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "sessions are not consent-gated"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "expired/revoked GC past 30 days"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "hard delete (incl. push token column)"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "device registration is not consent-gated (push CATEGORY consent lives in a separate store)"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "n/a \u2014 no independent retention ceiling declared for device rows"
+  },
+  {
+    "storeKey": "identity.devices",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "projection; stream keeps S1 OQ-1a posture \u2014 the evidence survives pseudonymized on events_consent, this cache row does not need to"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "ConsentRevocation",
+    "verb": "Delete",
+    "reason": "hard delete the account\u0027s per-category rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent \u2014 no residual row survives"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "n/a \u2014 no independent retention ceiling; bounded by the account\u0027s own lifetime"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "projection; evidence stays on the pseudonymized events_consent stream"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "ConsentRevocation",
+    "verb": "Delete",
+    "reason": "hard delete the account\u0027s consent-kind rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "n/a \u2014 bounded by the account\u0027s own lifetime"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "AccountDeletion",
+    "verb": "Pseudonymize",
+    "reason": "HMAC re-key the account_id column \u2014 moderation linkage survives for key holders, the raw id is severed"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Pseudonymize",
+    "reason": "Art. 17 erasure \u2014 same re-key mechanism"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete (no moderation-linkage exception for a confirmed minor)"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "handle changes are not consent-gated"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "identity.handle_history.retention_months sweep (impersonation-defense window)"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "AccountDeletion",
+    "verb": "Delete",
+    "reason": "hard delete incl. the artifact bytea column \u2014 the artifact contains the whole PII corpus, it dies with the account"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Delete",
+    "reason": "Art. 17 erasure \u2014 hard delete incl. artifact"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "MinorPurge",
+    "verb": "Delete",
+    "reason": "minor-protection purge \u2014 hard delete incl. artifact"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "export requests are not consent-gated"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Delete",
+    "reason": "expired-job sweep (identity.export.link_ttl_hours \u2014 delete rows whose expires_at has passed)"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "no blob exists \u2014 the Postgres-bytea ruling (\u00A712 item 5) makes this class structurally empty until S11"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "AccountDeletion",
+    "verb": "Pseudonymize",
+    "reason": "the receipt SURVIVES \u2014 proof deletion ran; HMAC re-key the account_id column, mirrors purge_runs\u0027 own subject-pseudonymization posture"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Pseudonymize",
+    "reason": "Art. 17 erasure \u2014 same re-key mechanism, receipt survives"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "MinorPurge",
+    "verb": "Pseudonymize",
+    "reason": "minor-protection purge \u2014 same re-key mechanism, receipt survives"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "deletion-job rows are not consent-gated"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "the pseudonymized receipt is retained for the statutory period; no separate expiry sweep runs against it (mirrors events_consent\u0027s own RetentionExpiry posture)"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "subject-severed at write (OQ-2, \u00A72) \u2014 no linkage to any account_id exists for a per-subject purge call to reach"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "subject-severed at write \u2014 no linkage exists"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "subject-severed at write \u2014 no linkage exists"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "not consent-gated"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "the OQ-2 quarantine-release sweep (identity.handle.retirement_days) is a GLOBAL, non-subject-scoped age sweep over the whole table \u2014 it does not fit IPurgePipeline.Run\u0027s per-subject SubjectRef shape (there is no subject column to filter on by design); landing a dedicated global sweep job is out of THIS deletion\u002Bpurge pass\u0027s scope. Registered honestly as NotApplicable-for-this-mechanism rather than a verb that would never actually fire correctly through a per-subject call."
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "StatutoryErasure",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   }
 ]

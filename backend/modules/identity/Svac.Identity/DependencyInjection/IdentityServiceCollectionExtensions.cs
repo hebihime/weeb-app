@@ -4,15 +4,19 @@ using Svac.DomainCore.Contracts.Consent;
 using Svac.DomainCore.Contracts.Email;
 using Svac.DomainCore.Contracts.Export;
 using Svac.DomainCore.Contracts.Policy;
+using Svac.DomainCore.Contracts.Purge;
 using Svac.DomainCore.Hosting;
+using Svac.DomainCore.Purge;
 using Svac.Identity.Auth;
 using Svac.Identity.Consent;
 using Svac.Identity.Contracts;
+using Svac.Identity.Deletion;
 using Svac.Identity.Email;
 using Svac.Identity.Endpoints;
 using Svac.Identity.Export;
 using Svac.Identity.Persistence;
 using Svac.Identity.Policy;
+using Svac.Identity.Purge;
 
 namespace Svac.Identity.DependencyInjection;
 
@@ -68,8 +72,33 @@ public static class IdentityServiceCollectionExtensions
         services.AddScoped<PushCategoryConsentProjection>();
         services.AddScoped<IConsentLedgerWriter, IdentityConsentLedgerWriter>();
 
-        services.AddScoped<IAccountLifecycle, AccountLifecycleStub>();
+        services.AddScoped<IAccountLifecycle, AccountLifecycle>();
         services.AddScoped<IAccountDirectory, AccountDirectory>();
+
+        // SLICE_S3_CONTRACT.md §2/§6a/§6c (deletion + purge build): the DELETION pipeline (Phase L via
+        // AccountLifecycle above, Phase P via DeletionPhysicalPurgeWorker), identity's own additive slice
+        // of the 13A registry, and the ten real IPurgeStoreExecutor registrants — every identity store
+        // whose registry cell is ever something other than NotApplicable. identity.reserved_handles/
+        // retired_handles/ban_evasion_refs need none (always NotApplicable; PurgePipeline never calls a
+        // store's executor for that verb).
+        services.AddSingleton<IPurgeRegistrySource, IdentityPurgeRegistrySource>();
+        services.AddScoped<IPurgeStoreExecutor, EmailChallengesPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, AccountsPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, SessionsPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, RefreshTokensPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, DevicesPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, PushCategoryConsentsPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, ConsentCurrentPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, HandleHistoryPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, ExportJobsPurgeStoreExecutor>();
+        services.AddScoped<IPurgeStoreExecutor, DeletionJobsPurgeStoreExecutor>();
+
+        // The 13A custody-hold consult seam (ER-14, §2 Phase P step 1) — no real hold data exists before
+        // S12; production always resolves the honest "no holds" registry. Svac.Tests.Identity's red
+        // fixture registers its own ICustodyHoldRegistry directly against a fresh ServiceCollection to
+        // prove the held/skip/release behavior without touching this composition.
+        services.AddScoped<ICustodyHoldRegistry, NoCustodyHoldRegistry>();
+        services.AddScoped<DeletionPhysicalPurgeWorker>();
 
         // SLICE_S3_CONTRACT.md §1c BUILD (signup/* + auth/* + minimal GET /v1/me): the endpoint-facing
         // services + the host-level per-IP transport rate limiter (never a 10A entry, §1c).

@@ -65,7 +65,14 @@ public static class DomainCoreServiceCollectionExtensions
 
         services.AddScoped<ILedger, LedgerService>();
 
-        services.AddSingleton<IPurgeRegistry, PurgeRegistry>();
+        // Phase-2a (SLICE_S3_CONTRACT.md §6a): IPurgeRegistry becomes the boot-time UNION of every
+        // registered IPurgeRegistrySource, exactly like IPolicyTable/IExportRegistry above.
+        // CorePurgeRegistrySource is source #1 (domain-core's own stores) — with ONLY this source
+        // registered (true at S1/S2), the union is byte-identical to the old table. Identity registers
+        // its own additional source in AddIdentityModule, plus one IPurgeStoreExecutor per identity store
+        // (the pluggable per-store execution seam PurgePipeline falls back to for any non-native key).
+        services.AddSingleton<IPurgeRegistrySource, CorePurgeRegistrySource>();
+        services.AddSingleton<IPurgeRegistry>(sp => new PurgeRegistry(sp.GetServices<IPurgeRegistrySource>()));
         services.AddScoped<IPurgePipeline, PurgePipeline>();
 
         // Phase-2a (SLICE_S3_CONTRACT.md §6b): IExportRegistry becomes the boot-time UNION of every
