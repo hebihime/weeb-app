@@ -22,8 +22,12 @@ env:
       forceLightMode: true
 
 # --- Trunk test: brand mark + the five-tab shell present on first launch (DR-1.1) ---
-- assertVisible:
-    id: "brand.wordmark"
+# extendedWaitUntil (not bare assertVisible) so a cold-launch first-render doesn't race the assertion
+# (HARDENED GATE clause 6: no flaky tests) — the wordmark is the first thing drawn, wait up to 15s for it.
+- extendedWaitUntil:
+    visible:
+      id: "brand.wordmark"
+    timeout: 15000
 # The wordmark carries the brand name as its accessibility label — proves the correct FLAVOR launched.
 - assertVisible: ".*${WORDMARK}.*"
 
@@ -38,8 +42,14 @@ env:
     arguments:
       forceLightMode: true
       appLocale: "es"
-- assertVisible:
-    id: "brand.wordmark"
+# Tolerant waits: a cold relaunch + locale override must not race the first render (the friki leg flaked
+# here on a bare assertVisible while weeb passed — HARDENED GATE clause 6).
+- extendedWaitUntil:
+    visible:
+      id: "brand.wordmark"
+    timeout: 15000
 - tapOn:
     id: "signup.start"
-- assertVisible: "${ES_HANDLE_TITLE}"
+- extendedWaitUntil:
+    visible: "${ES_HANDLE_TITLE}"
+    timeout: 10000
