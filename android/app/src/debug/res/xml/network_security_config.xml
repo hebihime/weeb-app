@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only override of android/app/src/main/res/xml/network_security_config.xml (same resource name;
+  the debug source set wins for debug builds via Android's standard resource-merge priority). Loopback
+  cleartext exceptions ONLY — for the debug-build-only diagnostics screen talking to the local compose
+  backend (SLICE_S7_CONTRACT.md §9f).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

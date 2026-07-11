@@ -10,13 +10,16 @@ import Strings
 public struct StateView: View {
     private let spec: StateSpec
     private let accessibilityID: String?
-    private let locale: Locale
+    private let locale: Locale?
     private let ctaAction: (() -> Void)?
 
+    /// `locale: nil` (the default — how the app mounts every state) lets L10n resolve against its
+    /// effective default locale, so a DEBUG harness locale override reaches these strings too. The
+    /// snapshot suite passes an explicit locale to force each of the four.
     public init(
         spec: StateSpec,
         accessibilityID: String? = nil,
-        locale: Locale = .current,
+        locale: Locale? = nil,
         ctaAction: (() -> Void)? = nil
     ) {
         self.spec = spec

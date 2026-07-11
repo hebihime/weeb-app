@@ -63,6 +63,11 @@ jobs:
           echo "installed platforms:"; ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || ls "$ANDROID_HOME/platforms" 2>/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         if: steps.guard.outputs.present == 'true'
+        with:
+          # Read-only across the parallel matrix jobs: they otherwise race to SAVE the same cache key
+          # ("ReserveCacheError: another job may be creating this cache"), which can restore a partial
+          # cache into a sibling job. Reads are shared; no job writes.
+          cache-read-only: true
       # The openapi-generator gradle plugin generates the kotlinx-serialization client from the checked-in
       # canonical contracts/openapi.v0.json at build time (B17 consumption proof) — never committed.
       - name: unit + snapshot tests (${{ matrix.flavor }} debug)

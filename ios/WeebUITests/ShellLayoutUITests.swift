@@ -79,6 +79,33 @@ final class ShellLayoutUITests: XCTestCase {
         XCTAssertLessThanOrEqual(cta.frame.maxY, barTop + 1, "the CTA's bottom must be at or above the tab bar's top edge")
     }
 
+    /// The ES-locale smoke leg (DR-6.2 / smoke.yaml final assertion): launching with the harness
+    /// `appLocale=es` argument must render the handle-step title's Spanish .xcstrings value, exactly
+    /// "Elige tu usuario". This drives the SAME debug-gated launch-argument path Maestro exercises.
+    func testSpanishLaunchArgumentRendersSpanishHandleTitle() {
+        let app = XCUIApplication()
+        // Both forms the real harness might use: the `-key value` argument-domain pair AND a
+        // single `appLocale=es` token — LaunchLocale.resolveCode handles either.
+        app.launchArguments += ["-appLocale", "es", "appLocale=es"]
+        app.launch()
+
+        app.buttons["signup.start"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Elige tu usuario"].waitForExistence(timeout: 10),
+            "with appLocale=es the handle-step title must render the ES value 'Elige tu usuario'"
+        )
+        // And the EN value must NOT be what's shown (proves the override actually took effect).
+        XCTAssertFalse(app.staticTexts["Choose your handle"].exists, "ES launch arg must not still render the EN title")
+    }
+
+    /// Sanity counterpart: with no locale argument the app renders its default (EN on the CI runner),
+    /// so the override is genuinely opt-in and does not leak into normal launches.
+    func testNoLocaleArgumentRendersDefaultEnglishHandleTitle() {
+        let app = launch()
+        app.buttons["signup.start"].tap()
+        XCTAssertTrue(app.staticTexts["Choose your handle"].waitForExistence(timeout: 10))
+    }
+
     /// The signup shell walks to the honest gateway-refusal terminus (no fake success path).
     func testSignupWalkReachesCouldNotSend() {
         let app = launch()

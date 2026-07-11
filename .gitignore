@@ -31,8 +31,10 @@ match-*.git-crypt
 # ---- .NET (backend) ----
 bin/
 obj/
-[Dd]ebug/
-[Rr]elease/
+# NOTE: do NOT add unanchored `[Dd]ebug/` / `[Rr]elease/` here. .NET build output already lives under
+# bin/ + obj/ (covered above); an unanchored debug/release dir pattern also silently swallows SOURCE
+# directories like android/app/src/debug/ (S7: the whole Android debug source set went uncommitted this
+# way, absent on CI). If a non-standard .NET output dir ever appears, anchor it (e.g. backend/**/bin/).
 *.user
 project.lock.json
 .vs/

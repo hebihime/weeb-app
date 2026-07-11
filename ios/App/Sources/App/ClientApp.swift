@@ -11,6 +11,14 @@ import AppShell
 
 @main
 struct ClientApp: App {
+    init() {
+        #if DEBUG
+        // Install the E2E harness locale override (Maestro `appLocale=<code>`) before any view renders.
+        // Compiled out of release entirely — LaunchLocale does not exist there (DR-7.7).
+        LaunchLocale.applyOverrideIfPresent()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(wordmarkDisplayName: Self.wordmarkDisplayName)

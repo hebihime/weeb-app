@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay (SLICE_S7_CONTRACT.md §9d/§1d). Two things live here and ONLY here, so
+  release (which has no src/debug) is structurally free of both:
+    1. INTERNET — the debug-build-only diagnostics screen is the sole caller that ever opens a socket;
+       release merges without this permission and cannot acquire it (§1d fail-closed by absence).
+    2. DebugSurfaceInitializer — a ContentProvider that wires app.client.DebugSurface.entry to the
+       diagnostics / state-gallery surface at process start. This is the decoupling mechanism: src/main
+       references only its own DebugSurface, never the app.client.debug package, so main compiles in
+       every variant; the debug surface is attached at runtime here, in debug only.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <provider
+            android:name="app.client.debug.DebugSurfaceInitializer"
+            android:authorities="${applicationId}.debugsurface"
+            android:exported="false"
+            android:enabled="true" />
+    </application>
+</manifest>

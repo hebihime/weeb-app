@@ -125,6 +125,25 @@ public struct RootView: View {
             .signupPresentation(isPresented: $isSignupPresented) {
                 SignupHost(isPresented: $isSignupPresented)
             }
+            .debugLocaleEnvironment()
+    }
+}
+
+extension View {
+    /// DEBUG-only: mirror the E2E harness locale override into SwiftUI's `\.locale` environment (for
+    /// built-in date/number formatting) alongside L10n's string-level override. A no-op in release —
+    /// LaunchLocale does not exist there (DR-7.7), so this modifier compiles to `self`.
+    @ViewBuilder
+    fileprivate func debugLocaleEnvironment() -> some View {
+        #if DEBUG
+        if let locale = LaunchLocale.overrideLocale {
+            self.environment(\.locale, locale)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
     }
 }
 

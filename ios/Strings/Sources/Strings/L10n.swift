@@ -56,19 +56,44 @@ public enum BrandStringPack: String, Sendable, CaseIterable {
 public enum L10n {
     static let commonTable = "Localizable"
 
+    #if DEBUG
+    /// DEBUG-ONLY forced locale, installed once at launch by AppShell.LaunchLocale when an E2E harness
+    /// passes `appLocale=<code>` (Maestro's `launchApp arguments: { appLocale: "es" }`). iOS does not
+    /// natively interpret that custom argument, so this is how the ES-locale smoke leg makes the app
+    /// render its `.xcstrings` Spanish values. Compiled out entirely in release (DR-7.7: no
+    /// locale-override path ships) — see `effectiveDefaultLocale`. Written once before any UI renders,
+    /// then read-only; `nonisolated(unsafe)` is the pragmatic annotation for that one-shot startup set.
+    public nonisolated(unsafe) static var debugLocaleOverride: Locale?
+    #endif
+
+    /// The locale a lookup uses when the caller does not force one explicitly (`locale: nil`). In
+    /// release this is always the device locale; in DEBUG it honors a harness override if one was set.
+    static var effectiveDefaultLocale: Locale {
+        #if DEBUG
+        return debugLocaleOverride ?? .current
+        #else
+        return .current
+        #endif
+    }
+
     /// Resolve a key from the shared common catalog. `key` must exist ×4 locales (i18n-lint enforces).
-    public static func string(_ key: String, locale: Locale = .current, bundle: Bundle = .main) -> String {
-        resolvedBundle(for: locale, in: bundle).localizedString(forKey: key, value: nil, table: commonTable)
+    /// `locale: nil` (the default at every production call site — there is no in-app language picker,
+    /// DR-7.7) resolves to `effectiveDefaultLocale`; the snapshot suite passes an explicit locale to
+    /// force each of the four.
+    public static func string(_ key: String, locale: Locale? = nil, bundle: Bundle = .main) -> String {
+        resolvedBundle(for: locale ?? effectiveDefaultLocale, in: bundle)
+            .localizedString(forKey: key, value: nil, table: commonTable)
     }
 
     /// Resolve a brand-voice-overlay key for the given pack (defaults to the compiled-in target brand).
     public static func brandString(
         _ key: String,
         pack: BrandStringPack = .current(),
-        locale: Locale = .current,
+        locale: Locale? = nil,
         bundle: Bundle = .main
     ) -> String {
-        resolvedBundle(for: locale, in: bundle).localizedString(forKey: key, value: nil, table: pack.overlayTable)
+        resolvedBundle(for: locale ?? effectiveDefaultLocale, in: bundle)
+            .localizedString(forKey: key, value: nil, table: pack.overlayTable)
     }
 
     /// Finds the best `.lproj` sub-bundle for `locale` among `bundle`'s actual compiled localizations,
@@ -106,7 +131,7 @@ public enum MessageKey {
     public static let errorGeneric = "error.generic"
     public static let errorCouldNotSend = "error.could_not_send"
 
-    public static func text(_ key: String, locale: Locale = .current, bundle: Bundle = .main) -> String {
+    public static func text(_ key: String, locale: Locale? = nil, bundle: Bundle = .main) -> String {
         L10n.string(key, locale: locale, bundle: bundle)
     }
 }

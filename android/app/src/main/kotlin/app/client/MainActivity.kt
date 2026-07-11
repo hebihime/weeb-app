@@ -24,7 +24,6 @@ import java.util.Locale
 import app.client.appshell.AppShell
 import app.client.appshell.AppShellStrings
 import app.client.appshell.TabCopy
-import app.client.debug.debugEntryPoint
 import app.client.designkit.Palette
 import app.client.designkit.tokenColor
 import app.client.designkit.weebTypography
@@ -102,7 +101,9 @@ private fun WeebAppRoot() {
         Surface(modifier = Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
             var showSignup by remember { mutableStateOf(false) }
             var showDebugSurface by remember { mutableStateOf(false) }
-            val debugSurface: (@Composable () -> Unit)? = debugEntryPoint
+            // Read main's own registry — never the debug package. In a debug build a ContentProvider
+            // in src/debug set this at process start; in release it is null (§9d).
+            val debugSurface: (@Composable () -> Unit)? = DebugSurface.entry
 
             if (showDebugSurface && debugSurface != null) {
                 debugSurface.invoke()
