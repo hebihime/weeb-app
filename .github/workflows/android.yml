@@ -146,10 +146,18 @@ jobs:
           echo "installed platforms:"; ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || ls "$ANDROID_HOME/platforms" 2>/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         if: steps.guard.outputs.present == 'true'
-      - name: assemble debug APK
+      - name: assemble debug APK + export its absolute path
         if: steps.guard.outputs.present == 'true'
         working-directory: android
-        run: ./gradlew assemble${{ matrix.flavor }}Debug --stacktrace
+        run: |
+          ./gradlew assemble${{ matrix.flavor }}Debug --stacktrace
+          # Resolve the APK HERE (correct CWD + filesystem) and hand it to the emulator step via env —
+          # the emulator-runner action's own script has an unreliable CWD/$GITHUB_WORKSPACE.
+          APK=$(find "$PWD/app/build/outputs/apk" -name "app-${{ matrix.brand }}-debug.apk" | head -1)
+          test -n "$APK"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          echo "FLOW_PATH=$GITHUB_WORKSPACE/maestro/flows/brand-smoke/smoke.yaml" >> "$GITHUB_ENV"
+          echo "resolved APK_PATH=$APK"
       - name: install maestro
         if: steps.guard.outputs.present == 'true'
         run: |
@@ -169,16 +177,14 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # The action's script CWD is not guaranteed to be the workspace root — use absolute
-          # $GITHUB_WORKSPACE paths for both the APK and the flow (a relative `find android`/`maestro
-          # test maestro/...` silently resolved to nothing and adb got an empty filename).
+          # APK_PATH / FLOW_PATH were resolved in the assemble step (correct context) and passed via
+          # $GITHUB_ENV — the action's own script has an unreliable CWD/$GITHUB_WORKSPACE.
           script: |
             set -e
-            APK=$(find "$GITHUB_WORKSPACE/android" -name "app-${{ matrix.brand }}-debug.apk" | head -1)
-            echo "APK: $APK"
-            test -n "$APK"
-            adb install -r "$APK"
-            maestro test "$GITHUB_WORKSPACE/maestro/flows/brand-smoke/smoke.yaml" \
+            echo "APK_PATH=$APK_PATH"
+            test -n "$APK_PATH"
+            adb install -r "$APK_PATH"
+            maestro test "$FLOW_PATH" \
               -e APP_ID=${{ matrix.app_id }} \
               -e BRAND=${{ matrix.brand }} \
               -e WORDMARK=${{ matrix.wordmark }} \
