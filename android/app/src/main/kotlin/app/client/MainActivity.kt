@@ -1,16 +1,26 @@
 package app.client
 
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import java.util.Locale
 import app.client.appshell.AppShell
 import app.client.appshell.AppShellStrings
 import app.client.appshell.TabCopy
@@ -31,12 +41,41 @@ import app.client.features.signup.UnavailableSignupGateway
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Debug-only locale test seam. §9e / DR-7.7: NO in-app language picker ships — locale follows
+        // the device. This is NOT a picker; it is a Maestro launch-argument hook, gated to debug so a
+        // release build has no locale-override code path at all. Maestro's ES-locale smoke launches
+        // with `-e appLocale=es`, which arrives as an "appLocale" intent extra (launch arguments do
+        // NOT change the emulator's system locale), and honoring it lets the flow assert the ES
+        // handle-step title ("Elige tu usuario") without any device-level locale change.
+        val overrideLocale =
+            if (BuildConfig.DEBUG) intent?.extras?.getString("appLocale")?.takeIf { it.isNotBlank() } else null
+
         setContent {
-            WeebAppRoot()
+            if (overrideLocale == null) {
+                WeebAppRoot()
+            } else {
+                val base = LocalContext.current
+                val localizedContext = remember(overrideLocale) {
+                    val config = Configuration(base.resources.configuration)
+                    config.setLocale(Locale.forLanguageTag(overrideLocale))
+                    base.createConfigurationContext(config)
+                }
+                // stringResource reads LocalContext.current.resources (keyed on LocalConfiguration for
+                // recomposition), so providing both makes every stringResource() resolve in the
+                // overridden locale for the whole tree.
+                CompositionLocalProvider(
+                    LocalContext provides localizedContext,
+                    LocalConfiguration provides localizedContext.resources.configuration,
+                ) {
+                    WeebAppRoot()
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun WeebAppRoot() {
     // Force light mode at S7 (DR-6.3) — the Choco dark palette is carried in Tokens.kt but read by
@@ -53,7 +92,14 @@ private fun WeebAppRoot() {
     )
 
     MaterialTheme(colorScheme = colorScheme, typography = weebTypography) {
-        Surface {
+        // testTagsAsResourceId is what makes every child's `Modifier.testTag("...")` visible to Maestro
+        // as an Android resource-id (the `id:` selector maestro/flows/brand-smoke asserts against).
+        // Without this one flag at the tree root, Compose testTags stay internal to the Compose
+        // semantics tree and Maestro's id: matcher finds nothing — set once here, inherited by the
+        // whole subtree (AppShell, SignupFlow, the debug surface). The contentDescription each element
+        // ALSO sets is the TalkBack/a11y label; the two are complementary (maestro/README.md: the id
+        // string == the a11y label).
+        Surface(modifier = Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
             var showSignup by remember { mutableStateOf(false) }
             var showDebugSurface by remember { mutableStateOf(false) }
             val debugSurface: (@Composable () -> Unit)? = debugEntryPoint

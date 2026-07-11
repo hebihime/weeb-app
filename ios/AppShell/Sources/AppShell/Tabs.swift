@@ -81,6 +81,15 @@ public struct TabContentView: View {
 /// The five-tab shell + the brand mark chrome + the mode chip (never visible at S7 — ModeContext.boot()
 /// only ever returns `.online`). This is the ONE shared shell layout the trunk test runs against on
 /// every screen (§9b).
+///
+/// A CUSTOM bottom tab bar (an HStack of five Buttons), NOT SwiftUI's `TabView`. SwiftUI does not
+/// propagate a `TabView` content view's `.accessibilityIdentifier` onto the system-drawn tab-bar button,
+/// and only the selected tab's content is in the accessibility hierarchy — so a `TabView` exposes at
+/// most one `tab.*` id at a time, which breaks maestro/flows/brand-smoke/subflows/assert-shell.yaml's
+/// requirement that all five `tab.*` ids be visible SIMULTANEOUSLY and each be tappable. With a custom
+/// bar every `tab.<name>` button is always in the tree; tapping one flips `selectedTab`, and the content
+/// area shows exactly that tab's `state.<name>.empty`. (Fixes the CI Maestro failure
+/// "id: tab.explore is visible failed".)
 public struct RootView: View {
     @State private var selectedTab: AppTab = .connect
     @State private var isSignupPresented = false
@@ -93,26 +102,61 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        TabView(selection: $selectedTab) {
-            ForEach(AppTab.allCases) { tab in
-                TabContentView(tab: tab)
-                    .tabItem {
-                        IconView(tab.glyph, style: .playful, size: 20)
-                        Text(L10n.string(tab.labelKey))
-                    }
-                    .accessibilityIdentifier(tab.accessibilityID)
-                    .accessibilityLabel(L10n.string(tab.labelKey))
-                    .tag(tab)
-            }
-        }
-        .tint(BrandColor.primary)
-        .safeAreaInset(edge: .top) {
+        VStack(spacing: 0) {
             BrandBar(wordmarkDisplayName: wordmarkDisplayName, mode: mode, isSignupPresented: $isSignupPresented)
+
+            // Active tab content. The `switch` renders exactly one tab's honest empty state; `.id(tab)`
+            // gives each its own NavigationStack identity so switching tabs is a clean swap, not a
+            // mutated in-place stack.
+            TabContentView(tab: selectedTab)
+                .id(selectedTab)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            AppTabBar(selectedTab: $selectedTab)
         }
+        .background(Tokens.Light.groundColor)
         // Force light mode at S7 (DR-6.3: Choco dark tokens carried but rendered nowhere yet).
         .preferredColorScheme(.light)
         .signupPresentation(isPresented: $isSignupPresented) {
             SignupHost(isPresented: $isSignupPresented)
+        }
+    }
+}
+
+/// The custom bottom tab bar. Every `tab.<name>` button is ALWAYS present and tappable (the property the
+/// Maestro shell smoke depends on) — Quests is simply not one of `AppTab.allCases`, so `tab.quests`
+/// never exists (the five-tab law by absence, §9b). Each button carries its `tab.<name>` id AND its
+/// localized label as the a11y label (VoiceOver/TalkBack baseline, DR-6.1).
+struct AppTabBar: View {
+    @Binding var selectedTab: AppTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AppTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    VStack(spacing: 2) {
+                        IconView(tab.glyph, style: .playful, size: 20)
+                        Text(L10n.string(tab.labelKey))
+                            .font(.token(Tokens.TypeScale.microLabel))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: Tokens.iconMinTouchTarget)
+                    .foregroundStyle(selectedTab == tab ? BrandColor.primary : Tokens.Light.dimColor)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(tab.accessibilityID)
+                .accessibilityLabel(L10n.string(tab.labelKey))
+                .accessibilityAddTraits(selectedTab == tab ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(.vertical, Tokens.Spacing.sm)
+        .background(Tokens.Light.surfaceColor)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Tokens.Light.hairlineColor)
+                .frame(height: 1)
         }
     }
 }

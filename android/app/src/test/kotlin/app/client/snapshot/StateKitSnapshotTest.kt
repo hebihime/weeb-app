@@ -1,10 +1,12 @@
 package app.client.snapshot
 
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.client.BuildConfig
 import app.client.R
@@ -14,7 +16,6 @@ import app.client.designkit.state.Register
 import app.client.designkit.state.StateView
 import app.client.designkit.tokenColor
 import app.client.designkit.weebTypography
-import com.github.takahirom.roborazzi.RoborazziActivity
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -40,8 +41,12 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class StateKitSnapshotTest {
+    // ComponentActivity (not RoborazziActivity): the `androidx.compose.ui:ui-test-manifest`
+    // debugImplementation adds exactly `androidx.activity.ComponentActivity` to the test manifest, so
+    // this is the documented, lowest-dependency pairing — it does not rely on Roborazzi shipping its
+    // own activity into the merged manifest.
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<RoborazziActivity>()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     private fun brandColorScheme() = lightColorScheme(
         primary = tokenColor("#" + BuildConfig.BRAND_PRIMARY_HEX),

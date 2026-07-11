@@ -33,8 +33,14 @@ android {
     }
 
     sourceSets {
+        // java.srcDir (not kotlin.srcDir): `java` is a guaranteed member of AGP's AndroidSourceSet, so
+        // the build SCRIPT always compiles; the `.kotlin` DSL accessor is added by KGP and is not
+        // guaranteed to resolve across AGP/KGP combos (a miss there fails configuration entirely). The
+        // kotlin-android plugin compiles .kt files found in the java source dirs, so the generated
+        // Kotlin client is picked up either way. The `dependsOn("openApiGenerate")` below guarantees
+        // the dir is populated before compilation.
         getByName("main") {
-            kotlin.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/kotlin"))
+            java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/kotlin").get().asFile)
         }
     }
 
@@ -54,6 +60,12 @@ kotlin {
 // API surface itself is exactly what codegen-from-contract exists for (§1a) — no hand-rolled models.
 openApiGenerate {
     generatorName.set("kotlin")
+    // The contract is frozen + already validated upstream by tools/contract-lint; the spec uses
+    // OpenAPI 3.1 union types (e.g. Problem.status is ["integer","string"]) that swagger-parser's
+    // validator can be over-strict about. Skip re-validating here so a valid-but-unusual 3.1 construct
+    // can never hard-fail the codegen job — generation itself still degrades gracefully (a union type
+    // becomes kotlin.Any / a picked member), which compiles either way.
+    validateSpec.set(false)
     inputSpec.set(rootDir.resolve("../contracts/openapi.v0.json").absolutePath)
     outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
     packageName.set("app.client.apikit.generated")

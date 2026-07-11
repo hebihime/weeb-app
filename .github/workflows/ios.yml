@@ -106,6 +106,9 @@ jobs:
         if: steps.guard.outputs.present == 'true'
         with:
           xcode-version: latest-stable
+      - name: install xcodegen
+        if: steps.guard.outputs.present == 'true'
+        run: brew install xcodegen
       - name: resolve packages + build ApiKit (drives codegen)
         if: steps.guard.outputs.present == 'true'
         run: |

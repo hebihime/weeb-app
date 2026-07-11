@@ -56,6 +56,11 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v3
         if: steps.guard.outputs.present == 'true'
+      - name: install compileSdk platform + build-tools (setup-android installs none by default)
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" >/dev/null 2>&1 || true
+          echo "installed platforms:"; ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || ls "$ANDROID_HOME/platforms" 2>/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         if: steps.guard.outputs.present == 'true'
       # The openapi-generator gradle plugin generates the kotlinx-serialization client from the checked-in
@@ -129,6 +134,11 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v3
         if: steps.guard.outputs.present == 'true'
+      - name: install compileSdk platform + build-tools (setup-android installs none by default)
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" >/dev/null 2>&1 || true
+          echo "installed platforms:"; ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || ls "$ANDROID_HOME/platforms" 2>/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         if: steps.guard.outputs.present == 'true'
       - name: assemble debug APK
