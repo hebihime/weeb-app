@@ -1,5 +1,21 @@
 # TODOS — weeb-app
 
+## S3 build wave — DONE at S3; awaiting merge + founder decisions before S5/S6
+- **S3 identity: DONE 2026-07-12.** THE HARDENED GATE green (`signup→verified→delete` E2E live twice);
+  Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM remediated, `SECURITY_REVIEW_S3.md`). All on
+  branch **`wave/s3-identity`** (commits `b1fd788`→Phase-3), open as **PR #1**, NOT merged to master
+  (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
+  build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
+- **DECISION NEEDED — founder ruling: heatmap retention (SECURITY_REVIEW_S3 PII-4).** `account_deletion`
+  retains identifiable `events_heatmap_provenance` (S1 §1c "full-history retention") the user can't see
+  (Art.15) or erase (Art.17); no consumer-reachable StatutoryErasure path exists. Not exploitable at S3
+  (zero heatmap writers until S9/S14). Must be ruled on (Pseudonymize-on-deletion / region-conditional
+  erasure / flip export to `Withheld`) BEFORE S9/S14 writes the first row.
+- **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
+  before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
+- **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own
+  slice (Phase 1→4, stop at DONE). Both rebase their domain-core needs onto the landed Phase-2a surgery.
+
 ## Azure SignalR self-host cost review
 - **What:** Re-evaluate managed Azure SignalR Service vs self-hosted SignalR + Redis backplane.
 - **Why:** Managed is right at launch scale; at multi-con scale self-hosting can be meaningfully cheaper. Switching is a connection-string/config change, not a rewrite.

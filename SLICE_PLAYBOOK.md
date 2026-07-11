@@ -313,13 +313,76 @@ zero-persistence tests, privacy-manifest tests, 18+ validation tests, no-hand-ro
 404-uniformity) and green on CI, but the formal SECURITY_REVIEW_S7.md is the next phase, not part of this
 build phase. S7 build phase stops here for Julien (stop-after-slice).
 
+### S3 retro — identity-accounts (G0) — DONE (HARDENED GATE green; CI green on the wave/s3-identity PR)
+
+**Shipped:** the whole consumer identity slice, the template every later PII module copies. Phase-2a
+substrate mutation (ONE combined surgery for S3+S5+S6: async 3-axis 4A engine + `IPolicyTableSource`
+union + target-binding boot refusal + `IBearerAuthenticator` seam + `IEmailSender`/`IExportContributor`/
+`IConsentLedgerWriter` Contracts seams + `AgeMath`/`HandleRules`/`HatFor` Deterministic + `FieldEncryptionPurpose.AnimeAnswers`).
+Then the module: 13-table `identity` schema (region+lawful_basis on every PII row), passwordless
+email-code auth (one keyed-HMAC challenge machine), opaque revocable sessions + refresh rotation with
+family reuse-detection, `/v1/me/*` account management, statutory data EXPORT (registry-driven, the mirror
+of 13A, with the build-failing export⋈purge cross-gate), two-phase rights-preserving DELETION + the purge
+orchestrator (crypto-shred, tombstone, retired-handle, `events_heatmap_provenance` first-caller). Kills:
+Auth-F3 + SilentRej-L4 RETIRED (both S1 lens tests un-skipped and green). ~20 endpoints, all 4A-gated.
+
+**Green (verified by me, on the pushed commit, never on agent word):** build 0/0; DomainCore 51/0 +
+AimlRouter 51/2 byte-identical (the substrate mutation + CONC-3's `PostgresEventStore` advisory-lock
+preserved S1/S2 exactly); Architecture 172 pass / 3 skip (Auth-F3/SilentRej-L4 retired; +cross-gate,
++worker-race, +crypto-shred-order, +grace-takeover, +append-race, +config-bounds tests; 3 skips =
+S12/S14/S5 defers); Identity 87 pass / 5 skip (5 = Skip-annotated deferred-finding proofs); ef-gate
+idempotent (2 identity migrations); every drift/contract/i18n/ddl gate clean; compose fresh-boot clean;
+`identity.e2e.mjs` green live TWICE — the full `signup→verified→delete` ledger acceptance incl. real
+Mailpit, live IDOR drills, export download, deletion grace-law + cancel + sweep + purge-readback; post-E2E
+log sweep zero exceptions. Security: 1 CRITICAL + 7 HIGH + 6 MEDIUM remediated each via a now-green test.
+
+**What worked:** (1) The ONE combined Phase-2a surgery (designed against all three LOCKED contracts,
+reconciled to no-fork) meant the shared substrate was mutated exactly once; S5/S6 rebase onto it. (2)
+Front-loaded live E2E (L30) caught real shipped bugs the unit gate hid every pass (the scoped-authenticator
+boot crash, the SMTP container host, the missing config seed, the under-13 flush). (3) The adversarial
+security phase paid for itself many times over — the CRITICAL cancel-vs-worker data-destruction race, the
+mail-timing enumeration oracle (Mailpit masks it in dev/CI/E2E — only a prod relay opens it), the
+crypto-shred-runs-first ordering, the append seq-race suppressing the theft alarm, and the grace-window
+takeover destroying the cancel right were ALL adversarial-only finds that would have shipped.
+
+**What we learned / changed (folded UP for the next slice):**
+(1) **A large single module exceeds one agent.** The non-statutory half BLOCKED an agent at the foundation
+(~400k tokens); the right shape is sequential sub-passes (foundation → auth → /v1/me → export → deletion),
+each ending build-green + committed as a checkpoint, a FRESH agent per pass (full runway beats resuming a
+near-exhausted one). Single module = sequential chain (never parallel agents on one module) held.
+(2) **A transient API rate-limit can kill an agent mid-pass** with compiling-but-incomplete on-disk state
+(2 failing tests + a missing E2E leg). Assess the disk (build + tests) before continuing; a fresh
+"finisher" scoped to the precise remaining delta is robust. Guard + honest-BLOCKED reporting made this
+recoverable, not a silent hole.
+(3) **CI ef-gate: build the SOLUTION, not one context project** — the S1 NETSDK1004 scar RECURS for every
+new module DbContext (`needs:` is ordering, not artifacts). `backend.yml` ef-gate now `dotnet build
+backend/Svac.sln`. Any CI job running `dotnet ef`/per-context emit-scripts inherits this. (Fold to BUILD.md §8.)
+(4) **A scoped Hosting-seam dependency MUST be resolved per-request (`RequestServices`), never
+constructor-injected into `UseMiddleware<T>`** — the singleton middleware can't resolve a scoped service
+under `ValidateScopes` (Development/compose), a clean boot-crash. Unit tests + `ValidateOnBuild` don't
+catch it; **run compose fresh-boot on a foundation before building on it** (the foundation commit shipped
+this latent crash; the next pass's E2E caught it). (Fold to BUILD.md §9.)
+(5) **`TimingFloor` is a floor, not a ceiling; in-band I/O (mail) defeats it** → an existence timing
+oracle that Mailpit hides in dev/CI/E2E. The fix pattern (inherited by S4): outbound side-effects go OFF
+the request path (`Channel` + `BackgroundService` outbox); the request enqueues and returns; work-equalize
+the backed-vs-unbacked branches so the floored path is timing-flat.
+(6) **Heatmap retention (PII-4) is a FOUNDER ESCALATION carried to S9/S14** (see ledger): the S1-ratified
+§1c "retain full-history on account_deletion" likely conflicts with Art.17; not exploitable at S3 (zero
+writers); must be ruled on before the first heatmap write. Do NOT unilaterally overturn a ratified founder ruling.
+
 ### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
 
 | Finding | From | Severity | Carry to |
 |---|---|---|---|
-| Auth-F3 — 4A chokepoint can't convey the target resource id (IDOR) | S1 | MED | first client-reachable resource-scoped 4A slice |
+| ~~Auth-F3 — 4A chokepoint can't convey the target resource id~~ | S1 | — | **RETIRED at S3** (target-binding + ownership resolvers + boot refusal) |
+| ~~SilentRej-L4 — excluded-read vs absent-read timing channel~~ | S1 | — | **RETIRED at S3** (predicate-folded ownership; both lens tests green) |
 | Concurrency-F5 — quota Consume + guarded action not one tx | S1 | MED | S14 |
-| SilentRej-L4 — excluded-read vs absent-read timing channel | S1 | LOW | first policy-gated consumer read |
 | S2-A — `aiml.invoke` not spliced into the enforced PolicyTable (+ S1 catch-all-Map boot-refusal gap) | S2 | LOW | S12 (first router consumer) |
 | CONC-S2-4a — quota Consume + audit append are two unrelated txns | S2 | MED | first router consumer under real load (transactional-outbox shape) |
 | CONC-S2-5 — torn two-key config read (allowlist + routing policy) | S2 | LOW | when 9A gains an atomic multi-key snapshot read |
+| **PII-4 (heatmap retention) — account_deletion retains identifiable location provenance the user can't see (Art.15) or erase (Art.17); S1 §1c ruling likely conflicts with GDPR. FOUNDER ruling required** | S3 | HIGH (legal) | **S9/S14** — before the first `events_heatmap_provenance` write |
+| CONC-5 — session-cap eviction is check-then-act (transient over-cap, no privilege gain) | S3 | MED | S14 |
+| OPS-4 — `ConfigRegistry.SetValue` doesn't enforce `row.Scope` (founder key writable at ops authority) | S3 | MED | S5 (admin config desk) |
+| OPS-5 — config dual-key divergence (human `identity.*_cap` vs enforced `quota.*.cap`) | S3 | LOW | S5 (collapse to one key with the desk) |
+| AUTH-4 — logout doesn't clear the device push token; sessions minted `device_id=null` | S3 | LOW | S4 (notification delivery) |
+| CONC-6/7 — deletion/export recovery-path 500s (`effectiveAt!.Value`, export loser `FirstAsync`) | S3 | LOW | S12 |
