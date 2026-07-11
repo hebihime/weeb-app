@@ -1,15 +1,13 @@
-// ios/WeebUITests/ShellLayoutUITests.swift — SLICE_S7_CONTRACT.md §9b/§9g.
+// ios/UITests/ShellLayoutUITests.swift — SLICE_S7_CONTRACT.md §9b/§9g.
 //
-// An in-repo XCUITest mirror of maestro/flows/brand-smoke's shell + crews-CTA assertions. Maestro is the
-// CI acceptance gate (14A shared harness); this file exists because the Maestro CLI is not installable in
-// every dev sandbox, and this slice needed a way to verify — locally, deterministically, driving the
-// REAL app in a simulator — the exact layout fix the coordinator flagged: the crews secondary CTA
-// (`crews.create.premium.cta`) must scroll fully clear of the persistent bottom tab bar. XCUITest queries
-// by accessibilityIdentifier and scrolls exactly like Maestro does, so a green run here is real evidence
-// the bar no longer obscures scroll content, not just "it compiles."
+// An in-repo XCUITest mirror of maestro/flows/brand-smoke. ONE shared source, compiled into BOTH a Weeb
+// and a Friki UI-test target (project.yml), so every assertion — the tab-bar layout, the crews-CTA
+// scroll, the signup walk, and the ES-locale relaunch — is proved on BOTH flavors. Maestro remains the
+// CI acceptance gate (14A shared harness); this exists because the Maestro CLI is not installable in
+// every dev sandbox, and it is what let us reproduce the Friki-flavor ES-relaunch failure CI caught.
 //
 // It is NOT a substitute for the Maestro brand-smoke matrix (that stays the ×4 required gate); it is the
-// belt to Maestro's suspenders for the one regression that motivated it.
+// belt to Maestro's suspenders for the regressions that motivated it.
 
 import XCTest
 
@@ -18,8 +16,13 @@ final class ShellLayoutUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch() -> XCUIApplication {
+    private func launch(appLocale: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
+        if let appLocale {
+            // Both forms the real harness might use: the `-key value` argument-domain pair AND a single
+            // `appLocale=<code>` token — LaunchLocale.resolveCode handles either.
+            app.launchArguments += ["-appLocale", appLocale, "appLocale=\(appLocale)"]
+        }
         app.launch()
         return app
     }
@@ -83,11 +86,7 @@ final class ShellLayoutUITests: XCTestCase {
     /// `appLocale=es` argument must render the handle-step title's Spanish .xcstrings value, exactly
     /// "Elige tu usuario". This drives the SAME debug-gated launch-argument path Maestro exercises.
     func testSpanishLaunchArgumentRendersSpanishHandleTitle() {
-        let app = XCUIApplication()
-        // Both forms the real harness might use: the `-key value` argument-domain pair AND a
-        // single `appLocale=es` token — LaunchLocale.resolveCode handles either.
-        app.launchArguments += ["-appLocale", "es", "appLocale=es"]
-        app.launch()
+        let app = launch(appLocale: "es")
 
         app.buttons["signup.start"].tap()
         XCTAssertTrue(
@@ -96,6 +95,36 @@ final class ShellLayoutUITests: XCTestCase {
         )
         // And the EN value must NOT be what's shown (proves the override actually took effect).
         XCTAssertFalse(app.staticTexts["Choose your handle"].exists, "ES launch arg must not still render the EN title")
+    }
+
+    /// The FULL Maestro brand-smoke sequence in order, ENDING with the ES-locale relaunch — the exact
+    /// scenario CI's Friki leg failed (assert-shell + signup-walk pass, then the ES relaunch's
+    /// `brand.wordmark` assertion fails). Reproducing it here on the Friki target is what surfaced the
+    /// root cause; keeping it guards both flavors against regressing that relaunch.
+    func testFullSmokeSequenceThenESRelaunchRendersWordmark() {
+        // Leg 1: EN launch — trunk test + full shell + signup walk to the honest refusal.
+        let app = launch()
+        XCTAssertTrue(app.descendants(matching: .any)["brand.wordmark"].waitForExistence(timeout: 10))
+        for tab in ["connect", "explore", "crews", "inbox", "profile"] {
+            XCTAssertTrue(app.buttons["tab.\(tab)"].waitForExistence(timeout: 10))
+        }
+        walkSignupToRefusal(app)
+
+        // Leg 2: the ES relaunch (Maestro: `launchApp clearState arguments {forceLightMode, appLocale:es}`).
+        // XCUIApplication.launch() terminates the running instance and relaunches fresh; the app persists
+        // nothing (§3), so this is equivalent to clearState. This is the assertion that failed on Friki.
+        app.launchArguments += ["-forceLightMode", "true", "-appLocale", "es", "appLocale=es"]
+        app.launch()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["brand.wordmark"].waitForExistence(timeout: 15),
+            "after the ES clearState relaunch the app must render brand.wordmark (the Friki leg's failure)"
+        )
+        app.buttons["signup.start"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Elige tu usuario"].waitForExistence(timeout: 10),
+            "the ES handle-step title must render 'Elige tu usuario' after the relaunch"
+        )
     }
 
     /// Sanity counterpart: with no locale argument the app renders its default (EN on the CI runner),
@@ -109,6 +138,14 @@ final class ShellLayoutUITests: XCTestCase {
     /// The signup shell walks to the honest gateway-refusal terminus (no fake success path).
     func testSignupWalkReachesCouldNotSend() {
         let app = launch()
+        walkSignupToRefusal(app)
+    }
+
+    // MARK: - helpers
+
+    /// The 5.14a walk: start -> handle -> email -> birthdate -> avatar-skip -> fandom -> submit, ending
+    /// at the honest could-not-send refusal. Shared by the standalone walk test and the full-sequence one.
+    private func walkSignupToRefusal(_ app: XCUIApplication) {
         app.buttons["signup.start"].tap()
 
         typeIfPresent(app, id: "signup.handle", text: "nakama_test")
@@ -131,8 +168,6 @@ final class ShellLayoutUITests: XCTestCase {
             "the signup walk must end at the honest could-not-send refusal"
         )
     }
-
-    // MARK: - helpers
 
     private func tap(_ app: XCUIApplication, id: String) {
         let el = app.descendants(matching: .any)[id]

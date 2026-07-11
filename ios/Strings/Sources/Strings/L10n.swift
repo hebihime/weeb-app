@@ -96,11 +96,31 @@ public enum L10n {
             .localizedString(forKey: key, value: nil, table: pack.overlayTable)
     }
 
+    // Memoize resolved `.lproj` sub-bundles. Without this, every single `L10n.string` call did a
+    // `Bundle.preferredLocalizations` + `Bundle(path:)` disk load — dozens of main-thread filesystem
+    // hits on a screen's worth of strings, worst on a cold-installed app (the state after Maestro's
+    // clearState reinstall) where the disk cache is cold. That is exactly the window in which a first
+    // frame can be slow enough for an `assertVisible` to time out. Keyed by (bundle path + locale id).
+    private nonisolated(unsafe) static var resolvedBundleCache: [String: Bundle] = [:]
+    private static let resolvedBundleCacheLock = NSLock()
+
     /// Finds the best `.lproj` sub-bundle for `locale` among `bundle`'s actual compiled localizations,
     /// via the same negotiation algorithm `Bundle.preferredLocalizations` uses for real device-locale
     /// resolution — falling back to `bundle` itself (e.g. a test-fixture bundle with no `.lproj`
-    /// directories at all) rather than crashing when nothing matches.
+    /// directories at all) rather than crashing when nothing matches. Memoized (see cache above).
     static func resolvedBundle(for locale: Locale, in bundle: Bundle) -> Bundle {
+        let cacheKey = "\(bundle.bundlePath)#\(locale.identifier)"
+        resolvedBundleCacheLock.lock()
+        defer { resolvedBundleCacheLock.unlock() }
+        if let cached = resolvedBundleCache[cacheKey] {
+            return cached
+        }
+        let resolved = computeResolvedBundle(for: locale, in: bundle)
+        resolvedBundleCache[cacheKey] = resolved
+        return resolved
+    }
+
+    private static func computeResolvedBundle(for locale: Locale, in bundle: Bundle) -> Bundle {
         let available = bundle.localizations
         guard !available.isEmpty else { return bundle }
         let preferred = Bundle.preferredLocalizations(from: available, forPreferences: [locale.identifier])

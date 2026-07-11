@@ -146,16 +146,18 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Friki.app/Friki"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
-  # XCUITest mirror of the Maestro shell + crews-CTA assertions — an in-repo, deterministic guard for the
-  # "content obscured by the persistent tab bar" regression, runnable where the Maestro CLI is not
-  # installable. Deliberately NOT in the `Weeb` scheme's test list (below): CI's `xcodebuild test -scheme
-  # Weeb` — the coordinator's lane — stays exactly as it was, gaining no UI-test boot flakiness. Run it
-  # via its own `WeebUITests` scheme: `xcodebuild test -scheme WeebUITests`.
+  # XCUITest mirror of the Maestro brand-smoke flow (shell + crews-CTA + signup walk + ES relaunch) — an
+  # in-repo, deterministic guard runnable where the Maestro CLI is not installable. ONE shared source
+  # (UITests/) compiled into a per-flavor target, exactly like the StateKit tests — so the ES-locale
+  # relaunch is proved on BOTH flavors (the Friki leg is where CI caught the regression). Deliberately
+  # NOT in the `Weeb`/`Friki` scheme test lists (below): CI's `xcodebuild test -scheme Weeb|Friki` — the
+  # coordinator's lanes — stay exactly as they were, gaining no UI-test boot flakiness. Run via the
+  # dedicated `WeebUITests` / `FrikiUITests` schemes.
   WeebUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: WeebUITests
+      - path: UITests
     dependencies:
       - target: Weeb
     settings:
@@ -164,6 +166,20 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: app.weeb.client.uitests
         TEST_TARGET_NAME: Weeb
+
+  FrikiUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Friki
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.friki.client.uitests
+        TEST_TARGET_NAME: Friki
 
 schemes:
   Weeb:
@@ -187,9 +203,9 @@ schemes:
     run:
       config: Debug
 
-  # Dedicated scheme for the XCUITest regression guard — kept OUT of the Weeb scheme so the coordinator's
-  # CI `xcodebuild test -scheme Weeb` is unchanged. Opt-in local verification: `xcodebuild test -scheme
-  # WeebUITests -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest'`.
+  # Dedicated schemes for the XCUITest regression guard — kept OUT of the Weeb/Friki schemes so the
+  # coordinator's CI `xcodebuild test -scheme Weeb|Friki` is unchanged. Opt-in local verification:
+  # `xcodebuild test -scheme WeebUITests|FrikiUITests -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest'`.
   WeebUITests:
     build:
       targets:
@@ -198,6 +214,17 @@ schemes:
     test:
       targets:
         - WeebUITests
+    run:
+      config: Debug
+
+  FrikiUITests:
+    build:
+      targets:
+        Friki: all
+        FrikiUITests: all
+    test:
+      targets:
+        - FrikiUITests
     run:
       config: Debug
 
