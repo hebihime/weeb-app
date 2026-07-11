@@ -170,7 +170,12 @@ public sealed class DeletionWorkerRaceTests(IdentityDbFixture fixture)
             var workerB = scopeB.ServiceProvider.GetRequiredService<DeletionPhysicalPurgeWorker>();
 
             var results = await Task.WhenAll(workerA.RunDueSweepAsync(CancellationToken.None), workerB.RunDueSweepAsync(CancellationToken.None));
-            Assert.Equal(2, results.Sum()); // both sweeps ATTEMPTED the job (matches the pre-fix "attempted" return contract) — but only one actually executed it:
+            // Mutual exclusion is proven DETERMINISTICALLY below (exactly ONE completion email + ONE
+            // purge-run receipt + job 'complete'), NOT by results.Sum(): under the guarded CAS the SECOND
+            // sweep can LEGITIMATELY observe zero due jobs (the first already claimed/completed it) and
+            // return 0, so the processed-count is timing-dependent (green locally, sum=1 on CI's slower
+            // scheduling) and is NOT the invariant. At least one sweep must have picked it up.
+            Assert.True(results.Sum() >= 1, "at least one concurrent sweep must have processed the due job");
 
             using var assertScope = fixture.NewScope();
             var assertDb = assertScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
