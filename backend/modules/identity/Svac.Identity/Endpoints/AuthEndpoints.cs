@@ -75,15 +75,23 @@ public static class AuthEndpoints
         [FromServices] IRequestContextAccessor requestContext,
         CancellationToken ct)
     {
+        // MAIL-1 (SECURITY_REVIEW_S3.md, AUTH lens Finding 2): login step 2 had no floor at all — a
+        // pending login challenge only exists for a live, non-banned account that just requested a code,
+        // so the HMAC-compute-and-attempt-write delta on the "challenge pending" branch vs the immediate
+        // "no challenge" rollback (RedeemLoginCode's own dummy-HMAC equalization, above) is floored here
+        // exactly like PostAuthEmailCode already floors step 1.
+        var stopwatch = Stopwatch.StartNew();
         var ctx = requestContext.Current;
         if (!EmailInput.TryNormalize(request.Email, out var emailLower) || string.IsNullOrWhiteSpace(request.Code))
         {
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
             return InvalidCodeProblem(ctx);
         }
 
         var accountId = await challenges.RedeemLoginCode(emailLower, request.Code, ct);
         if (accountId is null)
         {
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
             return InvalidCodeProblem(ctx);
         }
 
@@ -95,6 +103,7 @@ public static class AuthEndpoints
             await config.GetValue<int>(IdentityConfigKeys.SessionMaxActivePerAccount, ct),
             ct);
 
+        await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
         return Results.Ok(new Svac.Identity.Contracts.SessionCreated(session.AccessToken, session.AccessExpiresAt, session.RefreshToken, OpaqueId.Parse(accountId)));
     }
 

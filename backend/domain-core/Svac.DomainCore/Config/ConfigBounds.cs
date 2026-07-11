@@ -26,7 +26,7 @@ internal static class ConfigBounds
     private const string RoutingPolicyKey = "aiml.routing_policy";
     private const string InvokeTimeoutSecondsKey = "aiml.invoke_timeout_seconds";
 
-    public static async Task ValidateAsync(string key, string valueJson, CoreDbContext db, CancellationToken ct)
+    public static async Task ValidateAsync(string key, string valueJson, string? boundsJson, CoreDbContext db, CancellationToken ct)
     {
         switch (key)
         {
@@ -40,7 +40,53 @@ internal static class ConfigBounds
                 ValidateInvokeTimeoutSeconds(valueJson);
                 break;
             default:
-                break; // every other 9A key has no bounds rule registered here — SetValue proceeds unchanged.
+                break; // these 3 AimlRouter keys carry cross-key/shape rules too specific for the generic check below.
+        }
+
+        // OPS-3 (SECURITY_REVIEW_S3.md): every OTHER 9A key's declared numeric bounds (row.BoundsJson,
+        // seeded from the manifest's own "bounds" field — SLICE_S3_CONTRACT.md §4) are now enforced HERE,
+        // on the real ConfigRegistry.SetValue write path, not just inside the DevSeams grace-days
+        // diagnostic endpoint. Absent BoundsJson (the overwhelming majority of keys today) is a no-op,
+        // identical to today's behavior.
+        ValidateGenericNumericBounds(key, valueJson, boundsJson);
+    }
+
+    /// <summary>
+    /// A generic <c>[min, max]</c> inclusive-range check over any key whose manifest row declares
+    /// <c>"bounds": [min, max]</c> (OPS-3, SECURITY_REVIEW_S3.md) — e.g. <c>identity.export.daily_cap</c>
+    /// (floor 1: "no ops edit can zero a legal right") and <c>identity.deletion.grace_days</c> ([0,30]:
+    /// "keeps the whole pipeline inside GDPR's one-month clock"). Only applies when BOTH the declared
+    /// bounds AND the value being set are JSON numbers — a non-numeric key with a bounds row (none exist
+    /// today) or a bounds-less key both fall through unchanged, exactly like every rule above.
+    /// </summary>
+    private static void ValidateGenericNumericBounds(string key, string valueJson, string? boundsJson)
+    {
+        if (string.IsNullOrWhiteSpace(boundsJson))
+        {
+            return;
+        }
+
+        using var boundsDoc = JsonDocument.Parse(boundsJson);
+        if (boundsDoc.RootElement.ValueKind != JsonValueKind.Array || boundsDoc.RootElement.GetArrayLength() != 2)
+        {
+            return;
+        }
+
+        var min = boundsDoc.RootElement[0].GetDouble();
+        var max = boundsDoc.RootElement[1].GetDouble();
+
+        using var valueDoc = JsonDocument.Parse(valueJson);
+        if (valueDoc.RootElement.ValueKind != JsonValueKind.Number)
+        {
+            return;
+        }
+
+        var value = valueDoc.RootElement.GetDouble();
+        if (value < min || value > max)
+        {
+            throw new ArgumentException(
+                $"9A bounds: {key}={value} is outside the declared bounds [{min},{max}] (SLICE_S3_CONTRACT.md §4).",
+                nameof(valueJson));
         }
     }
 

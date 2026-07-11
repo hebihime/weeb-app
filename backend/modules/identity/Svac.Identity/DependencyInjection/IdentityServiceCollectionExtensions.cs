@@ -32,12 +32,15 @@ namespace Svac.Identity.DependencyInjection;
 public static class IdentityServiceCollectionExtensions
 {
     /// <param name="smtpOptions">
-    /// Null means "no real SMTP relay configured" — <see cref="IEmailSender"/> resolves to a fail-closed
-    /// throw (SLICE_S3_CONTRACT.md §1b, L18: "Prod boot with no configured SMTP throws at startup",
-    /// modeled as an unresolvable typed dependency per the IPaymentService/S2 TRUST-BREAK-3 precedent —
-    /// never a factory that silently no-ops at send time). Dev/compose passes
-    /// <see cref="SmtpTransportOptions.MailpitDefault"/>. Transport selection is the CALLER's
-    /// environment/config decision, never a 9A entry (§1b/§9).
+    /// Null means "no real SMTP relay configured" — <see cref="IEmailTransport"/> (the outbox dispatcher's
+    /// downstream, SECURITY_REVIEW_S3.md MAIL-1/OPS-2) resolves to a fail-closed throw as a defense-in-depth
+    /// backstop; the REAL fail-closed guarantee is <see cref="SmtpConfiguredGuard.Enforce"/>, called
+    /// explicitly in Program.cs before the host serves traffic (never a lazy factory discovered at first
+    /// send). Dev/compose passes <see cref="SmtpTransportOptions.MailpitDefault"/>. Transport selection is
+    /// the CALLER's environment/config decision, never a 9A entry (§1b/§9). <see cref="IEmailSender"/>
+    /// itself (the request-path-facing seam every endpoint/service actually injects) ALWAYS resolves —
+    /// to <see cref="OutboxEmailSender"/>, which only enqueues — regardless of whether SMTP is configured;
+    /// dispatch failure surfaces in <see cref="EmailOutboxDispatcher"/>'s log, off the request thread.
     /// </param>
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, string postgresConnectionString, SmtpTransportOptions? smtpOptions = null)
     {
@@ -57,15 +60,27 @@ public static class IdentityServiceCollectionExtensions
         services.AddScoped<IBearerAuthenticator, SessionBearerAuthenticator>();
 
         services.AddSingleton<IEmailTemplateRenderer, IdentityEmailTemplateRenderer>();
+
+        // SECURITY_REVIEW_S3.md MAIL-1/OPS-2: the request path ALWAYS resolves IEmailSender to the
+        // enqueue-only OutboxEmailSender — never the real transport directly, and never a fail-closed
+        // throw, since a null-SMTP boot never reaches this line in a non-Development environment
+        // (SmtpConfiguredGuard.Enforce, called explicitly in Program.cs, refuses to boot first). The real
+        // transport (IEmailTransport) is what the outbox dispatcher drains into, off the request thread.
+        services.AddSingleton<EmailOutbox>();
+        services.AddScoped<IEmailSender, OutboxEmailSender>();
+        services.AddHostedService<EmailOutboxDispatcher>();
+
         if (smtpOptions is not null)
         {
             services.AddSingleton(smtpOptions);
-            services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<IEmailTransport, SmtpEmailSender>();
         }
         else
         {
-            services.AddScoped<IEmailSender>(_ => throw new InvalidOperationException(
-                "IEmailSender has no real SMTP transport configured — resolving this without SmtpTransportOptions is fail-closed by design (SLICE_S3_CONTRACT.md §1b, L18)."));
+            // Defense-in-depth backstop only (SmtpConfiguredGuard already refused to boot in this shape
+            // outside Development) — never the primary fail-closed mechanism.
+            services.AddScoped<IEmailTransport>(_ => throw new InvalidOperationException(
+                "IEmailTransport has no real SMTP transport configured — resolving this without SmtpTransportOptions is fail-closed by design (SECURITY_REVIEW_S3.md OPS-2, SLICE_S3_CONTRACT.md §1b, L18)."));
         }
 
         services.AddScoped<ConsentCurrentProjection>();

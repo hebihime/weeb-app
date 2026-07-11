@@ -55,9 +55,20 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             b.Property(e => e.RegionSource).HasColumnName("region_source");
             b.Property(e => e.LawfulBasis).HasColumnName("lawful_basis");
 
-            // Partial unique indexes (§2): a soft-deleted (tombstoned) row frees its handle/email.
-            b.HasIndex(e => e.Handle).IsUnique().HasFilter("account_state <> 'deleted'").HasDatabaseName("ux_accounts_handle");
-            b.HasIndex(e => e.Email).IsUnique().HasFilter("account_state <> 'deleted' AND email IS NOT NULL").HasDatabaseName("ux_accounts_email");
+            // Partial unique indexes (§2). PII-3 / CONC-4 (SECURITY_REVIEW_S3.md, grace-window identity
+            // takeover): gated on `tombstoned_at IS NULL`, NOT `account_state <> 'deleted'`. A Phase-L
+            // grace-deleted row (account_state='deleted', tombstoned_at still NULL) must still occupy
+            // its handle/email slot in this index — only the PHYSICAL purge (Phase P: tombstoned_at set,
+            // handle overwritten with a retired sentinel, email nulled) may free it. The old
+            // `account_state <> 'deleted'` filter excluded a grace-deleted row from the index entirely,
+            // so a third party could claim the still-live handle/email DURING grace — and CancelDeletion
+            // restoring account_state='active' would then collide with the squatter's row (an uncaught
+            // 23505, permanently destroying the cancel right; see AccountLifecycle.CancelDeletion's
+            // defensive catch). Gating on tombstoned_at makes this index and the C# availability checks
+            // (SignupEndpoints.GetHandleAvailability, EmailChallengeMachine.IssueForSignup) free the slot
+            // at EXACTLY the same instant, by construction.
+            b.HasIndex(e => e.Handle).IsUnique().HasFilter("tombstoned_at IS NULL").HasDatabaseName("ux_accounts_handle");
+            b.HasIndex(e => e.Email).IsUnique().HasFilter("tombstoned_at IS NULL AND email IS NOT NULL").HasDatabaseName("ux_accounts_email");
             b.HasIndex(e => e.DeletionEffectiveAt).HasFilter("deletion_effective_at IS NOT NULL").HasDatabaseName("ix_accounts_deletion_due");
         });
 
@@ -232,6 +243,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             b.Property(e => e.State).HasColumnName("state");
             b.Property(e => e.RequestedAt).HasColumnName("requested_at");
             b.Property(e => e.ScheduledFor).HasColumnName("scheduled_for");
+            b.Property(e => e.ExecutingSince).HasColumnName("executing_since");
             b.Property(e => e.ExportOffered).HasColumnName("export_offered").HasDefaultValue(true);
             b.Property(e => e.CustodyHoldsFound).HasColumnName("custody_holds_found");
             b.Property(e => e.CustodyHoldRefsJson).HasColumnName("custody_hold_refs").HasColumnType("jsonb");

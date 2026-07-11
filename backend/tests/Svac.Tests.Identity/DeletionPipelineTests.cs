@@ -251,43 +251,75 @@ public sealed class DeletionPipelineTests(IdentityDbFixture fixture)
     }
 
     // ------------------------------------------------------------------------------------------------
-    // OQ-3 (RATIFIED (a)): a banned account's deletion writes ban_evasion_refs; a later signup attempt
-    // with the SAME email is refused wire-uniform with the age-floor refusal (no oracle).
+    // OQ-3 (RATIFIED (a)): a banned account's deletion writes ban_evasion_refs at REQUEST time (while the
+    // email is still live); the ban-evasion consult itself fires against a LATER re-registration attempt
+    // with the SAME email, refused wire-uniform with the age-floor refusal (no oracle).
+    //
+    // PII-3 / CONC-4 (SECURITY_REVIEW_S3.md): this test now runs the deletion all the way to the Phase P
+    // PHYSICAL purge (grace_days=0) before attempting re-registration. Pre-fix, IssueForSignup gated
+    // "already registered" on account_state, so a grace-deleted (not yet purged) row's email read as free
+    // and a re-registration attempt reached SignupCompletionService.Complete() immediately — which is
+    // EXACTLY the grace-window identity-takeover bug PII-3 fixes. Post-fix, IssueForSignup gates on
+    // tombstoned_at, so the SAME email correctly renders "already registered" during grace (no oracle,
+    // no reachable Complete() call at all) and only reaches the ban-evasion consult once the account is
+    // genuinely purged and its Email column is truly NULLed — the ban-evasion protection's actual design
+    // point (§11/§13: capture the ref while the email is still live, consult it once the email frees up).
     // ------------------------------------------------------------------------------------------------
     [Fact]
-    public async Task BannedAccountDeletion_WritesBanEvasionRef_AndBlocksReRegistrationWireUniformly()
+    public async Task BannedAccountDeletion_WritesBanEvasionRef_AndBlocksReRegistrationWireUniformly_PostPurge()
     {
         using var scope = fixture.NewScope();
-        var accountId = await SeedActiveAccount(scope, accountState: "banned");
-        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var email = (await db.Accounts.SingleAsync(a => a.AccountId == accountId)).Email!;
+        var originalGraceDays = await SetGraceDays(scope, 0);
+        try
+        {
+            var accountId = await SeedActiveAccount(scope, accountState: "banned");
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var email = (await db.Accounts.SingleAsync(a => a.AccountId == accountId)).Email!;
 
-        var lifecycle = scope.ServiceProvider.GetRequiredService<IAccountLifecycle>();
-        await lifecycle.RequestDeletion(OpaqueId.Parse(accountId), UserCtx(accountId, "ban-evasion"), CancellationToken.None);
+            var lifecycle = scope.ServiceProvider.GetRequiredService<IAccountLifecycle>();
+            await lifecycle.RequestDeletion(OpaqueId.Parse(accountId), UserCtx(accountId, "ban-evasion"), CancellationToken.None);
 
-        var keyVault = scope.ServiceProvider.GetRequiredService<IFieldKeyVault>();
-        var expectedRef = await BanEvasionRefs.ComputeHmacRef(keyVault, email, CancellationToken.None);
-        Assert.True(await db.BanEvasionRefs.AnyAsync(b => b.HmacEmail == expectedRef));
+            var keyVault = scope.ServiceProvider.GetRequiredService<IFieldKeyVault>();
+            var expectedRef = await BanEvasionRefs.ComputeHmacRef(keyVault, email, CancellationToken.None);
+            Assert.True(await db.BanEvasionRefs.AnyAsync(b => b.HmacEmail == expectedRef));
 
-        // Re-registration consult: SignupCompletionService.Complete refuses wire-uniform with the age
-        // floor (the anti-oracle requirement — never a distinct wire shape).
-        var signup = scope.ServiceProvider.GetRequiredService<SignupCompletionService>();
-        var challengeMachine = scope.ServiceProvider.GetRequiredService<EmailChallengeMachine>();
-        var anonCtx = IdentityDbFixture.AnonymousContext("ban-evasion-resignup");
+            // During grace (before the line below runs), the SAME email must render "already registered"
+            // — never reach Complete() at all. This is the PII-3 fix's own new coverage.
+            var challengeMachine = scope.ServiceProvider.GetRequiredService<EmailChallengeMachine>();
+            var duringGraceCtx = IdentityDbFixture.AnonymousContext("ban-evasion-during-grace");
+            var duringGraceChallengeId = await challengeMachine.IssueForSignup(email, "en", duringGraceCtx, CancellationToken.None);
+            Assert.False(await db.EmailChallenges.AnyAsync(c => c.ChallengeId == duringGraceChallengeId));
+            Assert.Contains(fixture.Emails.Sent, m => m.To == email && m.TemplateKey == "email.already_registered");
 
-        var challengeId = await challengeMachine.IssueForSignup(email, "en", anonCtx, CancellationToken.None);
-        var challenge = await db.EmailChallenges.SingleAsync(c => c.ChallengeId == challengeId);
-        // Read the plaintext code the same way the E2E would via Mailpit — here, directly off the fake
-        // sender's captured model (IdentityEmailTemplateRenderer interpolates {{code}} from it).
-        var sentCodeEmail = fixture.Emails.Sent.Last(m => m.To == email && m.TemplateKey == "email.verify_code");
-        var code = sentCodeEmail.Model["code"];
-        var confirmed = await challengeMachine.ConfirmSignupCode(challengeId, code, anonCtx, CancellationToken.None);
-        var verifiedToken = Assert.IsType<ChallengeConfirmResult.ConfirmedResult>(confirmed).VerifiedToken;
+            // Run the physical purge — the email column is now genuinely NULLed/freed.
+            var worker = scope.ServiceProvider.GetRequiredService<DeletionPhysicalPurgeWorker>();
+            var processed = await worker.RunDueSweepAsync(CancellationToken.None);
+            Assert.True(processed >= 1);
+            Assert.NotNull((await db.Accounts.SingleAsync(a => a.AccountId == accountId)).TombstonedAt);
 
-        var outcome = await signup.Complete(
-            verifiedToken, $"newhandle{Guid.NewGuid():N}"[..15], "2000-01-01", "fixture-tag", "en",
-            SupportedLocales, anonCtx, CancellationToken.None);
+            // POST-purge re-registration consult: SignupCompletionService.Complete refuses wire-uniform
+            // with the age floor (the anti-oracle requirement — never a distinct wire shape).
+            var signup = scope.ServiceProvider.GetRequiredService<SignupCompletionService>();
+            var anonCtx = IdentityDbFixture.AnonymousContext("ban-evasion-resignup");
 
-        Assert.IsType<SignupCompleteOutcome.RefusedAgeFloorResult>(outcome);
+            var challengeId = await challengeMachine.IssueForSignup(email, "en", anonCtx, CancellationToken.None);
+            var challenge = await db.EmailChallenges.SingleAsync(c => c.ChallengeId == challengeId);
+            // Read the plaintext code the same way the E2E would via Mailpit — here, directly off the fake
+            // sender's captured model (IdentityEmailTemplateRenderer interpolates {{code}} from it).
+            var sentCodeEmail = fixture.Emails.Sent.Last(m => m.To == email && m.TemplateKey == "email.verify_code");
+            var code = sentCodeEmail.Model["code"];
+            var confirmed = await challengeMachine.ConfirmSignupCode(challengeId, code, anonCtx, CancellationToken.None);
+            var verifiedToken = Assert.IsType<ChallengeConfirmResult.ConfirmedResult>(confirmed).VerifiedToken;
+
+            var outcome = await signup.Complete(
+                verifiedToken, $"newhandle{Guid.NewGuid():N}"[..15], "2000-01-01", "fixture-tag", "en",
+                SupportedLocales, anonCtx, CancellationToken.None);
+
+            Assert.IsType<SignupCompleteOutcome.RefusedAgeFloorResult>(outcome);
+        }
+        finally
+        {
+            await SetGraceDays(scope, originalGraceDays);
+        }
     }
 }

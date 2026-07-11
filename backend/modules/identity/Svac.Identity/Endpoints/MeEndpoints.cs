@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,11 @@ namespace Svac.Identity.Endpoints;
 public static class MeEndpoints
 {
     private const string BearerPrefix = "Bearer ";
+
+    /// <summary>MAIL-1 (SECURITY_REVIEW_S3.md, silent-reject Finding 3): PUT /v1/me/email + its confirm had
+    /// no floor at all — same 60ms floor as every other anti-enumeration endpoint (SignupEndpoints/
+    /// AuthEndpoints' own AntiEnumerationFloor).</summary>
+    private static readonly TimeSpan AntiEnumerationFloor = TimeSpan.FromMilliseconds(60);
 
     /// <summary>The mutable push-category set (SLICE_S3_CONTRACT.md §0/§1c/§12 item 10): 1-7,9. Category 8 is UNREPRESENTABLE here — not filtered out, simply never a member — so a request naming it renders IDENTICALLY to any other value outside this set: 404, absence, never a locked toggle.</summary>
     private static readonly int[] MutablePushCategories = { 1, 2, 3, 4, 5, 6, 7, 9 };
@@ -203,10 +209,12 @@ public static class MeEndpoints
         [FromServices] ClientConfigResponse clientConfig,
         CancellationToken ct)
     {
+        var stopwatch = Stopwatch.StartNew();
         var ctx = requestContext.Current;
 
         if (!EmailInput.TryNormalize(request.Email, out var emailLower))
         {
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
             return IdentityProblems.Of(MessageKeys.ErrorGeneric, StatusCodes.Status422UnprocessableEntity, ctx);
         }
 
@@ -214,6 +222,7 @@ public static class MeEndpoints
         var locale = string.IsNullOrEmpty(ctx.Locale) || !clientConfig.Locales.Contains(ctx.Locale) ? clientConfig.DefaultLocale : ctx.Locale;
         var challengeId = await challenges.IssueForEmailChange(accountId, emailLower, locale, ctx, ct);
 
+        await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
         return Results.Json(new ChallengeIssued(challengeId), statusCode: StatusCodes.Status202Accepted);
     }
 
@@ -224,9 +233,11 @@ public static class MeEndpoints
         [FromServices] IRequestContextAccessor requestContext,
         CancellationToken ct)
     {
+        var stopwatch = Stopwatch.StartNew();
         var ctx = requestContext.Current;
         if (string.IsNullOrWhiteSpace(request.ChallengeId) || string.IsNullOrWhiteSpace(request.Code))
         {
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
             return InvalidCodeProblem(ctx);
         }
 
@@ -236,13 +247,16 @@ public static class MeEndpoints
         if (outcome is EmailChangeConfirmResult.SwappedResult swapped)
         {
             // The security notice goes to the OLD address, AFTER the swap commits (§1b/§7: "the account-
-            // takeover tripwire in passwordless auth") — never inside the DB transaction.
+            // takeover tripwire in passwordless auth") — never inside the DB transaction. Enqueue-only
+            // now (MAIL-1, OutboxEmailSender) — this await returns immediately regardless.
             await emailSender.SendAsync(
                 new Svac.DomainCore.Contracts.Email.EmailMessage(swapped.OldEmail, "email.email_changed_notice", ctx.Locale, EmptyModel),
                 ctx, ct);
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
             return Results.Ok(new { });
         }
 
+        await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
         return InvalidCodeProblem(ctx);
     }
 

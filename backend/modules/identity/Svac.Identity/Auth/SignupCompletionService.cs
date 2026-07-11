@@ -118,15 +118,25 @@ public sealed class SignupCompletionService(
 
         if (challenge.ConsumedAt is not null)
         {
-            // REPLAY: this exact verifiedToken already won — idempotent under race means the loser's
-            // retry resolves to the WINNER's account, never a duplicate-account error.
-            var existingAccountId = await scope.Db.Accounts
-                .Where(a => a.Email != null && a.Email == challenge.EmailLower && a.TombstonedAt == null)
-                .Select(a => a.AccountId)
-                .FirstOrDefaultAsync(ct);
-
-            if (existingAccountId is null)
+            // REPLAY (F4, SECURITY_REVIEW_S3.md): resolve by the challenge row's own STAMPED account_id
+            // (set below, at the SAME moment the winner consumes this row), never by re-querying accounts
+            // by email. An email lookup is ambiguous during another account's grace-deletion window: a
+            // deleted-in-grace account A and a freshly active account B can legitimately share one email
+            // address (the partial unique index frees it once account_state='deleted'), and an unordered
+            // FirstOrDefaultAsync over that email could resolve the replay to EITHER row — handing a
+            // replayed/resubmitted request the wrong account's rights set. The stamped id is unambiguous
+            // by construction: it is written once, by the winner, to this exact row.
+            if (challenge.AccountId is null)
             {
+                await scope.RollbackAsync(ct);
+                return SignupCompleteOutcome.InvalidToken;
+            }
+            var existingAccountId = challenge.AccountId;
+
+            if (!await scope.Db.Accounts.AnyAsync(a => a.AccountId == existingAccountId, ct))
+            {
+                // The winner's account no longer exists (e.g. a MinorPurge hard-delete ran since) — the
+                // replay has nothing left to resolve to.
                 await scope.RollbackAsync(ct);
                 return SignupCompleteOutcome.InvalidToken;
             }
@@ -240,6 +250,14 @@ public sealed class SignupCompletionService(
         }
 
         challenge.ConsumedAt = now;
+        // PII-5 (SECURITY_REVIEW_S3.md, erasure completeness — the S2-scar shape): stamp account_id on
+        // the signup challenge row NOW, at consumption. EmailChallengesPurgeStoreExecutor matches
+        // `AccountId == accountId OR EmailLower == account's CURRENT email` — a signup row that never
+        // carries account_id and a since-changed email otherwise survives account_deletion forever (the
+        // exact S2 invocation-id scar shape). Stamping it here means the purge's account_id branch always
+        // reaches this row regardless of how many times the email later changes — and, per F4 above, also
+        // gives the replay branch an unambiguous resolution target instead of an email lookup.
+        challenge.AccountId = accountId;
         await scope.Db.SaveChangesAsync(ct);
 
         var subject = new SubjectRef("account", accountId);

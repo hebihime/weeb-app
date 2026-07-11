@@ -95,15 +95,33 @@ public sealed class PurgePipeline(
         // CONTRACT.md §6a): a store's purge can depend on ANOTHER store's row still being live (identity's
         // email_challenges-by-email S2 scar reads the account's still-live email before accounts' own
         // Tombstone nulls it) — the registry's declared order is now load-bearing, not incidental.
-        var orderedStoreKeys = registry.Entries.Select(e => e.StoreKey).Distinct().ToList();
-        foreach (var storeKey in orderedStoreKeys)
+        //
+        // PII-1 (SECURITY_REVIEW_S3.md, CRITICAL for erasure completeness): the contract mandates
+        // crypto-shred of the subject's field keys as the FINAL verb of a purge run (§2 Phase P step 5),
+        // but registry-source ordering cannot express that on its own — CorePurgeRegistrySource (which
+        // owns the CryptoShred cells for data_protection_keys/field_key_refs) is registered BEFORE
+        // IdentityPurgeRegistrySource in DI (AddDomainCore runs before AddIdentityModule), so first-
+        // occurrence order alone would run the shred FIRST, before a single identity store's own purge —
+        // a mid-run failure in any identity executor would then leave the subject's key destroyed while
+        // their accounts row (plaintext email, human handle) is still un-tombstoned: simultaneously
+        // un-erased AND un-recoverable. Fix: a verb-priority pass over the SAME first-occurrence-ordered
+        // entries — every CryptoShred cell for this purgeClass is hoisted to run after every non-shred
+        // cell, regardless of which source registered it or in what order. Relative order WITHIN each
+        // group is preserved (still first-occurrence), so the email_challenges-before-accounts and
+        // refresh_tokens-before-sessions S2-scar orderings are untouched.
+        var matchedEntries = registry.Entries
+            .Select(e => e.StoreKey)
+            .Distinct()
+            .Select(storeKey => (StoreKey: storeKey, Entry: registry.EntriesFor(storeKey).SingleOrDefault(e => e.PurgeClass == purgeClass)))
+            .Where(t => t.Entry is not null)
+            .Select(t => (t.StoreKey, Entry: t.Entry!))
+            .ToList();
+        var orderedEntries = matchedEntries
+            .Where(t => t.Entry.Verb != PurgeVerb.CryptoShred)
+            .Concat(matchedEntries.Where(t => t.Entry.Verb == PurgeVerb.CryptoShred))
+            .ToList();
+        foreach (var (storeKey, entry) in orderedEntries)
         {
-            var entry = registry.EntriesFor(storeKey).SingleOrDefault(e => e.PurgeClass == purgeClass);
-            if (entry is null)
-            {
-                continue; // registry gap for this (store, class) pair — the arch test's completeness suite catches this, not a silent skip here.
-            }
-
             var isHeld = heldStoreKeys is { Count: > 0 } && heldStoreKeys.Contains(storeKey);
 
             var runId = MintRunId(DateTimeOffset.UtcNow);

@@ -55,7 +55,12 @@ builder.Services.AddSvacHosting();
 // advisory lock; the seeding pass below runs AFTER app.StartAsync() completes, so it always sees an
 // already-migrated schema — stream consumers (none exist at S1; the first lands with a feature module)
 // must register after this same hosted service for the identical reason.
-builder.Services.AddDomainCore(connectionString, devSeamsEnabled);
+// PII-8 (SECURITY_REVIEW_S3.md): a real, stable path (independent of SVAC_DEVSEAMS_DESTROYED_KEYS_PATH
+// being explicitly set) so this host's own dev/compose restarts can never resurrect a crypto-shredded
+// field key — DevKeyringFieldKeyVault reloads this file at construction. No-op when devSeamsEnabled is
+// false (the fail-closed ThrowingFieldKeyVault branch never constructs this type at all).
+var devKeyringDestroyedKeysPath = Path.Combine(Path.GetTempPath(), "svac-devseams", "destroyed-field-keys.txt");
+builder.Services.AddDomainCore(connectionString, devSeamsEnabled, devKeyringDestroyedKeysPath);
 // SLICE_S3_CONTRACT.md Pass 1 (BUILD phase): the identity module's real registration — IdentityDbContext
 // (schema `identity`) + its own migration hosted service, the identity policy source + ownership
 // resolvers, the session-backed IBearerAuthenticator (overrides AddSvacHosting's anonymous default —
@@ -65,6 +70,13 @@ builder.Services.AddDomainCore(connectionString, devSeamsEnabled);
 var smtpOptions = devSeamsEnabled
     ? Svac.Identity.Email.SmtpTransportOptions.MailpitDefault(builder.Configuration["SVAC_SMTP_HOST"] ?? "localhost")
     : null;
+// OPS-2 (SECURITY_REVIEW_S3.md): explicit startup refusal — mirrors ProdFieldKeyVaultGuard.Enforce above.
+// A non-Development boot with no SMTP configured throws HERE, before app.StartAsync()/traffic, instead of
+// booting clean and 500ing at the first signup/login-code/email-change/export request.
+Svac.Identity.Email.SmtpConfiguredGuard.Enforce(
+    environmentName: builder.Environment.EnvironmentName,
+    devSeamsEnabled: devSeamsEnabled,
+    smtpConfigured: smtpOptions is not null);
 builder.Services.AddIdentityModule(connectionString, smtpOptions);
 builder.Services.AddOpenApi("v0", OpenApiSetup.Configure);
 
@@ -73,6 +85,15 @@ builder.Services.AddSingleton(ClientConfigLoader.Load(localesPath));
 
 var app = builder.Build();
 
+// OPS-1 (SECURITY_REVIEW_S3.md): resolve the REAL client IP before anything downstream reads
+// Connection.RemoteIpAddress — behind Azure Container Apps' ingress that address is always the proxy's
+// unless forwarded-headers processing rewrites it first, and IdentityRateLimiting's anonymous per-IP
+// limiter partitions on exactly that field. Must run before UseSvacRequestContext/UseRateLimiter.
+// SVAC_ACA_INGRESS_CIDRS (comma-separated CIDR list) MUST be set to the ACA ingress's real subnet before
+// any non-Development deploy — see ForwardedHeadersConfiguration's own doc comment. Unset today (the
+// exact ACA ingress CIDR is not yet known); Build() fails closed (empty trust set, XFF inert) rather than
+// trusting every peer, so this is inert-not-spoofable until that config lands.
+app.UseForwardedHeaders(Svac.Identity.Endpoints.ForwardedHeadersConfiguration.Build(builder.Configuration["SVAC_ACA_INGRESS_CIDRS"]));
 // RequestContextMiddleware FIRST — every module/endpoint downstream resolves IRequestContextAccessor,
 // never HttpContext directly (SLICE_S1_CONTRACT.md §1b, arch-tested).
 app.UseSvacRequestContext();
@@ -117,10 +138,11 @@ if (devSeamsEnabled)
             [FromServices] Svac.DomainCore.Contracts.Config.IConfigRegistry config,
             CancellationToken ct) =>
         {
-            // identity.deletion.grace_days' [0,30] bound (SLICE_S3_CONTRACT.md §4) is declared in the
-            // manifest but has no ConfigBounds.ValidateAsync rule yet (that switch only covers the three
-            // AimlRouter keys S2 shipped) — enforced HERE so this diagnostic can never push a real desk
-            // value out of its own contract-stated range, same spirit as a real desk edit would apply.
+            // identity.deletion.grace_days' [0,30] bound (SLICE_S3_CONTRACT.md §4) is now ALSO enforced
+            // generically inside ConfigRegistry.SetValue itself (OPS-3, SECURITY_REVIEW_S3.md: BoundsJson,
+            // seeded from the manifest's own "bounds" field, is checked for every key on the real write
+            // path — no longer a hardcoded 3-key switch). This local check stays as a friendlier 400 with
+            // a specific message; SetValue's own ArgumentException is the structural backstop either way.
             if (body.Days < 0 || body.Days > 30)
             {
                 return Results.BadRequest(new { error = $"identity.deletion.grace_days bounds are [0,30] (SLICE_S3_CONTRACT.md §4); got {body.Days}." });

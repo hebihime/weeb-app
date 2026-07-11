@@ -358,3 +358,49 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    DROP INDEX identity.ux_accounts_email;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    DROP INDEX identity.ux_accounts_handle;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    ALTER TABLE identity.deletion_jobs ADD executing_since timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    CREATE UNIQUE INDEX ux_accounts_email ON identity.accounts (email) WHERE tombstoned_at IS NULL AND email IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    CREATE UNIQUE INDEX ux_accounts_handle ON identity.accounts (handle) WHERE tombstoned_at IS NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260711202001_TombstoneGatedUniquenessAndDeletionLease') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260711202001_TombstoneGatedUniquenessAndDeletionLease', '10.0.9');
+    END IF;
+END $EF$;
+COMMIT;
+

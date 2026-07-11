@@ -33,7 +33,17 @@ namespace Svac.DomainCore.DependencyInjection;
 /// </summary>
 public static class DomainCoreServiceCollectionExtensions
 {
-    public static IServiceCollection AddDomainCore(this IServiceCollection services, string postgresConnectionString, bool devSeamsEnabled)
+    /// <param name="devKeyringDestroyedKeysPath">
+    /// PII-8 (SECURITY_REVIEW_S3.md): optional file path backing <see cref="DevKeyringFieldKeyVault"/>'s
+    /// destroyed-key persistence. Null (the default — every existing caller, including every test
+    /// fixture in the suite) preserves the pre-fix, purely-in-memory-per-instance behavior byte-
+    /// identically. Only the real host's Program.cs passes a real, stable path so an actual dev/compose
+    /// restart cannot resurrect a crypto-shredded key; passing this in test fixtures would risk shared-
+    /// file contention across parallel test collections for zero benefit (each test's key names are
+    /// already unique per run, so cross-instance persistence proves nothing a fresh in-memory instance
+    /// doesn't already prove for THAT suite's own dedicated PII-8 regression test).
+    /// </param>
+    public static IServiceCollection AddDomainCore(this IServiceCollection services, string postgresConnectionString, bool devSeamsEnabled, string? devKeyringDestroyedKeysPath = null)
     {
         services.AddDbContext<CoreDbContext>(options => options.UseNpgsql(postgresConnectionString));
 
@@ -90,7 +100,10 @@ public static class DomainCoreServiceCollectionExtensions
         if (devSeamsEnabled)
         {
             services.AddSingleton<IPaymentService, DevSeamsPaymentService>();
-            services.AddSingleton<IFieldKeyVault, DevKeyringFieldKeyVault>();
+            // PII-8 (SECURITY_REVIEW_S3.md): devKeyringDestroyedKeysPath is null for every caller except
+            // the real host's Program.cs (see the parameter doc above) — DevKeyringFieldKeyVault's own
+            // constructor also honors SVAC_DEVSEAMS_DESTROYED_KEYS_PATH if that env var is explicitly set.
+            services.AddSingleton<IFieldKeyVault>(_ => new DevKeyringFieldKeyVault(devKeyringDestroyedKeysPath));
             services.AddSingleton<IRegionResolver, DevSeamsRegionResolver>();
             services.AddSingleton<IConDayResolver, DevSeamsConDayResolver>();
         }

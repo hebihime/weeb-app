@@ -21,8 +21,13 @@ public static class SignupEndpoints
 
     public static void MapSignupEndpoints(this IEndpointRouteBuilder app)
     {
+        // OPS-6 (SECURITY_REVIEW_S3.md, LOW→fix): unbounded handle-existence scraping + triple-AnyAsync
+        // DB amplification per call — now behind the SAME anonymous per-IP limiter as every POST mutation
+        // (identity-anon policy applies to any request shape, GET included; OPS-1's UseForwardedHeaders
+        // fix makes the partition key meaningful behind the ACA ingress).
         app.MapGet("/v1/signup/handle-availability", GetHandleAvailability)
             .WithName("GetSignupHandleAvailability")
+            .RequireRateLimiting(IdentityRateLimiting.AnonymousMutationPolicy)
             .Produces<HandleAvailabilityResponse>(StatusCodes.Status200OK);
 
         app.MapPost("/v1/signup/email-verification", PostEmailVerification)
@@ -74,7 +79,17 @@ public static class SignupEndpoints
         // what POST /v1/signup/complete would actually accept.
         var retirementDays = await config.GetValue<int>(IdentityConfigKeys.HandleRetirementDays, ct);
         var retirementCutoff = DateTimeOffset.UtcNow.AddDays(-retirementDays);
-        var taken = await db.Accounts.AnyAsync(a => a.Handle == canonical && a.AccountState != "deleted", ct)
+        // PII-3 / CONC-4 (SECURITY_REVIEW_S3.md, grace-window identity takeover): gate on
+        // `tombstoned_at IS NULL`, NOT `account_state <> 'deleted'`. During the 14-30 day grace window
+        // (Phase L: account_state='deleted', tombstoned_at still NULL, handle column UNCHANGED) the old
+        // `account_state <> 'deleted'` filter excluded the row here, reporting the handle available —
+        // even though the row still legitimately holds it. A third party could then register it,
+        // permanently destroying the rightful owner's cancel right (CancelDeletion's own uncaught 23505 —
+        // see the defensive catch added there). tombstoned_at is only ever set by the PHYSICAL purge
+        // (Phase P), at the exact moment this row's Handle column is overwritten with a retired sentinel
+        // and the original moves to identity.retired_handles — so this predicate and the DB's own partial
+        // unique index free the handle at IDENTICALLY the same instant, by construction.
+        var taken = await db.Accounts.AnyAsync(a => a.Handle == canonical && a.TombstonedAt == null, ct)
             || await db.ReservedHandles.AnyAsync(h => h.Handle == canonical, ct)
             || await db.RetiredHandles.AnyAsync(h => h.Handle == canonical && h.RetiredAt > retirementCutoff, ct);
 
@@ -110,13 +125,20 @@ public static class SignupEndpoints
         [FromServices] IRequestContextAccessor requestContext,
         CancellationToken ct)
     {
-        var ctx = requestContext.Current;
+        // MAIL-1 (SECURITY_REVIEW_S3.md, silent-reject Finding 2): this endpoint had NO floor at all — a
+        // backed challengeId (real row, HMAC compute + attempt-count write) vs an unbacked decoy id
+        // (immediate rollback, no write) differ by more than the floor absorbs unless BOTH the work is
+        // equalized (ConfirmSignupCode's dummy-HMAC branch, above) AND the residual is floored here.
+        var stopwatch = Stopwatch.StartNew();
         if (string.IsNullOrWhiteSpace(request.ChallengeId) || string.IsNullOrWhiteSpace(request.Code))
         {
-            return InvalidCodeProblem(ctx);
+            await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
+            return InvalidCodeProblem(ctx: requestContext.Current);
         }
 
+        var ctx = requestContext.Current;
         var outcome = await challenges.ConfirmSignupCode(request.ChallengeId, request.Code, ctx, ct);
+        await TimingFloor.NormalizeAsync(stopwatch, AntiEnumerationFloor, ct);
         return outcome switch
         {
             ChallengeConfirmResult.ConfirmedResult confirmed => Results.Ok(new VerifiedTokenIssued(confirmed.VerifiedToken)),

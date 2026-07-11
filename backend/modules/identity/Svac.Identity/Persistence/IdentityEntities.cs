@@ -41,7 +41,7 @@ public sealed class EmailChallengeEntity
     public required string ChallengeId { get; set; } // chl_ ULID
     public required string Purpose { get; set; } // CHECK signup|login|email_change
     public required string EmailLower { get; set; }
-    public string? AccountId { get; set; } // only login/email_change
+    public string? AccountId { get; set; } // login/email_change carry it from issuance; signup rows get it STAMPED at consumption (PII-5, SECURITY_REVIEW_S3.md) so the purge's account_id branch always reaches them
     public required byte[] CodeHash { get; set; } // HMAC(IFieldKeyVault named secret, code)
     public int Attempts { get; set; }
     public DateTimeOffset? VerifiedAt { get; set; } // signup confirm step
@@ -182,6 +182,7 @@ public sealed class DeletionJobEntity
     public required string State { get; set; } // CHECK scheduled|canceled|executing|held|complete
     public DateTimeOffset RequestedAt { get; set; }
     public DateTimeOffset ScheduledFor { get; set; }
+    public DateTimeOffset? ExecutingSince { get; set; } // CONC-2 lease (SECURITY_REVIEW_S3.md): stamped by the guarded CAS claim; a job stuck 'executing' past the lease window is re-swept as retryable
     public bool ExportOffered { get; set; } = true;
     public int? CustodyHoldsFound { get; set; }
     public string? CustodyHoldRefsJson { get; set; }

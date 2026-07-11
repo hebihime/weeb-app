@@ -30,6 +30,8 @@ public static class IdentityConfigKeys
     public const string ExportPreDeletionWaitHours = "identity.export.pre_deletion_wait_hours";
     /// <summary>OQ-2's quarantine window before a retired handle is eligible for release (SLICE_S3_CONTRACT.md §4) — registered/consumed at the config layer even though the dedicated global release sweep is out of this pass's scope (see IdentityPurgeRegistrySource's identity.retired_handles RetentionExpiry reason).</summary>
     public const string HandleRetirementDays = "identity.handle.retirement_days";
+    /// <summary>[OPS-3/OPS-5, SECURITY_REVIEW_S3.md] The desk-facing mirror of the real enforced cap (<see cref="IdentityQuotaKeys.ExportRequestDaily"/>'s backing `quota.identity.export.request.daily.cap` row, per QuotaService's fixed naming convention) — named here only so the §4 statutory floor (bounds [1,10], "no ops edit can zero a legal right") has a typed reference for OPS-3's bounds-enforcement test. Not read by QuotaService.Consume directly (OPS-5, deferred: the dual-key divergence itself).</summary>
+    public const string ExportDailyCap = "identity.export.daily_cap";
 }
 
 /// <summary>The 10A quota keys this build's endpoints consume (SLICE_S3_CONTRACT.md §5).</summary>

@@ -77,7 +77,7 @@ public sealed class ExportWorker(
         var manifestJson = BuildManifest(sink.Entries, registry.Entries, requestedAt, readyAt, statutoryDeadlineDays);
         var zipBytes = BuildZip(sink.Entries, manifestJson);
 
-        await artifactStore.MarkReadyAsync(exportId, zipBytes, manifestJson, readyAt, readyAt.AddHours(ttlHours), ct);
+        await artifactStore.MarkReadyAsync(exportId, accountId, zipBytes, manifestJson, readyAt, readyAt.AddHours(ttlHours), ct);
 
         await eventStore.Append(StreamType.Audit, accountId, "identity.export_ready", "{}", ctx, ExpectedVersion.AnyVersion, ct);
         await eventStore.Append(StreamType.Behavioral, accountId, "identity.export_ready", "{}", ctx, ExpectedVersion.AnyVersion, ct);

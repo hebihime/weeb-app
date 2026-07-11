@@ -35,10 +35,12 @@ public sealed class ConfigRegistry(CoreDbContext db, Svac.DomainCore.Contracts.S
         }
 
         var valueJson = JsonSerializer.Serialize(value);
-        // PII-S2-F1/TRUST-BREAK-1 (SECURITY_REVIEW_S2.md): set-time bounds validation — throws BEFORE the
-        // tracked row is mutated, so a rejected Set leaves the stored value (and the audit stream) byte-
-        // for-byte untouched. Every OTHER 9A key has no bounds rule registered and passes through unchanged.
-        await ConfigBounds.ValidateAsync(key, valueJson, db, ct);
+        // PII-S2-F1/TRUST-BREAK-1 (SECURITY_REVIEW_S2.md) + OPS-3 (SECURITY_REVIEW_S3.md): set-time bounds
+        // validation — throws BEFORE the tracked row is mutated, so a rejected Set leaves the stored value
+        // (and the audit stream) byte-for-byte untouched. row.BoundsJson carries every OTHER key's generic
+        // [min,max] rule (seeded from its manifest's "bounds" field); a key with neither the hardcoded
+        // switch nor a BoundsJson row passes through unchanged, exactly as before.
+        await ConfigBounds.ValidateAsync(key, valueJson, row.BoundsJson, db, ct);
 
         row.ValueJson = valueJson;
         row.UpdatedAt = DateTimeOffset.UtcNow;

@@ -24,6 +24,11 @@ namespace Svac.Identity.Endpoints;
 /// the two resource-scoped reads ride the registered `export` <see cref="IResourceOwnershipResolver"/>
 /// (<see cref="Svac.Identity.Policy.ExportOwnershipResolver"/>) — a foreign or unknown exportId denies as
 /// absence, byte-identical, exactly like the session/device Auth-F3 exemplars.
+///
+/// AUTH-1 (SECURITY_REVIEW_S3.md): the two reads ALSO fold <c>AccountId == caller</c> directly into their
+/// own queries (GetMeExport here; <see cref="Svac.Identity.Export.IExportArtifactStore.GetReadyZipAsync"/>
+/// for the download) — defense-in-depth so a future refactor that drops <c>RequirePolicyAction</c> still
+/// cannot leak a foreign account's export, not just a latent single point of failure on the policy layer.
 /// </summary>
 public static class ExportEndpoints
 {
@@ -140,17 +145,32 @@ public static class ExportEndpoints
     private static async Task<IResult> GetMeExport(
         [FromRoute] string exportId,
         [FromServices] IdentityDbContext db,
+        [FromServices] IRequestContextAccessor requestContext,
         CancellationToken ct)
     {
+        // AUTH-1 (SECURITY_REVIEW_S3.md): defense-in-depth ownership fold — the export status/download
+        // queries scoped ONLY by the policy filter+resolver, unlike DeleteMeSession/DeleteMeDevice's own
+        // `&& AccountId == accountId` re-scope. Folding `&& AccountId == accountId` here means a future
+        // refactor that drops `.RequirePolicyAction(...)` still cannot leak a foreign export's status —
+        // the query itself, not just the 4A chokepoint, proves ownership.
+        var accountId = requestContext.Current.Actor.Id.ToString();
+
         // Same lazy-expiry sweep as POST, scoped to this one row so a status read never lies about a
         // job that is, in fact, past its TTL.
         var now = DateTimeOffset.UtcNow;
+        // PII-7 (SECURITY_REVIEW_S3.md): null the artifact + manifest in the SAME expiry UPDATE — leaving
+        // the bytea in place after "expired" flips means an unbounded-lifetime PII blob outlives its own
+        // download window with nothing anywhere sweeping it. The artifact is encrypted at rest (see
+        // PostgresExportArtifactStore), but a job that will never be read again should not keep it either.
         await db.ExportJobs
-            .Where(e => e.ExportId == exportId && e.State == "ready" && e.ExpiresAt != null && e.ExpiresAt <= now)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.State, "expired"), ct);
+            .Where(e => e.ExportId == exportId && e.AccountId == accountId && e.State == "ready" && e.ExpiresAt != null && e.ExpiresAt <= now)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.State, "expired")
+                .SetProperty(e => e.Artifact, (byte[]?)null)
+                .SetProperty(e => e.ManifestJson, (string?)null), ct);
 
         var job = await db.ExportJobs
-            .Where(e => e.ExportId == exportId)
+            .Where(e => e.ExportId == exportId && e.AccountId == accountId)
             .Select(e => new { e.State, e.ExpiresAt })
             .SingleOrDefaultAsync(ct);
 
@@ -166,9 +186,14 @@ public static class ExportEndpoints
     private static async Task ExpireStaleReadyJob(IdentityDbContext db, string accountId, CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
+        // PII-7 (SECURITY_REVIEW_S3.md): see GetMeExport's identical fix below — null the artifact +
+        // manifest in the SAME expiry UPDATE.
         await db.ExportJobs
             .Where(e => e.AccountId == accountId && e.State == "ready" && e.ExpiresAt != null && e.ExpiresAt <= now)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.State, "expired"), ct);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.State, "expired")
+                .SetProperty(e => e.Artifact, (byte[]?)null)
+                .SetProperty(e => e.ManifestJson, (string?)null), ct);
     }
 
     // ------------------------------------------------------------------------------------------------
@@ -183,13 +208,15 @@ public static class ExportEndpoints
         [FromServices] IRequestContextAccessor requestContext,
         CancellationToken ct)
     {
-        var zip = await artifactStore.GetReadyZipAsync(exportId, ct);
+        var ctx = requestContext.Current;
+        // AUTH-1 (SECURITY_REVIEW_S3.md): same defense-in-depth fold as GetMeExport above —
+        // GetReadyZipAsync's own query now requires AccountId == the caller, independent of the policy layer.
+        var zip = await artifactStore.GetReadyZipAsync(exportId, ctx.Actor.Id.ToString(), ct);
         if (zip is null)
         {
             return Results.NotFound();
         }
 
-        var ctx = requestContext.Current;
         await eventStore.Append(StreamType.Audit, ctx.Actor.Id.ToString(), "identity.export_downloaded", "{}", ctx, ExpectedVersion.AnyVersion, ct);
 
         return Results.Bytes(zip, contentType: "application/zip", fileDownloadName: $"{exportId}.zip");

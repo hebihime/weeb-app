@@ -80,5 +80,53 @@ public sealed class CryptoShredTests
         Assert.Equal("1999-12-31", await encryptor.Unprotect(FieldEncryptionPurpose.Birthdate, birthdate));
     }
 
+    /// <summary>
+    /// PII-8 (SECURITY_REVIEW_S3.md, RED before the fix / GREEN after): DevKeyringFieldKeyVault's master
+    /// keys are RE-DERIVABLE from the fixed dev seed (needed so an in-process restart of the SAME
+    /// instance stays usable) — pre-fix, the destroyed-key set was purely in-memory, so a genuine process
+    /// restart (a fresh instance) forgot every shredded key and Unprotect happily re-derived it. This
+    /// test simulates that restart with two SEPARATE instances pointed at the SAME persisted store path —
+    /// destroy on instance 1, "restart" (construct instance 2 fresh), Unprotect must still fail on
+    /// instance 2. The default parameterless constructor (every other test in this suite) is UNCHANGED —
+    /// purely in-memory, isolated per instance — proven by <see cref="Shred_OnAPurposeNeverProtected_NeverThrows"/>
+    /// and friends staying green with zero modification.
+    /// </summary>
+    [Fact]
+    public async Task DestroyedKey_SurvivesASimulatedRestart_WhenBackedByAPersistedStore()
+    {
+        var storePath = Path.Combine(Path.GetTempPath(), $"pii8-fixture-{Guid.NewGuid():N}.destroyed-keys.txt");
+        try
+        {
+            var subject = new SubjectScope($"usr_pii8_{Guid.NewGuid():N}");
+
+            var instance1 = new DevKeyringFieldKeyVault(storePath);
+            var encryptor1 = new AesFieldEncryptor(instance1);
+            var protectedData = await encryptor1.Protect(FieldEncryptionPurpose.Birthdate, subject, "1990-06-15");
+            await encryptor1.Shred(FieldEncryptionPurpose.Birthdate, subject);
+
+            // Sanity: the SAME (live) instance already refuses — this is the pre-fix behavior too.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => encryptor1.Unprotect(FieldEncryptionPurpose.Birthdate, protectedData));
+
+            // "Restart" — a BRAND NEW instance, over the SAME persisted store path, never told about
+            // instance1's in-memory _destroyed set directly.
+            var instance2 = new DevKeyringFieldKeyVault(storePath);
+            var encryptor2 = new AesFieldEncryptor(instance2);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => encryptor2.Unprotect(FieldEncryptionPurpose.Birthdate, protectedData));
+        }
+        finally
+        {
+            File.Delete(storePath);
+        }
+    }
+
+    // NOTE: the env-var-driven path fallback (SVAC_DEVSEAMS_DESTROYED_KEYS_PATH, used by the real DI
+    // registration when no explicit path is passed) is deliberately NOT exercised via a process-wide
+    // Environment.SetEnvironmentVariable here — this test assembly runs multiple IAsyncLifetime classes
+    // in parallel (several of which construct a DevKeyringFieldKeyVault through AddDomainCore with no
+    // explicit path), and mutating process-wide env state would risk exactly the shared-file contention
+    // this fix's design note warns against. The explicit-constructor-argument test above exercises the
+    // SAME persistence code path (the env var is a one-line `??` fallback ahead of it) with zero shared
+    // global state.
+
     private static AesFieldEncryptor BuildEncryptor() => new(new DevKeyringFieldKeyVault());
 }

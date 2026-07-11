@@ -264,6 +264,69 @@ public sealed class ExportEndpointsHttpTests(IdentityHttpFixture fixture)
         Assert.DoesNotContain("\"birthdate\": null", accountsJson, StringComparison.Ordinal);
     }
 
+    // ------------------------------------------------------------------------------------------------
+    // PII-7 (SECURITY_REVIEW_S3.md): the artifact bytea stored on identity.export_jobs must never be
+    // plaintext-readable — it is now encrypted under the subject's own field key — AND an expired job's
+    // Artifact/manifest columns must be nulled in the SAME expiry transition, never left to persist
+    // unbounded after the job's own download window has passed.
+    // ------------------------------------------------------------------------------------------------
+    [Fact]
+    public async Task StoredArtifact_IsNotPlaintextReadable_AndIsNulledOnExpiry()
+    {
+        var (accountId, token) = await fixture.SeedActiveAccountWithSession();
+
+        var post = await fixture.Client.SendAsync(IdentityHttpFixture.Authed(HttpMethod.Post, "/v1/me/export", token, new { }));
+        Assert.Equal(HttpStatusCode.Accepted, post.StatusCode);
+        var exportId = JsonSerializer.Deserialize<JsonElement>(await post.Content.ReadAsStringAsync(), CaseInsensitive).GetProperty("exportId").GetString()!;
+
+        byte[] rawArtifact;
+        using (var scope = fixture.NewScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var row = await db.ExportJobs.SingleAsync(e => e.ExportId == exportId);
+            Assert.Equal("ready", row.State);
+            rawArtifact = row.Artifact ?? throw new InvalidOperationException("ready job has no artifact.");
+        }
+
+        // Not plaintext-readable: the raw stored bytes must NOT contain the zip's own PK signature, the
+        // literal "birthdate" field name, nor the account's own plaintext birthdate value — all of which
+        // WOULD be present verbatim in a plaintext zip (this exact account's export contains the subject's
+        // own decrypted birthdate, by Art. 15 design — see AccountExportContributor).
+        var rawText = System.Text.Encoding.Latin1.GetString(rawArtifact); // byte-preserving decode for a substring scan over arbitrary binary.
+        Assert.DoesNotContain("PK", rawText, StringComparison.Ordinal); // the ZIP local-file-header magic.
+        Assert.DoesNotContain("birthdate", rawText, StringComparison.OrdinalIgnoreCase);
+
+        // The download path still decrypts transparently — the export is not broken by encrypting it at rest.
+        var download = await fixture.Client.SendAsync(IdentityHttpFixture.Authed(HttpMethod.Get, $"/v1/me/export/{exportId}/download", token));
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        var zipBytes = await download.Content.ReadAsByteArrayAsync();
+        using (var archive = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read))
+        {
+            Assert.Contains("manifest.json", archive.Entries.Select(e => e.Name));
+        }
+
+        // Force the job to expire, then re-read its status through the endpoint (triggers the lazy sweep) —
+        // Artifact + ManifestJson must both be nulled in that SAME expiry transition.
+        using (var scope = fixture.NewScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            await db.ExportJobs.Where(e => e.ExportId == exportId)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.ExpiresAt, DateTimeOffset.UtcNow.AddHours(-1)));
+        }
+        var status = await fixture.Client.SendAsync(IdentityHttpFixture.Authed(HttpMethod.Get, $"/v1/me/export/{exportId}", token));
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+        var statusBody = JsonSerializer.Deserialize<JsonElement>(await status.Content.ReadAsStringAsync(), CaseInsensitive);
+        Assert.Equal("expired", statusBody.GetProperty("state").GetString());
+
+        using (var scope = fixture.NewScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var expiredRow = await db.ExportJobs.SingleAsync(e => e.ExportId == exportId);
+            Assert.Null(expiredRow.Artifact);
+            Assert.Null(expiredRow.ManifestJson);
+        }
+    }
+
     private static string ReadEntry(ZipArchive archive, string name)
     {
         var entry = archive.GetEntry(name) ?? throw new InvalidOperationException($"zip entry \"{name}\" not found — entries present: {string.Join(", ", archive.Entries.Select(e => e.Name))}");

@@ -13,6 +13,16 @@ public enum FieldEncryptionPurpose
 
     /// <summary>[S6, PHASE_2A_SUBSTRATE.md §7] Raw anime-test answers. No S1/S2 code encrypts under this purpose — byte-identical addition.</summary>
     AnimeAnswers,
+
+    /// <summary>
+    /// [S3, PII-7 SECURITY_REVIEW_S3.md] The Art. 15 export artifact zip (which itself contains the
+    /// subject's decrypted birthdate, per AccountExportContributor — Art. 15 entitles the subject to
+    /// their OWN data). Encrypting the artifact bytea under the subject's OWN (purpose, subject) key
+    /// means crypto-shred retroactively kills any artifact residue too, closing the plaintext-PII-at-rest
+    /// gap the review found (a DB dump previously yielded a decrypted birthdate for every subject who
+    /// ever exported, regardless of the birthdate column's own encryption tier).
+    /// </summary>
+    ExportArtifact,
 }
 
 /// <summary>Scope a Shred call applies to — usually a subject id, sometimes a whole purpose-key retirement.</summary>

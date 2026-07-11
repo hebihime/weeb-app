@@ -91,12 +91,33 @@ public sealed class AccountsPurgeStoreExecutor(IdentityDbContext db) : IPurgeSto
         account.FandomTag = string.Empty;
         account.AvatarRef = null;
         // Handle is NOT NULL at the schema level (§2) — a stable, non-PII sentinel replaces the human-
-        // chosen value; ux_accounts_handle's partial filter (WHERE account_state <> 'deleted') already
-        // frees the ORIGINAL handle for re-registration once state='deleted', independent of this column.
+        // chosen value; ux_accounts_handle's partial filter (WHERE tombstoned_at IS NULL, PII-3/CONC-4)
+        // already frees the ORIGINAL handle for re-registration once tombstoned_at is set below,
+        // independent of this column.
         account.Handle = $"deleted_{accountId}";
         account.AccountState = "deleted";
         account.TombstonedAt = now;
         account.StateChangedAt = now;
+
+        // PII-6 (SECURITY_REVIEW_S3.md, contract compliance — §2(6) "every PII column NULLed"): the
+        // tombstone must NULL/sentinel EVERY PII column, not just the four above. Non-nullable columns
+        // get a fixed, non-identifying sentinel (never left carrying the subject's real value):
+        // BirthdateEnc -> an empty ciphertext (the field key itself is ALSO crypto-shredded elsewhere in
+        // this SAME purge run, per PII-1's now-last-verb ordering, but the bytes should not linger either
+        // way); Locale/TermsVersion -> empty string (mirrors FandomTag's own sentinel above);
+        // EmailVerifiedAt/AttestedAdultAt/LastActiveAt/CreatedAt -> DateTimeOffset.UnixEpoch (a
+        // recognizable non-value, matching the "epoch timestamps" sentinel the review calls for).
+        // DeletionRequestedAt is already nullable -> NULL outright. Region/RegionSource are DELIBERATELY
+        // KEPT (not nulled) — the review's own allowance: residency/L21 accounting on a tombstoned row is
+        // a recorded, defensible exception, not an oversight.
+        account.BirthdateEnc = Array.Empty<byte>();
+        account.Locale = string.Empty;
+        account.TermsVersion = string.Empty;
+        account.EmailVerifiedAt = DateTimeOffset.UnixEpoch;
+        account.AttestedAdultAt = DateTimeOffset.UnixEpoch;
+        account.LastActiveAt = DateTimeOffset.UnixEpoch;
+        account.CreatedAt = DateTimeOffset.UnixEpoch;
+        account.DeletionRequestedAt = null;
 
         await db.SaveChangesAsync(ct);
         return 1;

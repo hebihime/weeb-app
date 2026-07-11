@@ -25,11 +25,16 @@ public sealed record SmtpTransportOptions(string Host, int Port, string FromAddr
 /// <summary>
 /// The real SMTP transport over compose Mailpit (SLICE_S3_CONTRACT.md §1b) — "a REAL SMTP transport, not
 /// a DevSeam". Templates keyed x4 (EN/ES/PT/zh-Hans), server-rendered in the recipient's locale.
-/// Prod-unconfigured throws AT CONSTRUCTION (registered as a factory that runs at first resolution, which
-/// for a Scoped/Singleton service is effectively at first use — L18 family, arch-tested like
-/// IPaymentService); this type itself never silently no-ops.
+///
+/// Implements <see cref="IEmailTransport"/> (SECURITY_REVIEW_S3.md MAIL-1/OPS-2), NOT
+/// <see cref="IEmailSender"/> — the request path resolves <see cref="OutboxEmailSender"/> for
+/// <see cref="IEmailSender"/> and never awaits this type directly; <see cref="EmailOutboxDispatcher"/> is
+/// the only caller, off the request thread. Prod-unconfigured is now an explicit startup refusal
+/// (<see cref="SmtpConfiguredGuard.Enforce"/>, called in Program.cs before the host serves traffic) rather
+/// than a lazy factory throw discovered at first send — the L18 family, matching
+/// <c>ProdFieldKeyVaultGuard</c>'s own shape.
 /// </summary>
-public sealed class SmtpEmailSender(SmtpTransportOptions options, IEmailTemplateRenderer templates) : IEmailSender
+public sealed class SmtpEmailSender(SmtpTransportOptions options, IEmailTemplateRenderer templates) : IEmailTransport
 {
     public async Task<EmailResult> SendAsync(EmailMessage msg, RequestContext ctx, CancellationToken ct = default)
     {
@@ -58,19 +63,6 @@ public sealed class SmtpEmailSender(SmtpTransportOptions options, IEmailTemplate
             return EmailResult.Failed(Svac.DomainCore.Contracts.Api.MessageKeys.ErrorCouldNotSend);
         }
     }
-}
-
-/// <summary>
-/// Prod fail-closed default for <see cref="SmtpTransportOptions"/> (SLICE_S3_CONTRACT.md §1b: "Prod boot
-/// with no configured SMTP throws at startup", the L18/IPaymentService precedent — modeled as an
-/// unresolvable typed dependency, S2 retro TRUST-BREAK-3, never a factory throw hidden behind a
-/// try/catch at send time).
-/// </summary>
-public static class ThrowingSmtpTransportOptions
-{
-    public static SmtpTransportOptions Throw() => throw new InvalidOperationException(
-        "SmtpTransportOptions has no real SMTP relay configured and DevSeams is disabled — resolving " +
-        "this in a non-DevSeams environment is fail-closed by design (SLICE_S3_CONTRACT.md §1b, L18).");
 }
 
 /// <summary>Renders one of the four keyed email templates (SLICE_S3_CONTRACT.md §1b/§1d) into a (subject, body) pair, server-side, in the recipient's locale. NEVER prose composed ad hoc at a call site.</summary>

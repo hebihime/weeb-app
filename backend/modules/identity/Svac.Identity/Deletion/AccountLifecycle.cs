@@ -222,7 +222,28 @@ public sealed class AccountLifecycle(
             job.State = "canceled";
         }
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException dbEx) when (dbEx.InnerException is Npgsql.PostgresException pg
+            && pg.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation
+            && (pg.ConstraintName == "ux_accounts_handle" || pg.ConstraintName == "ux_accounts_email"))
+        {
+            // PII-3 / CONC-4 (SECURITY_REVIEW_S3.md) defense-in-depth: restoring account_state='active'
+            // re-enters BOTH partial unique indexes (now gated on tombstoned_at, not account_state — see
+            // IdentityDbContext's ux_accounts_handle/ux_accounts_email). A third party claiming this
+            // account's handle/email during grace should already be IMPOSSIBLE post-fix (the index itself
+            // now blocks it at insert time), but this catch is the honest backstop the review calls for —
+            // an uncaught 23505 here would 500 and PERMANENTLY destroy the cancel right (the squatter would
+            // keep the identity forever, since a rolled-back cancel never retries itself). Surface it as
+            // the SAME outcome a no-op cancel already renders (the caller treats "nothing to cancel" and
+            // "cancel collided" identically — deletion.cancel has no dedicated conflict wire shape) rather
+            // than letting the request 500.
+            await tx.RollbackAsync(ct);
+            return;
+        }
+
         await AppendAuditSameTx(db, id, "identity.account_state_changed", BuildEnvelope(id, "deleted", "active", null, now), ctx, ct);
         await AppendAuditSameTx(db, id, "identity.deletion_canceled", "{}", ctx, ct);
         await AppendBehavioralSameTx(db, id, "identity.deletion_canceled", ctx, ct);

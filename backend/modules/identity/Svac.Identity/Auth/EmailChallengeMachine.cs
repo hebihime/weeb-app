@@ -65,17 +65,24 @@ public sealed class EmailChallengeMachine(
     /// POST /v1/signup/email-verification (SLICE_S3_CONTRACT.md §1c). Never persists a row for an
     /// already-registered email — "you already have an account" is a MAIL, not a code.
     ///
-    /// "Already registered" is <c>account_state &lt;&gt; 'deleted'</c> — the SAME predicate as
-    /// <c>ux_accounts_email</c>'s partial unique index (§2 DDL) — never <c>tombstoned_at IS NULL</c>. A
-    /// Phase-L-deleted account (§2: "the user DISAPPEARS from the product now") has already freed its
-    /// email for the index's purposes; gating this check on <c>tombstoned_at</c> instead would keep
-    /// blocking a fresh signup for the ENTIRE grace window (up to 30 days) even though the DB would
-    /// happily accept the new row, and — more importantly — it would make OQ-3's ban-evasion consult
-    /// (<see cref="Svac.Identity.Auth.SignupCompletionService.Complete"/>) UNREACHABLE during grace: no
-    /// challenge is ever issued to confirm, so the HMAC lookup never runs. <see
-    /// cref="Svac.Identity.Deletion.AccountLifecycle.RequestDeletion"/>'s own comment explains why the ref
-    /// is captured at REQUEST time rather than at the (up to 30-days-later) purge — that only pays off if
-    /// this check lets the re-registration attempt reach <c>Complete</c> immediately, not just post-purge.
+    /// "Already registered" is <c>tombstoned_at IS NULL</c> — the SAME predicate as
+    /// <c>ux_accounts_email</c>'s partial unique index (§2 DDL, PII-3 / CONC-4 fix, SECURITY_REVIEW_S3.md)
+    /// — deliberately NOT <c>account_state &lt;&gt; 'deleted'</c> anymore. The original reasoning here
+    /// (superseded) was that a Phase-L-deleted account had already freed its email for the index's
+    /// purposes, so gating on account_state let a fresh signup reach <c>Complete</c> immediately during
+    /// grace, keeping OQ-3's ban-evasion consult reachable without waiting out the full grace window. The
+    /// adversarial review found the actual index ALSO used that predicate — meaning a THIRD PARTY, not
+    /// just the rightful owner, could claim the still-live email during the grace window, and
+    /// <c>AccountLifecycle.CancelDeletion</c> restoring <c>account_state='active'</c> would then collide
+    /// with the squatter's row (an uncaught 23505 permanently destroying the cancel right). Both the index
+    /// and this check now gate on <c>tombstoned_at IS NULL</c> instead: the email is genuinely free ONLY
+    /// once the Phase P physical purge nulls it. The OQ-3 ban-evasion consequence is accepted and safe:
+    /// during grace, re-registering with the SAME email now correctly renders "already registered" (this
+    /// IS the desired anti-takeover behavior); once the account is truly purged its Email column is
+    /// NULLed, so this check finds no existing row and the ban-evasion HMAC lookup in
+    /// <see cref="Svac.Identity.Auth.SignupCompletionService.Complete"/> (a SEPARATE, already-populated
+    /// store keyed on the email's HMAC, independent of this accounts-table check) still fires exactly as
+    /// designed post-purge.
     /// </summary>
     public async Task<string> IssueForSignup(string emailLower, string locale, RequestContext ctx, CancellationToken ct)
     {
@@ -83,7 +90,7 @@ public sealed class EmailChallengeMachine(
         var now = DateTimeOffset.UtcNow;
 
         var existingAccountId = await db.Accounts
-            .Where(a => a.Email != null && a.Email == emailLower && a.AccountState != "deleted")
+            .Where(a => a.Email != null && a.Email == emailLower && a.TombstonedAt == null)
             .Select(a => a.AccountId)
             .FirstOrDefaultAsync(ct);
 
@@ -151,8 +158,21 @@ public sealed class EmailChallengeMachine(
         var quotaAllowed = await ConsumeMailboxQuota(emailLower, ctx, ct);
         var now = DateTimeOffset.UtcNow;
 
+        // PII-3 / CONC-4 (SECURITY_REVIEW_S3.md): "login stays open during grace" is a RATIFIED §2
+        // behavior (a deleted-in-grace owner must still be able to log in, into the rights-restricted
+        // state) — so this cannot simply exclude account_state='deleted' rows outright. But an unordered
+        // FirstOrDefaultAsync over `email_lower` is planner-dependent, and during grace a deleted-in-grace
+        // account A and a freshly active account B can (pre-this-fix) legitimately share one email —
+        // resolving to the WRONG one hands a new mailbox owner the OLD owner's rights set. Deterministic
+        // resolution: an ACTIVE row always wins over a deleted-in-grace one for the SAME email (the
+        // active row is the CURRENT, provable mailbox owner); only when no active row exists does the
+        // legitimate grace-login candidate resolve at all. CreatedAt DESC is a stable tiebreak within a
+        // state (should two rows of the same state ever collide, which the accounts table's own
+        // uniqueness posture should prevent, but a deterministic order must not depend on that holding).
         var account = await db.Accounts
             .Where(a => a.Email != null && a.Email == emailLower && a.TombstonedAt == null)
+            .OrderBy(a => a.AccountState == "deleted" ? 1 : 0)
+            .ThenByDescending(a => a.CreatedAt)
             .Select(a => new { a.AccountId, a.AccountState })
             .FirstOrDefaultAsync(ct);
 
@@ -210,6 +230,12 @@ public sealed class EmailChallengeMachine(
 
         if (row is null || row.ConsumedAt is not null || row.ExpiresAt <= now || row.Attempts >= maxAttempts)
         {
+            // SREJ-2/MAIL-1 (SECURITY_REVIEW_S3.md): a genuinely absent/consumed/expired/exhausted row
+            // still pays the SAME keyed-HMAC cost a real comparison would — this is the dominant timing
+            // delta between "email available, real backed row" and "email already registered, unbacked
+            // decoy id" (silent-reject Finding 2). Computed and discarded; never compared to anything —
+            // there is no row to compare against.
+            await EmailCodes.Hash(keyVault, code, ct);
             await tx.RollbackAsync(ct);
             return ChallengeConfirmResult.Invalid;
         }
@@ -250,6 +276,11 @@ public sealed class EmailChallengeMachine(
 
         if (row is null || row.ExpiresAt <= now || row.Attempts >= maxAttempts || row.AccountId is null)
         {
+            // Same equalization as ConfirmSignupCode above (SREJ-2/MAIL-1, SECURITY_REVIEW_S3.md): pay
+            // the keyed-HMAC cost even when there is no pending login challenge to compare against, so
+            // "account absent/banned" and "wrong code against a real pending challenge" stop being
+            // separable by the HMAC-compute delta alone.
+            await EmailCodes.Hash(keyVault, code, ct);
             await tx.RollbackAsync(ct);
             return null;
         }
@@ -358,6 +389,9 @@ public sealed class EmailChallengeMachine(
 
         if (row is null || row.ConsumedAt is not null || row.ExpiresAt <= now || row.Attempts >= maxAttempts || row.AccountId != accountId)
         {
+            // Same equalization as ConfirmSignupCode/RedeemLoginCode above (SREJ-3/MAIL-1,
+            // SECURITY_REVIEW_S3.md).
+            await EmailCodes.Hash(keyVault, code, ct);
             await scope.RollbackAsync(ct);
             return EmailChangeConfirmResult.Invalid;
         }
