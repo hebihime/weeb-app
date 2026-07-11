@@ -1,0 +1,8 @@
+# ios/ApiKit/Sources/ApiKit/openapi-generator-config.yaml — swift-openapi-generator SPM build-plugin
+# config. Convention: the plugin looks for this file plus `openapi.yaml`/`openapi.json` alongside it in
+# the target's source directory. ios/scripts/bootstrap.sh copies contracts/openapi.v0.json to
+# `openapi.json` right here (gitignored — see ios/.gitignore) before every build.
+generate:
+  - types
+  - client
+accessModifier: public

@@ -1,0 +1,24 @@
+# ios/.gitignore — SLICE_S7_CONTRACT.md §1a/HARD CONTRACT item 6.
+# The generated Xcode project, the copied contract, and any generated client code are never committed —
+# ios/scripts/bootstrap.sh regenerates all of it before every build, local or CI.
+
+# XcodeGen output
+WeebApp.xcodeproj/
+
+# The contract copy ApiKit's swift-openapi-generator plugin reads (bootstrap.sh recreates it)
+ApiKit/Sources/ApiKit/openapi.json
+
+# swift-openapi-generator's generated Types.swift/Client.swift/Server.swift land under each package's
+# .build/plugins output, already covered by the .build/ rule below — listed for clarity.
+
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved.bak
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+.DS_Store

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Placeholder launcher glyph, deliberately generic (a plain circle) until Julien drops the real
+  wordmark asset in — same deferred-asset posture as the Font Awesome Pro kit (Correction 2). Never a
+  brand hex literal (this is not the Tokens.kt allowlisted file).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#26170F"
+        android:pathData="M54,29 C68.9,29 81,41.1 81,56 C81,70.9 68.9,83 54,83 C39.1,83 27,70.9 27,56 C27,41.1 39.1,29 54,29 Z" />
+</vector>

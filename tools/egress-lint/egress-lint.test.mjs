@@ -7,6 +7,8 @@ import {
   isAllowedHost,
   findDisallowedHosts,
   findTrackerDependencies,
+  isManifest,
+  isRuntimeSource,
 } from "./egress-lint.mjs";
 
 test("extractUrlHosts: pulls hosts from http/https/ws/wss literals", () => {
@@ -65,4 +67,26 @@ test("RED: Crashlytics + Sentry both flagged", () => {
   const v = findTrackerDependencies(files);
   assert.ok(v.some((x) => x.includes("sentry")));
   assert.ok(v.some((x) => x.includes("crashlytics")));
+});
+
+// ---------- manifest vs runtime-source classification (the Package.swift/gradle false-positive fix) ----------
+
+test("isManifest / isRuntimeSource: Package.swift + *.gradle.kts are manifests, not runtime source", () => {
+  assert.ok(isManifest("Package.swift"));
+  assert.ok(isManifest("Package.resolved"));
+  assert.ok(isManifest("build.gradle.kts"));
+  assert.ok(isManifest("settings.gradle.kts"));
+  assert.equal(isRuntimeSource("Package.swift"), false);   // NOT scanned by the runtime-host allowlist
+  assert.equal(isRuntimeSource("build.gradle.kts"), false);
+  assert.ok(isRuntimeSource("ContentView.swift"));
+  assert.ok(isRuntimeSource("MainActivity.kt"));
+});
+
+test("a legit github SPM/plugin URL in a manifest is NOT a runtime-egress violation (tracker-scan only)", () => {
+  const pkg = { path: "ios/ApiKit/Package.swift", content: `.package(url: "https://github.com/apple/swift-openapi-generator", from: "1.0.0")` };
+  // Package.swift is a manifest, so it is tracker-scanned (github/apple is not a tracker) — clean...
+  assert.deepEqual(findTrackerDependencies([pkg]), []);
+  // ...and it must NEVER be fed to the runtime-host allowlist scan (that would wrongly flag github.com).
+  // The collector (isRuntimeSource) is what excludes it; assert the classifier that drives it.
+  assert.equal(isRuntimeSource("Package.swift"), false);
 });

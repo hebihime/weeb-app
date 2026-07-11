@@ -1,0 +1,11 @@
+{
+  "_comment": "SLICE_S7_CONTRACT.md §9f — Play Data Safety declaration-as-code, gate-tested against the §3 zero-persistence/zero-identifier inventory by app/src/test/kotlin/app/client/PlayDataSafetyTest.kt. Truthful from day one: there is nothing to declare yet. Update this file, in the SAME commit as the code change, the day any collection/sharing/tracking becomes real.",
+  "tracking": false,
+  "dataCollected": [],
+  "dataShared": [],
+  "securityPractices": {
+    "dataEncryptedInTransit": true,
+    "dataDeletionRequestAvailable": false
+  },
+  "independentSecurityReview": false
+}

@@ -1,0 +1,4 @@
+// ios/Config/Release-Friki.xcconfig — SLICE_S7_CONTRACT.md §1c/§1d/§9f. See Release-Weeb.xcconfig.
+#include "Brand-Friki.xcconfig"
+
+INFOPLIST_FILE = App/Sources/Resources/Info-Release.plist

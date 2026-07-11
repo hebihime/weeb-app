@@ -30,10 +30,6 @@ concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Debug simulator builds use the provisional .dev bundle id (§1c); the canonical base is brand-gate-verified.
-  SIMULATOR: "platform=iOS Simulator,name=iPhone 16,OS=latest"
-
 jobs:
   build-test:
     name: xcodebuild test (${{ matrix.brand }})
@@ -65,12 +61,18 @@ jobs:
         if: steps.guard.outputs.present == 'true'
         run: |
           ios/scripts/bootstrap.sh
+          # Resolve whatever iPhone simulator this runner/Xcode actually ships (robust to image drift —
+          # macos-15 has iPhone 16, a newer image may have iPhone 17; never hardcode a device name).
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for rt in sorted(d) for x in d[rt] if 'iPhone' in x['name']))")
+          echo "Using simulator id=$UDID"
           xcodebuild test \
             -project ios/WeebApp.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
-            -destination "$SIMULATOR" \
+            -destination "id=$UDID" \
             -resultBundlePath "ios/build/${{ matrix.brand }}.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
 
   string-catalog-lint:
     name: string-catalog / i18n key-parity ×4 (ARMED at S7)
@@ -108,11 +110,13 @@ jobs:
         if: steps.guard.outputs.present == 'true'
         run: |
           ios/scripts/bootstrap.sh
+          # A library build needs no concrete device — generic simulator destination is drift-proof.
           xcodebuild build \
             -project ios/WeebApp.xcodeproj \
             -scheme ApiKit \
-            -destination "$SIMULATOR" \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
 
   maestro-brand-smoke:
     name: Maestro brand-smoke (${{ matrix.brand }}) — 14A slot
@@ -152,14 +156,17 @@ jobs:
         if: steps.guard.outputs.present == 'true'
         run: |
           ios/scripts/bootstrap.sh
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 16" | grep -oE '[0-9A-F-]{36}')
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for rt in sorted(d) for x in d[rt] if 'iPhone' in x['name']))")
+          echo "Using simulator id=$UDID"
           xcrun simctl boot "$UDID" || true
           xcodebuild build \
             -project ios/WeebApp.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
             -destination "id=$UDID" \
             -derivedDataPath ios/build/dd \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO
           APP=$(find ios/build/dd/Build/Products -name "*.app" -maxdepth 2 | head -1)
           xcrun simctl install "$UDID" "$APP"
       - name: maestro brand-smoke

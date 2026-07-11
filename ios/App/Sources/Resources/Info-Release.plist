@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ios/App/Sources/Resources/Info-Release.plist — SLICE_S7_CONTRACT.md §1d/§9f.
+  NO ApiBackendURL key. NO NSAppTransportSecurity exceptions dict — ATS is fully enforced by absence.
+  ReleaseConfigTests parses this exact file and asserts both are missing.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>$(DISPLAY_NAME)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+
+	<!-- §1c brand-delta surface, read at runtime by Strings.BrandStringPack.current() -->
+	<key>StringPackID</key>
+	<string>$(STRING_PACK_ID)</string>
+
+	<!-- Fonts: M PLUS Rounded 1c (OFL) bundled, never fetched (§9f). -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>MPLUSRounded1c-Regular.ttf</string>
+		<string>MPLUSRounded1c-Medium.ttf</string>
+		<string>MPLUSRounded1c-Bold.ttf</string>
+		<string>MPLUSRounded1c-ExtraBold.ttf</string>
+		<string>MPLUSRounded1c-Black.ttf</string>
+	</array>
+</dict>
+</plist>

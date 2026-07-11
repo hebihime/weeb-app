@@ -1,0 +1,16 @@
+// ios/Config/Debug-Weeb.xcconfig — SLICE_S7_CONTRACT.md §1c/§1d/§9f.
+// Debug/simulator build: appends the `.dev` bundle-id suffix (brand-gate excludes this from canonical
+// parity per §1c) and points at the compose backend over dev-loopback ONLY. ATS cleartext exception for
+// localhost lives in Info-Debug.plist, never in the release Info.plist.
+#include "Brand-Weeb.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(inherited).dev
+INFOPLIST_FILE = App/Sources/Resources/Info-Debug.plist
+
+// public-api's host port per docker-compose.yml (container 8080 -> host 8090). Simulator reaches the
+// Mac's own loopback directly as `127.0.0.1` (unlike the Android emulator, which needs 10.0.2.2).
+// Host/port are separate keys, not one URL string — xcconfig treats a bare "//" as a comment START even
+// mid-value (no reliable escape survives every xcconfig/Info.plist substitution path), so the scheme is
+// assembled in Swift (AppEnvironment.swift) instead of ever being a literal containing "//".
+API_BACKEND_HOST = 127.0.0.1
+API_BACKEND_PORT = 8090

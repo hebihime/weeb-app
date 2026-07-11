@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ios/App/Sources/Resources/PrivacyInfo.xcprivacy — SLICE_S7_CONTRACT.md §9f.
+  Truthful from day one because there is nothing to declare: NSPrivacyTracking=false, zero collected
+  data types, zero required-reason APIs (this codebase touches none of Apple's four flagged categories —
+  no UserDefaults/DataStore per the §3 zero-persistence inventory, no disk-space check, no active-keyboard
+  query, no file-timestamp read). PrivacyManifestTests (App-hosted test target, project.yml) parses this
+  exact file and asserts tracking=false + both arrays empty, against the §3 inventory.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

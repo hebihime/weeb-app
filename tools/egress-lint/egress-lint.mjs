@@ -76,9 +76,20 @@ export function findTrackerDependencies(files) {
 // ---------- file collection ----------
 
 const SKIP_DIRS = new Set([".git", ".build", "build", "DerivedData", "node_modules", ".gradle", "Pods"]);
-const SOURCE_EXT = new Set([".swift", ".kt", ".kts"]);
 const MANIFEST_NAMES = new Set(["Package.resolved", "Package.swift"]);
 const MANIFEST_EXT = new Set([".gradle", ".lockfile"]);
+
+// A dependency manifest is scanned by the TRACKER denylist, not the runtime-host allowlist: it
+// legitimately references github/maven to RESOLVE build deps (that is not app egress). App source
+// (.swift / .kt) is scanned by the runtime-host allowlist. build.gradle.kts / Package.swift are the
+// former, never the latter.
+export function isManifest(name) {
+  return MANIFEST_NAMES.has(name) || MANIFEST_EXT.has(extname(name)) || name.endsWith(".gradle.kts") || name.endsWith(".gradle");
+}
+// Runtime app source: .swift and .kt, excluding the Package.swift manifest (a .swift file by extension).
+export function isRuntimeSource(name) {
+  return (extname(name) === ".swift" || extname(name) === ".kt") && !isManifest(name);
+}
 
 function walk(dir, pick, acc) {
   let entries;
@@ -97,10 +108,10 @@ function walk(dir, pick, acc) {
 }
 
 export function collectSourceFiles(root) {
-  return walk(root, (name) => SOURCE_EXT.has(extname(name)), []);
+  return walk(root, (name) => isRuntimeSource(name), []);
 }
 export function collectManifestFiles(root) {
-  return walk(root, (name) => MANIFEST_NAMES.has(name) || MANIFEST_EXT.has(extname(name)) || name.endsWith(".gradle.kts"), []);
+  return walk(root, (name) => isManifest(name), []);
 }
 
 async function main() {

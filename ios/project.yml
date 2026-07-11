@@ -1,0 +1,177 @@
+# ios/project.yml — SLICE_S7_CONTRACT.md §1a/§1c. Single-sourced via XcodeGen (P2 adopted over a
+# checked-in pbxproj — a hand-maintained pbxproj is the highest-merge-conflict artifact in a
+# parallel-agent repo; this file is diffable data). The generated WeebApp.xcodeproj is gitignored
+# (ios/.gitignore) — `ios/scripts/bootstrap.sh` regenerates it before every build, local or CI.
+name: WeebApp
+options:
+  bundleIdPrefix: app
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  generateEmptyTestSchemes: false
+
+# Local SPM packages, same layer names on both platforms so Maestro flows + reviews transfer (§1b).
+packages:
+  DesignKit:
+    path: DesignKit
+  Strings:
+    path: Strings
+  ApiKit:
+    path: ApiKit
+  AppShell:
+    path: AppShell
+  Signup:
+    path: Features/Signup
+  DependencyDirectionTests:
+    path: DependencyDirectionTests
+
+targets:
+  Weeb:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources/App
+      - path: App/Sources/Resources
+        excludes:
+          - "Info-Debug.plist"
+          - "Info-Release.plist"
+      - path: App/Resources/Weeb
+        name: BrandResources
+    dependencies:
+      - package: AppShell
+      - package: DesignKit
+      - package: Strings
+      - package: ApiKit
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+        # DR-6.4: phone-only locked size classes at S7 — "1" is iPhone-only in TARGETED_DEVICE_FAMILY's
+        # encoding (iPad is "2"); no iPad idiom ships until a slice explicitly designs for it.
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+    configFiles:
+      Debug: Config/Debug-Weeb.xcconfig
+      Release: Config/Release-Weeb.xcconfig
+
+  Friki:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources/App
+      - path: App/Sources/Resources
+        excludes:
+          - "Info-Debug.plist"
+          - "Info-Release.plist"
+      - path: App/Resources/Friki
+        name: BrandResources
+    dependencies:
+      - package: AppShell
+      - package: DesignKit
+      - package: Strings
+      - package: ApiKit
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+        # DR-6.4: phone-only locked size classes at S7 — "1" is iPhone-only in TARGETED_DEVICE_FAMILY's
+        # encoding (iPad is "2"); no iPad idiom ships until a slice explicitly designs for it.
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+    configFiles:
+      Debug: Config/Debug-Friki.xcconfig
+      Release: Config/Release-Friki.xcconfig
+
+  # Hosted by Weeb (TEST_HOST below) — zero-persistence + privacy-manifest truth tests run INSIDE the
+  # real app process, so dyld's loaded-image list and Bundle.main are the real, final ones (§3/§9f/§12).
+  # ReleaseConfigTests in the same target is a pure static file check and doesn't need hosting, but
+  # sharing one target keeps the compliance suite in one place.
+  WeebAppComplianceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppComplianceTests
+    dependencies:
+      - target: Weeb
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.weeb.client.compliancetests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Weeb.app/Weeb"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+  # The exact same source file compiled twice, hosted by each brand's app in turn — that pairing IS the
+  # "per flavor" axis of "every state snapshot-tested per flavor per locale" (§9d/§12). See
+  # AppSnapshotTests/StateKitLocalizationTests.swift's header for why this is string-level, not pixel.
+  WeebStateKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppSnapshotTests
+    dependencies:
+      - target: Weeb
+      - package: DesignKit
+      - package: Strings
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.weeb.client.statekittests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Weeb.app/Weeb"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+  FrikiStateKitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppSnapshotTests
+    dependencies:
+      - target: Friki
+      - package: DesignKit
+      - package: Strings
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.friki.client.statekittests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Friki.app/Friki"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Weeb:
+    build:
+      targets:
+        Weeb: all
+    test:
+      targets:
+        - WeebAppComplianceTests
+        - WeebStateKitTests
+    run:
+      config: Debug
+
+  Friki:
+    build:
+      targets:
+        Friki: all
+    test:
+      targets:
+        - FrikiStateKitTests
+    run:
+      config: Debug
+
+  # No explicit scheme block for "ApiKit" — xcodegen can't target a bare package product as a scheme
+  # build target (it validates against native `targets:` only). Xcode/xcodebuild resolves a scheme name
+  # against a Swift package PRODUCT automatically once that product is a dependency of some target in
+  # the project (Weeb/Friki both depend on `package: ApiKit` above) — this is the documented "automatic
+  # scheme" behavior for SPM package products, and is what makes `xcodebuild build -scheme ApiKit` (the
+  # codegen-openapi-client CI job, the B17 consumption proof) resolve without a persisted .xcscheme file.
+  # bootstrap.sh / CI verify this by running that exact command; see AUTOMATIC_APIKIT_SCHEME note there.

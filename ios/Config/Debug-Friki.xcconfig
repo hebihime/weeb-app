@@ -1,0 +1,8 @@
+// ios/Config/Debug-Friki.xcconfig — SLICE_S7_CONTRACT.md §1c/§1d/§9f. See Debug-Weeb.xcconfig for notes.
+#include "Brand-Friki.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(inherited).dev
+INFOPLIST_FILE = App/Sources/Resources/Info-Debug.plist
+// Host/port are separate keys, not one URL string — see Debug-Weeb.xcconfig's note.
+API_BACKEND_HOST = 127.0.0.1
+API_BACKEND_PORT = 8090

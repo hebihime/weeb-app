@@ -1,0 +1,7 @@
+// ios/Config/Release-Weeb.xcconfig — SLICE_S7_CONTRACT.md §1c/§1d/§9f.
+// Release: NO backend URL anywhere in this file or Info-Release.plist (fail-closed by absence — §1d).
+// Full ATS enforcement, no cleartext exception (Info-Release.plist has no NSAppTransportSecurity
+// exceptions dict at all). ReleaseConfigTests asserts both absences against these real files.
+#include "Brand-Weeb.xcconfig"
+
+INFOPLIST_FILE = App/Sources/Resources/Info-Release.plist

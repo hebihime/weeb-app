@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launcher-icon plumbing only (adaptive icon background). NOT a brand color — brand.primary /
+  brand.celebration come exclusively from brand.properties/resValue per module (HARD CONTRACT #2); this
+  is a neutral placeholder until Julien drops the real wordmark asset (design/assets/logo-*.png) in as
+  the launcher icon foreground, same deferred-asset posture as the Font Awesome Pro kit (Correction 2).
+-->
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

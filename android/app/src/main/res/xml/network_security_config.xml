@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SLICE_S7_CONTRACT.md §9f — the release-safe default: no cleartext, no domain exceptions, ever. The
+  src/debug/res/xml/network_security_config.xml override (same resource name, higher-priority source
+  set) is the ONLY place the dev-loopback cleartext exception exists. A release build never merges that
+  file in, so this is the actual, structural release posture, not a policy toggle.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

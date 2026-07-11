@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SLICE_S7_CONTRACT.md "Force light mode at S7". A platform NoActionBar theme only (no legacy
+  ActionBar to duplicate Compose's own TopAppBar) — all real visual values (color, type, spacing) come
+  from Tokens.kt via Compose, never this XML theme (token-lint's leak-scan bites only .kt/.kts files,
+  but the discipline is the same: this file carries zero brand or palette hex).
+-->
+<resources>
+    <style name="Theme.WeebApp" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

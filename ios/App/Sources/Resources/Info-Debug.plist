@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ios/App/Sources/Resources/Info-Debug.plist — SLICE_S7_CONTRACT.md §1d/§9f.
+  Debug/simulator ONLY. ApiBackendURL + the localhost/127.0.0.1 cleartext ATS exception exist HERE and
+  ONLY here — Info-Release.plist has neither. ReleaseConfigTests asserts the release file's absence of
+  both; this file's presence of both is what makes the debug diagnostics screen able to reach compose.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>$(DISPLAY_NAME)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+
+	<!-- §1c brand-delta surface, read at runtime by Strings.BrandStringPack.current() -->
+	<key>StringPackID</key>
+	<string>$(STRING_PACK_ID)</string>
+
+	<!-- §1d: debug/dev builds only. Read by AppShell.AppEnvironment, which assembles the URL string in
+	     Swift (never as one xcconfig/plist literal containing "//" — see Debug-Weeb.xcconfig's note). -->
+	<key>ApiBackendHost</key>
+	<string>$(API_BACKEND_HOST)</string>
+	<key>ApiBackendPort</key>
+	<string>$(API_BACKEND_PORT)</string>
+
+	<!-- §9f: ATS full enforcement EXCEPT dev-loopback, DEBUG configuration only. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>127.0.0.1</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Fonts: M PLUS Rounded 1c (OFL) bundled, never fetched (§9f). The OFL binary itself is a Julien
+	     asset-drop task (Correction 2) — declaring the family name here costs nothing today and is what
+	     makes the font apply automatically the moment the files land, no code change required. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>MPLUSRounded1c-Regular.ttf</string>
+		<string>MPLUSRounded1c-Medium.ttf</string>
+		<string>MPLUSRounded1c-Bold.ttf</string>
+		<string>MPLUSRounded1c-ExtraBold.ttf</string>
+		<string>MPLUSRounded1c-Black.ttf</string>
+	</array>
+</dict>
+</plist>
