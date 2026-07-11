@@ -1,37 +1,44 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <!--
     Svac.Identity — SLICE_S3_CONTRACT.md §1a. Internal implementation; InternalsVisibleTo the test
     project (mirrors backend/modules/AimlRouter/Svac.AimlRouter/Svac.AimlRouter.csproj's module-template
-    shape). Phase 1 (SLICE_PLAYBOOK.md scaffold gate) ships ONLY DI-resolvable stub implementations of
-    IAccountLifecycle/IAccountDirectory (each throws NotImplementedException("S3 Phase 2")) — no
-    IdentityDbContext, no EF entity, no migration, no HTTP endpoint (§0 DO-NOT list).
+    shape). BUILD phase (SLICE_S3_CONTRACT.md Pass 1): IdentityDbContext (schema `identity`), the §1c
+    endpoint handlers, the session/challenge services, the four Phase-2a seam implementations (policy
+    source + ownership resolvers, session-backed IBearerAuthenticator, SmtpEmailSender,
+    IConsentLedgerWriter + projections).
 
-    DEVIATION FROM §1a's LITERAL ASSEMBLY LIST, RECORDED: §1a names this project's references as
-    "Svac.Identity.Contracts + Svac.DomainCore.Contracts + Svac.DomainCore + Svac.DomainCore.Hosting".
-    Phase 1's stub code touches zero symbols from Svac.DomainCore or Svac.DomainCore.Hosting, so this
-    project references only Svac.Identity.Contracts + Svac.DomainCore.Contracts for now. Adding the other
-    two references today would make backend/tests/Svac.Tests.Architecture/ModuleBoundaryTests.cs's
-    NoFeatureModuleExistsYet_TheCrossModuleHalfOfThisRuleIsVacuousByRecordedDesign test fail — it scans
-    every backend/modules/*.csproj for a literal reference to either of those two csproj files and is
-    part of the 156-pass/4-skip Architecture baseline this scaffold commit must leave untouched. §8 of the
-    contract itself names the fix: "module-boundary arch tests get their first two-feature-module
-    exercise (identity ↔ AimlRouter mutual non-reference proven)" — that is S3 BUILD-phase work (the real
-    EF DbContext + the session-backed IBearerAuthenticator need these two references), landing together
-    with the matching ModuleBoundaryTests update in the same commit, never as a silent scaffold workaround.
+    Sdk flipped Microsoft.NET.Sdk -> Microsoft.NET.Sdk.Web (mirrors Svac.DomainCore.Hosting's own
+    csproj exactly, OutputType Library) so this module can map its own endpoints via WebApplication/
+    RouteHandlerBuilder without a second ASP.NET Core FrameworkReference declaration.
+
+    §1a's literal reference list ("Svac.Identity.Contracts + Svac.DomainCore.Contracts + Svac.DomainCore +
+    Svac.DomainCore.Hosting") lands here now — the Phase-1 scaffold's deviation note explains why they
+    were deferred; §8's "module-boundary arch tests get their first two-feature-module exercise" is the
+    matching ModuleBoundaryTests update landing in the SAME commit (never a silent reference add).
   -->
 
   <PropertyGroup>
     <AssemblyName>Svac.Identity</AssemblyName>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="MailKit" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Svac.Identity.Contracts\Svac.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

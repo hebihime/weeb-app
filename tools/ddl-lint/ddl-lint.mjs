@@ -23,20 +23,28 @@ function globToRegExp(glob) {
 }
 
 /**
- * Extract CREATE TABLE statements from SQL text: { tableName, columnNames }[].
+ * Extract CREATE TABLE statements from SQL text: { tableName, qualifiedName, columnNames }[].
  * Handles quoted ("Foo") and unquoted identifiers, single-line and multi-line column blocks, and an
  * OPTIONAL schema qualifier (schema.table or "schema"."table") — the shape `dotnet ef migrations
  * script` emits for a modular monolith with schema-per-module (CLAUDE.md architecture; SECURITY_
- * REVIEW_S0.md PII/residency F1 / minor F4). The schema qualifier, if present, is discarded; only the
- * bare table name is returned so the pii-patterns.json glob matching stays unchanged.
+ * REVIEW_S0.md PII/residency F1 / minor F4; SLICE_S3_CONTRACT.md item 1, the second module-owned
+ * schema). `tableName` is the bare identifier (unchanged, so every existing bare-name pattern like
+ * "*consent*"/"*events_*" keeps matching exactly as before — zero behavior change for schema `core`,
+ * whose EF-emitted DDL already carries its own "core." qualifier today). `qualifiedName` is
+ * `schema.table` when a schema qualifier is present, else identical to `tableName` — this is what makes
+ * a SCHEMA-ANCHORED pattern like "identity.*" possible: a glob that only ever matches tables that live
+ * in schema `identity`, never a same-named bare table anywhere else, distinct from the older
+ * substring-anywhere patterns ("*identity*") which key on English vocabulary rather than schema.
  */
 export function parseCreateTables(sql) {
   const tables = [];
-  const stmtRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?[A-Za-z_][A-Za-z0-9_]*"?\.)?"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(([\s\S]*?)\)\s*;/gi;
+  const stmtRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?([A-Za-z_][A-Za-z0-9_]*)"?\.)?"?([A-Za-z_][A-Za-z0-9_]*)"?\s*\(([\s\S]*?)\)\s*;/gi;
   let m;
   while ((m = stmtRe.exec(sql)) !== null) {
-    const tableName = m[1];
-    const body = m[2];
+    const schema = m[1];
+    const tableName = m[2];
+    const qualifiedName = schema ? `${schema}.${tableName}` : tableName;
+    const body = m[3];
     const columnNames = [];
     // Split top-level commas (no nested parens expected in simple column defs; CONSTRAINT lines skipped).
     const lines = splitTopLevel(body);
@@ -46,7 +54,7 @@ export function parseCreateTables(sql) {
       const colMatch = trimmed.match(/^"?([A-Za-z_][A-Za-z0-9_]*)"?\s+/);
       if (colMatch) columnNames.push(colMatch[1]);
     }
-    tables.push({ tableName, columnNames });
+    tables.push({ tableName, qualifiedName, columnNames });
   }
   return tables;
 }
@@ -79,12 +87,17 @@ export function checkResidencyColumns(tables, config) {
   const regexes = config.patterns.map(globToRegExp);
   const allowSet = new Map((config.allowlist ?? []).map((a) => [a.table.toLowerCase(), a.reason]));
 
-  for (const { tableName, columnNames } of tables) {
-    const matches = regexes.some((re) => re.test(tableName));
+  for (const { tableName, qualifiedName, columnNames } of tables) {
+    // qualifiedName is undefined for pre-existing test fixtures that construct { tableName, columnNames }
+    // directly (never through parseCreateTables) — falls back to tableName, a no-op for those callers.
+    const qn = (qualifiedName ?? tableName).toLowerCase();
+    const matches = regexes.some((re) => re.test(tableName) || re.test(qn));
     if (!matches) continue;
 
-    if (allowSet.has(tableName.toLowerCase())) {
-      const reason = allowSet.get(tableName.toLowerCase());
+    // Matches either the bare name or the schema-qualified name — a table can be allowlisted either way.
+    const allowKey = allowSet.has(tableName.toLowerCase()) ? tableName.toLowerCase() : qn;
+    if (allowSet.has(allowKey)) {
+      const reason = allowSet.get(allowKey);
       if (!reason || !reason.trim()) {
         violations.push(`table "${tableName}" is allowlisted with no stated reason — reason is required`);
       }

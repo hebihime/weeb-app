@@ -47,10 +47,16 @@ builder.Services.AddSvacHosting();
 // already-migrated schema — stream consumers (none exist at S1; the first lands with a feature module)
 // must register after this same hosted service for the identical reason.
 builder.Services.AddDomainCore(connectionString, devSeamsEnabled);
-// SLICE_S3_CONTRACT.md §0, Phase 1 (SLICE_PLAYBOOK.md scaffold gate): the identity module's DI
-// registration only — stub IAccountLifecycle/IAccountDirectory impls, zero DbContext, zero routes
-// mapped. Real endpoints/policy rows/config land in the S3 BUILD phase.
-builder.Services.AddIdentityModule();
+// SLICE_S3_CONTRACT.md Pass 1 (BUILD phase): the identity module's real registration — IdentityDbContext
+// (schema `identity`) + its own migration hosted service, the identity policy source + ownership
+// resolvers, the session-backed IBearerAuthenticator (overrides AddSvacHosting's anonymous default —
+// this call runs AFTER AddSvacHosting above), the real SmtpEmailSender (Mailpit under DevSeams; prod
+// with DevSeams off gets no SmtpTransportOptions and fails closed at IEmailSender resolution, L18), and
+// the consent ledger writer + its two rebuildable projections.
+var smtpOptions = devSeamsEnabled
+    ? Svac.Identity.Email.SmtpTransportOptions.MailpitDefault()
+    : null;
+builder.Services.AddIdentityModule(connectionString, smtpOptions);
 builder.Services.AddOpenApi("v0", OpenApiSetup.Configure);
 
 var localesPath = builder.Configuration["SVAC_I18N_LOCALES_PATH"] ?? ClientConfigLoader.ResolveDefaultLocalesPath(builder.Environment.ContentRootPath);

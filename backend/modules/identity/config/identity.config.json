@@ -1,4 +1,109 @@
 {
-  "_comment": "SLICE_S3_CONTRACT.md §4 — Phase 1 (SLICE_PLAYBOOK.md scaffold gate) ships an EMPTY manifest, additive/union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json (never edits to that file's rows), same ConfigManifestFile shape ConfigSeedLoader.SeedFromFile deserializes (entries: []). The real S3 entries — the 18-key table in §4 (identity.deletion.grace_days, identity.session.access_ttl_minutes, ...) — land in Phase 2, each wired to a live consumer: the dead-tunable lint (ConfigSeedLoader.SeedFromFile's 'no consumer' throw, mirrored as a gate-lane test the way backend/tests/Svac.Tests.AimlRouter/ConfigManifestShapeTests.cs proves it for aiml-router.config.json) requires a real reader for every key, so Phase 1 ships zero rows rather than dead ones.",
-  "entries": []
+  "_comment": "SLICE_S3_CONTRACT.md §4/§5 — Pass 1 additive manifest, union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json. Only the §4 keys Pass-1 endpoints actually consume (session.*, email_code.*, email.send_daily_cap, handle.cooldown_days, signup.verified_token_ttl_minutes, email_challenge.retention_hours, handle_history.retention_months, device.register_daily_cap) — export/deletion keys (grace_days, retirement_days, export.*, deletion.*) are Pass 2's, deliberately absent so the dead-tunable lint never sees a key with no live Pass-1 consumer. The two quota.*.cap rows beyond the literal §4 table are the QuotaService.Consume fixed naming convention (`quota.<quotaKey>.cap`, Svac.DomainCore/Quota/QuotaService.cs:24) — §5's two quota keys (identity.email.send.daily, identity.device.register.daily) cannot resolve a cap without a row under exactly that name; identity.email.send_daily_cap/identity.device.register_daily_cap are the contract's own literal key names, kept as the human-facing/desk-facing entries and read directly nowhere else at Pass 1 (the quota.*.cap pair is what QuotaService actually reads).",
+  "entries": [
+    {
+      "key": "identity.session.access_ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 60,
+      "requiresReason": false,
+      "consumer": "Svac.Identity session issuance (signup/complete, auth/session, auth/refresh) — access token TTL"
+    },
+    {
+      "key": "identity.session.refresh_ttl_days",
+      "scope": "ops",
+      "type": "int",
+      "value": 90,
+      "requiresReason": false,
+      "consumer": "Svac.Identity refresh-token minting — refresh token TTL"
+    },
+    {
+      "key": "identity.session.max_active_per_account",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "requiresReason": false,
+      "consumer": "Svac.Identity session issuance — active-session cap (oldest revoked past cap, reason cap_evicted)"
+    },
+    {
+      "key": "identity.email_code.ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 15,
+      "requiresReason": false,
+      "consumer": "Svac.Identity email-challenge issuance/validation — code TTL"
+    },
+    {
+      "key": "identity.email_code.max_attempts",
+      "scope": "ops",
+      "type": "int",
+      "value": 5,
+      "requiresReason": false,
+      "consumer": "Svac.Identity email-challenge confirm — brute-force lockout per row"
+    },
+    {
+      "key": "identity.signup.verified_token_ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "requiresReason": false,
+      "consumer": "Svac.Identity signup/complete — confirm-to-complete verifiedToken window"
+    },
+    {
+      "key": "identity.email.send_daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "requiresReason": false,
+      "consumer": "identity.email.send.daily quota cap (desk-facing mirror of quota.identity.email.send.daily.cap below)"
+    },
+    {
+      "key": "identity.handle.cooldown_days",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "requiresReason": false,
+      "consumer": "Svac.Identity handle-change — cooldown check (identity-local, NOT a 10A key, §5)"
+    },
+    {
+      "key": "identity.email_challenge.retention_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 24,
+      "requiresReason": false,
+      "consumer": "13A retention_expiry sweep of identity.email_challenges (sweep worker; Pass 1 ships the config + registered retention rule, the sweep loop lands with the first 13A worker)"
+    },
+    {
+      "key": "identity.handle_history.retention_months",
+      "scope": "founder",
+      "type": "int",
+      "value": 12,
+      "requiresReason": true,
+      "consumer": "post-deletion identity.handle_history sweep (impersonation-defense window; Pass 2's deletion worker)"
+    },
+    {
+      "key": "identity.device.register_daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 20,
+      "requiresReason": false,
+      "consumer": "identity.device.register.daily quota cap (desk-facing mirror of quota.identity.device.register.daily.cap below)"
+    },
+    {
+      "key": "quota.identity.email.send.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.email.send.daily\") — the fixed quota.<key>.cap convention; mirrors identity.email.send_daily_cap"
+    },
+    {
+      "key": "quota.identity.device.register.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 20,
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.device.register.daily\") — the fixed quota.<key>.cap convention; mirrors identity.device.register_daily_cap"
+    }
+  ]
 }

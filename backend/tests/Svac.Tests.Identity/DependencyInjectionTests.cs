@@ -21,7 +21,11 @@ public sealed class DependencyInjectionTests
     {
         var services = new ServiceCollection();
         services.AddDomainCore("Host=localhost;Database=svac-di-check-only", devSeamsEnabled: true);
-        services.AddIdentityModule();
+        // BUILD phase: AddIdentityModule now takes IdentityDbContext's own connection string (mirrors
+        // AddDomainCore's shape). AddDbContext<T> registers lazily, so building the provider still never
+        // opens a real Postgres connection — no smtpOptions passed, so IEmailSender's fail-closed throw
+        // registration is exercised too (never resolved by this test, so it never fires).
+        services.AddIdentityModule("Host=localhost;Database=svac-di-check-only");
 
         using var provider = services.BuildServiceProvider();
 

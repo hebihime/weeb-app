@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Svac.DomainCore.Contracts;
 using Svac.DomainCore.Contracts.Ids;
 using Svac.DomainCore.Contracts.Policy;
 using Svac.DomainCore.Hosting;
@@ -111,21 +112,31 @@ public sealed class SilentRejectionLeakLensTests
 }
 
 /// <summary>
-/// LEAK 4 — timing / code-path channel. §8 claims silent rejection is "same code path (timing-channel
-/// mitigation is structural single-path, asserted by test)". It is not. A DenyAsAbsence short-circuits
-/// in PolicyEnforcementFilter BEFORE the endpoint delegate runs (PolicyEnforcementFilter.cs:28), while a
-/// genuinely-absent resource returns its 404 from INSIDE the handler after the handler's work (a DB miss
-/// at later slices). The two 404s are byte-identical on the wire (so the existing test is satisfied) but
-/// traverse different code paths — an observer timing "handler ran vs didn't" distinguishes exclusion
-/// from genuine absence. No shipped test asserts timing or single-path; this one proves the divergence
-/// deterministically via a handler-execution counter (a stand-in for the timing signal).
+/// LEAK 4 — RETIRED at S3 (SLICE_S3_CONTRACT.md §3a/§13, deferred finding SilentRej-L4). The original
+/// finding: §8 claims silent rejection is "same code path", but a plain ActionScoped DenyAsAbsence row
+/// short-circuits in PolicyEnforcementFilter BEFORE any lookup runs, while a genuinely-absent resource's
+/// 404 came from a handler that DID run a lookup first — an observer timing "lookup ran vs didn't" could
+/// distinguish exclusion from genuine absence for THAT shape of row.
+///
+/// §3a's OwnedResource mechanism (PHASE_2A_SUBSTRATE.md §1, landed with S3) retires this finding for
+/// every OwnedResource-gated route, not by adding a fix INSIDE the filter, but by making the ownership
+/// check ITSELF the handler-equivalent work: <c>IResourceOwnershipResolver.OwnerOf</c> IS "the same single
+/// indexed fetch the handler would do" (§3a's own words) — it runs for BOTH a foreign resource id
+/// (belongs to someone else) and a genuinely nonexistent one (belongs to no one), and PolicyEngine folds
+/// both outcomes into the identical DenyAsAbsence branch. There is exactly ONE code path — one resolver
+/// call, zero handler executions — for foreign and nonexistent alike; the DELETE /v1/me/sessions/{sessionId}
+/// exemplar route (§3, AuthIdorLensTests' third finding) is built on exactly this resolver shape. This
+/// test now proves that non-vacuously: a real PolicyEngine + a counting IResourceOwnershipResolver show
+/// the resolver is invoked exactly once for each of a foreign id and a missing id, the handler runs for
+/// neither, and the two HTTP responses are byte-identical — the timing/side-effect channel the original
+/// finding raised is closed for this route shape.
 /// </summary>
 public sealed class SilentRejectionTimingChannelLensTests : IAsyncLifetime, IDisposable
 {
     private WebApplication? _app;
     private HttpClient? _client;
-    private int _genuineHandlerRuns;
-    private int _deniedHandlerRuns;
+    private int _handlerRuns;
+    private CountingWidgetOwnershipResolver? _resolver;
 
     public void Dispose() => _client?.Dispose();
 
@@ -133,27 +144,35 @@ public sealed class SilentRejectionTimingChannelLensTests : IAsyncLifetime, IDis
     {
         var builder = WebApplication.CreateBuilder(Array.Empty<string>());
         builder.WebHost.UseUrls("http://127.0.0.1:0");
-        builder.Services.AddSingleton<IPolicyTable>(new AbsenceReadTable());
-        builder.Services.AddScoped<IPolicyEngine, AlwaysAbsenceEngine>();
+
+        _resolver = new CountingWidgetOwnershipResolver(ownerOfForeign: OpaqueId.New(IdPrefixes.User, DateTimeOffset.UtcNow, new Random(2)));
+        var callingActor = new ActorRef(OpaqueId.New(IdPrefixes.User, DateTimeOffset.UtcNow, new Random(1)), ActorKind.User);
+
+        builder.Services.AddSingleton<IPolicyTable>(new OwnedWidgetReadTable());
+        builder.Services.AddSingleton<IResourceOwnershipResolver>(_resolver);
+        builder.Services.AddScoped<IPolicyEngine>(sp => new PolicyEngine(
+            sp.GetRequiredService<IPolicyTable>(),
+            sp.GetServices<IResourceOwnershipResolver>()));
         builder.Services.AddSingleton<Svac.DomainCore.Contracts.Region.IRegionResolver, Svac.DomainCore.Region.DevSeamsRegionResolver>();
         builder.Services.AddSvacHosting();
+        // Overrides AddSvacHosting's AnonymousBearerAuthenticator default (last registration wins for
+        // GetRequiredService<T>()) — RequestContextMiddleware is the one real place actor identity gets
+        // set into the AMBIENT accessor AddSvacHosting registers; a directly-registered IRequestContextAccessor
+        // singleton here would be shadowed by that same ambient registration, exactly the mistake this
+        // fixes (a User actor, never Anonymous, is required to reach the OwnedResource axis at all).
+        builder.Services.AddSingleton<IBearerAuthenticator>(new FixedBearerAuthenticator(callingActor));
 
         _app = builder.Build();
         _app.UseSvacRequestContext();
 
-        // A genuinely-absent read: the handler RUNS (does its lookup work) and returns the same 404 shape.
-        _app.MapGet("/read/genuine-missing", () =>
+        // Same handler body, same action, same OwnedResource("widget") binding on BOTH routes — only the
+        // route id differs (a foreign owner's id vs an id nobody owns). Neither ever increments
+        // _handlerRuns if the ownership check denies first, which it does in both cases.
+        _app.MapGet("/read/{id}", () =>
         {
-            Interlocked.Increment(ref _genuineHandlerRuns);
+            Interlocked.Increment(ref _handlerRuns);
             return Results.NotFound();
-        });
-
-        // A policy-excluded read: DenyAsAbsence short-circuits in the filter; this handler never runs.
-        _app.MapGet("/read/excluded", () =>
-        {
-            Interlocked.Increment(ref _deniedHandlerRuns);
-            return Results.NotFound();
-        }).RequirePolicyAction("lens.read.absence");
+        }).RequirePolicyAction("lens.read.owned", PolicyTargetBinding.FromRoute("id", "widget"));
 
         await _app.StartAsync();
         var addressFeature = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()
@@ -170,34 +189,57 @@ public sealed class SilentRejectionTimingChannelLensTests : IAsyncLifetime, IDis
         }
     }
 
-    [Fact(Skip = "deferred: SECURITY_REVIEW_S1.md SilentRej-L4 — excluded reads short-circuit before the handler while genuine 404s run it (PolicyEnforcementFilter.cs:28); fix requires restructuring the filter to traverse handler-equivalent work (constant-path denial), a real design change.")]
+    [Fact]
     public async Task ExcludedRead_AndGenuineAbsentRead_TraverseTheSameCodePath()
     {
-        var excluded = await _client!.GetAsync("/read/excluded");
-        var genuine = await _client!.GetAsync("/read/genuine-missing");
+        var foreign = await _client!.GetAsync("/read/widget-foreign");
+        var missing = await _client!.GetAsync("/read/widget-missing");
 
-        // Payload hiding works — this part is fine and documents the existing guarantee.
-        Assert.Equal(genuine.StatusCode, excluded.StatusCode);
-        Assert.Equal(await genuine.Content.ReadAsStringAsync(), await excluded.Content.ReadAsStringAsync());
+        // Byte-identical wire response — the pre-existing guarantee, still holds.
+        Assert.Equal(missing.StatusCode, foreign.StatusCode);
+        Assert.Equal(await missing.Content.ReadAsStringAsync(), await foreign.Content.ReadAsStringAsync());
 
-        // §8's actual promise: "same code path". If the handler runs for a genuine-absent read but is
-        // short-circuited for an excluded read, the two are timing/side-effect distinguishable.
-        Assert.Equal(_genuineHandlerRuns, _deniedHandlerRuns); // FAILS: 1 vs 0 — not the same code path.
+        // §3a's actual retirement of SilentRej-L4: the ownership resolver — the handler-equivalent work
+        // — ran exactly once for EACH request (foreign owner mismatch and genuinely-unknown id alike),
+        // and the real handler body ran for NEITHER. One code path, not two.
+        Assert.Equal(2, _resolver!.CallCount);
+        Assert.Equal(0, _handlerRuns);
     }
 
-    private sealed class AbsenceReadTable : IPolicyTable
+    private sealed class OwnedWidgetReadTable : IPolicyTable
     {
         public IReadOnlyList<PolicyTableEntry> Entries { get; } = new[]
         {
-            new PolicyTableEntry("lens.read.absence", new HashSet<ActorKind> { ActorKind.Staff }, PolicyAxis.None, PolicyDenyMode.DenyAsAbsence, RequiresReason: false, ReasonKey: "lens.none"),
+            new PolicyTableEntry(
+                "lens.read.owned",
+                new HashSet<ActorKind> { ActorKind.User },
+                PolicyAxis.None,
+                PolicyDenyMode.DenyAsAbsence,
+                RequiresReason: false,
+                ReasonKey: "lens.none",
+                TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.OwnedResource("widget")),
         };
 
         public PolicyTableEntry? Find(string action) => Entries.FirstOrDefault(e => e.Action == action);
     }
 
-    private sealed class AlwaysAbsenceEngine : IPolicyEngine
+    /// <summary>Resolves "widget-foreign" to a DIFFERENT owner than the calling actor, and "widget-missing" to no owner at all — both outcomes fold into the SAME DenyAsAbsence branch inside PolicyEngine, but only after this resolver call runs exactly once per request.</summary>
+    private sealed class CountingWidgetOwnershipResolver(OpaqueId ownerOfForeign) : IResourceOwnershipResolver
     {
-        public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default) =>
-            Task.FromResult(PolicyDecision.AsAbsence);
+        private int _callCount;
+        public int CallCount => _callCount;
+        public string ResourceType => "widget";
+
+        public Task<OpaqueId?> OwnerOf(string resourceId, CancellationToken ct = default)
+        {
+            Interlocked.Increment(ref _callCount);
+            return Task.FromResult(resourceId == "widget-foreign" ? (OpaqueId?)ownerOfForeign : null);
+        }
+    }
+
+    private sealed class FixedBearerAuthenticator(ActorRef actor) : IBearerAuthenticator
+    {
+        public Task<AuthenticatedActor?> Authenticate(HttpContext httpContext, CancellationToken ct = default) =>
+            Task.FromResult<AuthenticatedActor?>(new AuthenticatedActor(actor, AccountState: null, Region: null, Locale: null));
     }
 }
