@@ -71,6 +71,8 @@ Adding a sensory dimension to the LOCKED DESIGN.md is a founder/design call, not
 - **Sound identity**: are weebtest's beds the final palette, or does the Candy Sticker Pop register call for a fresh set.
 - **Licensing**: confirm we own/licensed weebtest's music + SFX before shipping (same discipline as the Font Awesome Pro call).
 
-## 8. Where it lands (not the S3/S5/S6 backend wave)
+## 8. Where it lands + how it gets ratified (not the S3/S5/S6 backend wave)
 
 Client-side only. Web seam ships with **S9** (web funnel); native seams with the iOS/Android test surfaces. Nothing here touches the S6 anime *scoring* engine or the backend. Does not block or gate the current S3→S5→S6 backend wave.
+
+**Ratification path (founder, 2026-07-11): fold the engine architecture into the S9 slice Phase-0 panel, NOT a standalone plan-eng-review.** Rationale: this is within-client architecture — it sets no backend module boundary, touches no OpenAPI contract, and the Azure Blob+CDN delivery is already inside ruling 2A. It clears none of the bars that make a decision eng-review-class, so the normal SLICE_PLAYBOOK Phase-0 panel + founder checkpoint (the machinery that ratified S3/S5/S6) is the right forum. This doc is that panel's input. The native-test-surface slices inherit the same architecture the same way.
