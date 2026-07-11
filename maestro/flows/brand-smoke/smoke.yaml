@@ -1,0 +1,45 @@
+# maestro/flows/brand-smoke/smoke.yaml — SLICE_S7_CONTRACT.md §9g, the 14A SHARED cross-platform E2E
+# harness. ONE flow runs ×4 (iOS/Android × Weeb/Friki) by env injection — the parity foundation every
+# later client slice extends. Lives at repo root (glue, not client-internal) per CLAUDE.md; ios.yml /
+# android.yml point their graduated maestro-brand-smoke job here.
+#
+# Run one leg:
+#   maestro test maestro/flows/brand-smoke/smoke.yaml \
+#     -e APP_ID=app.weeb.client.dev -e BRAND=weeb -e WORDMARK=Weeb -e ES_HANDLE_TITLE="Elige tu usuario"
+#
+# The accessibility IDs asserted below are the CONTRACT both native shells implement identically
+# (ios accessibilityIdentifier == android testTag == the strings here). See maestro/README.md.
+appId: ${APP_ID}
+env:
+  BRAND: ${BRAND}
+  WORDMARK: ${WORDMARK}
+  ES_HANDLE_TITLE: ${ES_HANDLE_TITLE}
+---
+- launchApp:
+    clearState: true
+    # Force light mode + EN for the structural pass (apps force light at S7; dark is a G3 slice).
+    arguments:
+      forceLightMode: true
+
+# --- Trunk test: brand mark + the five-tab shell present on first launch (DR-1.1) ---
+- assertVisible:
+    id: "brand.wordmark"
+# The wordmark carries the brand name as its accessibility label — proves the correct FLAVOR launched.
+- assertVisible: ".*${WORDMARK}.*"
+
+- runFlow: subflows/assert-shell.yaml
+
+# --- Signup shell walks to the HONEST gateway-refusal state (UnavailableSignupGateway, all configs) ---
+- runFlow: subflows/signup-walk.yaml
+
+# --- ES-locale smoke (DR-6.2: test the ES string; +30% width, no truncation) ---
+- launchApp:
+    clearState: true
+    arguments:
+      forceLightMode: true
+      appLocale: "es"
+- assertVisible:
+    id: "brand.wordmark"
+- tapOn:
+    id: "signup.start"
+- assertVisible: "${ES_HANDLE_TITLE}"

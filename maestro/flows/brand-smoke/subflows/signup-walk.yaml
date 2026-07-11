@@ -1,0 +1,54 @@
+# signup-walk.yaml — the 5.14a signup shell walked end to end to its DESIGNED end: the honest
+# gateway-refusal state. S7 registers only UnavailableSignupGateway in ALL configs (no fake success path
+# ever exists — §9c, adoption record P1). Submission crosses the SignupGateway seam and resolves to the
+# one generic could-not-send pattern (error.could_not_send). No notification permission is asked here.
+appId: ${APP_ID}
+---
+- tapOn:
+    id: "signup.start"
+
+# Handle → verified-email step → birthdate attest → avatar-or-skip → one fandom tag.
+- assertVisible:
+    id: "signup.handle"
+- tapOn:
+    id: "signup.handle"
+- inputText: "nakama_test"
+- tapOn:
+    id: "signup.handle.next"
+
+- assertVisible:
+    id: "signup.email"
+- tapOn:
+    id: "signup.email"
+- inputText: "test@example.com"
+- tapOn:
+    id: "signup.email.next"
+
+# Birthdate attest — neutral-plain register (no candy, no mascot). Correction 1: refuses under-18.
+# The smoke enters an 18+ date so the flow reaches the gateway; the under-18/under-13 refusals are
+# snapshot-tested in the state gallery (not walked here).
+- assertVisible:
+    id: "signup.birthdate"
+- tapOn:
+    id: "signup.birthdate"
+- inputText: "2000-01-01"
+- tapOn:
+    id: "signup.birthdate.next"
+
+# Avatar-or-skip (DR-7.1: no OS permission asked; skip is a live action).
+- assertVisible:
+    id: "signup.avatar.skip"
+- tapOn:
+    id: "signup.avatar.skip"
+
+# One fandom tag.
+- assertVisible:
+    id: "signup.fandom"
+- tapOn:
+    id: "signup.fandom.option.0"
+- tapOn:
+    id: "signup.submit"
+
+# Designed end of the journey: the honest could-not-send refusal (never a fabricated success).
+- assertVisible:
+    id: "state.error.could_not_send"

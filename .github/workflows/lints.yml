@@ -91,7 +91,7 @@ jobs:
           fi
 
   i18n-lint:
-    name: i18n-lint (guarded)
+    name: i18n-lint (ARMED at S7 — .xcstrings + strings.xml key-parity ×4 + message-key coverage)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +100,28 @@ jobs:
           node-version: "24"
       - run: node --test tools/i18n-lint/i18n-lint.test.mjs
       - run: node tools/i18n-lint/i18n-lint.mjs
+
+  token-lint:
+    name: token-lint (S7 — manifest ↔ DESIGN.md, platform layers ↔ manifest, brand-delta ↔ brands)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/token-lint/token-lint.test.mjs
+      - run: node tools/token-lint/token-lint.mjs
+
+  egress-lint:
+    name: egress-lint (S7 — zero third-party egress; brand-domain + dev-loopback allowlist only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/egress-lint/egress-lint.test.mjs
+      - run: node tools/egress-lint/egress-lint.mjs
 
   destructive-verb-check:
     name: destructive-verb check (golden vectors + adversarial lens)

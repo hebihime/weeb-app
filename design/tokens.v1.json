@@ -1,0 +1,150 @@
+{
+  "_meta": {
+    "version": "v1",
+    "slice": "S7",
+    "source_of_truth": "DESIGN.md (prose is authoritative; this file is its machine-readable mirror, versioned like contracts/openapi.v0.json)",
+    "verified_by": "tools/token-lint — manifest values MUST equal DESIGN.md's Color / Type Scale / Brand Delta tables; platform layers (ios DesignKit/Tokens.swift, android designkit/Tokens.kt) MUST equal this manifest value-for-value; brand-delta keys MUST equal brands/*.json",
+    "consumers": ["ios/", "android/", "web/ (S9 inherits free)"],
+    "dark_mode_note": "Choco dark palette is carried from the start per DR-6.3 but rendered NOWHERE until its G3 slice; apps force light mode at S7."
+  },
+
+  "palette": {
+    "candy": {
+      "bubblegum": "#F7568F",
+      "sky": "#38BDF2",
+      "mikan": "#FF9838",
+      "foil": "#C99A2E",
+      "choco": "#1E1410"
+    },
+    "semantic": {
+      "good": "#3FB950",
+      "warn": "#F5A623",
+      "danger": "#ED4245"
+    },
+    "light": {
+      "ground": "#FFFFFF",
+      "surface": "#FFFFFF",
+      "surface_2": "#F7F5F2",
+      "hairline": "#E8E3DD",
+      "text": "#26170F",
+      "dim": "#8A7C72",
+      "outline": "#2B1B12"
+    },
+    "dark": {
+      "ground": "#1E1410",
+      "surface": "#2A1D16",
+      "surface_2": "#35251D",
+      "line": "#48362B",
+      "text": "#FBF3EC",
+      "dim": "#B3A093",
+      "outline": "#F5EBE2"
+    }
+  },
+
+  "type_scale": {
+    "display_xl": { "size": 34, "line": 40, "weight": 900 },
+    "display": { "size": 28, "line": 34, "weight": 900 },
+    "title": { "size": 22, "line": 28, "weight": 800 },
+    "heading": { "size": 17, "line": 24, "weight": 800 },
+    "body": { "size": 15, "line": 22, "weight": 500 },
+    "caption": { "size": 13, "line": 18, "weight": 500 },
+    "micro_label": { "size": 11, "line": 14, "weight": 700, "uppercase": true, "tracking_em": 0.08 }
+  },
+  "type_weights": {
+    "display": 900,
+    "heading": 800,
+    "body": 500,
+    "longform": 400,
+    "neutral_allowed": [400, 500, 700]
+  },
+
+  "spacing": {
+    "base": 4,
+    "scale": [4, 8, 12, 16, 24, 32, 48, 64]
+  },
+
+  "radii": {
+    "card": 24,
+    "modal": 20,
+    "sheet": 20,
+    "input": 16,
+    "pill": 999,
+    "neutral_max": 16
+  },
+
+  "outline": {
+    "playful_min": 2,
+    "playful_max": 3,
+    "person_card": 3,
+    "chip": 2,
+    "crew_card": 3,
+    "neutral": 0
+  },
+
+  "motion": {
+    "micro_ms": [80, 120],
+    "short_ms": [150, 250],
+    "medium_ms": [250, 400],
+    "celebration_ms": [400, 700],
+    "reduced_motion_degrades_to": "static_frame_plus_haptic"
+  },
+
+  "fonts": {
+    "family": "M PLUS Rounded 1c",
+    "license": "OFL",
+    "bundled": true,
+    "never_fetched": true,
+    "weights": [400, 500, 700, 800, 900],
+    "han_fallback": {
+      "ios": "PingFang SC",
+      "android": "Noto Sans SC"
+    }
+  },
+
+  "iconography": {
+    "set": "Font Awesome Pro",
+    "styles": { "playful": "solid", "neutral": "regular", "empty_and_celebration": "duotone" },
+    "banned_styles": ["thin", "sharp"],
+    "sizes": [16, 20, 24],
+    "min_touch_target_pt": 44,
+    "seam": "one Iconography layer per platform; call sites never use glyph literals; FA Pro is an asset swap behind this seam (bundled fallback set ships when the Pro kit is absent — Correction 2)"
+  },
+
+  "registers": {
+    "playful": {
+      "candy_allowed": true,
+      "choco_outline_allowed": true,
+      "black_900_allowed": true,
+      "danger_allowed": false,
+      "radius_max": 24
+    },
+    "neutral": {
+      "candy_allowed": false,
+      "choco_outline_allowed": false,
+      "black_900_allowed": false,
+      "danger_allowed": true,
+      "weights_allowed": [400, 500, 700],
+      "radius_max": 16
+    }
+  },
+
+  "brand_delta": {
+    "_note": "These keys MUST equal brands/*.json brand_primary / brand_celebration (token-lint check c). The delta is a token-namespace swap only; everything else is shared (DESIGN.md 'same sticker, different ink').",
+    "keys": ["brand.primary", "brand.celebration", "brand.wordmark", "brand.illustration", "brand.strings"],
+    "weeb": { "primary": "#F7568F", "celebration": "#FF9838", "string_pack_id": "weeb" },
+    "friki": { "primary": "#FF7A3D", "celebration": "#F7568F", "string_pack_id": "friki" }
+  },
+
+  "laws": {
+    "1_foil_never_ranks_people": "Foil/patina/rarity apply to moments, crews, authored cards — never a person's card.",
+    "2_danger_out_of_playful": "No danger token reachable from playful-register components; playful errors use the one generic could-not-send pattern in neutral styling.",
+    "3_absence_not_disablement": "No locked/grayed/disabled decorative variant exists in the kit (type-level). Sole allowlisted exception: the create-crew Premium secondary CTA in the Crews empty state.",
+    "4_one_limit_reached_surface": "Freemium caps and reputation-scaled caps render identically (limit_reached.generic).",
+    "5_lock_screen_privacy": "Notifications render in neutral register with Con-Mode content rules (S4 obligation; nothing to render at S7).",
+    "6_time_only_adds_value": "No decay / expiry-shame / streak-loss token exists."
+  },
+  "forbidden_token_groups": ["disabled", "locked", "grayed", "decay", "expiry", "streak_loss"],
+  "allowlisted_exceptions": {
+    "create_crew_premium_cta": "the single ratified law-3 exception; Crews empty-state secondary CTA"
+  }
+}

@@ -1,0 +1,10 @@
+# maestro/config.yaml — workspace config for the 14A shared harness.
+# The brand-smoke suite is the S7 deliverable; later slices add flows under maestro/flows/ and tag them.
+flows:
+  - "flows/**/smoke.yaml"
+
+# Structural (no-network) smoke is the required gate; live-backend flows carry the "live" tag and run
+# only in the debug-diagnostics E2E lane (§12 evidence 3), never in the required brand-smoke matrix.
+includeTags: []
+excludeTags:
+  - live

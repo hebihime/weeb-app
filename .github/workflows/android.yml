@@ -1,18 +1,25 @@
 name: android
 
-# SLICE_S0_CONTRACT.md §9. Matrix brand in {weeb, friki} per 7A. Directory-guarded end to end so this
-# workflow is green on the empty repo; android/ arrives at S7. Lane C owns this file (CODEOWNERS).
+# SLICE_S0_CONTRACT.md §9 + SLICE_S7_CONTRACT.md §0/§9g. Matrix brand in {weeb, friki} per 7A.
+# GRADUATED at S7: the four guarded jobs are now REAL required runs (dir-guarded for file validity).
+# Lane C owns this file (CODEOWNERS).
 on:
   push:
     branches: [master]
     paths:
       - "android/**"
+      - "maestro/**"
+      - "contracts/**"
+      - "design/tokens.v1.json"
       - "brands/**"
       - "i18n/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
+      - "maestro/**"
+      - "contracts/**"
+      - "design/tokens.v1.json"
       - "brands/**"
       - "i18n/**"
       - ".github/workflows/android.yml"
@@ -24,74 +31,140 @@ concurrency:
 
 jobs:
   build-test:
-    name: gradlew test${{ matrix.brand }}DebugUnitTest
+    name: gradlew test${{ matrix.flavor }}DebugUnitTest
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 4
+      fail-fast: false
       matrix:
-        brand: [Weeb, Friki]
+        include:
+          - brand: weeb
+            flavor: Weeb
+          - brand: friki
+            flavor: Friki
     steps:
       - uses: actions/checkout@v4
-      - name: guarded — android/ does not exist yet
+      - name: guard — android/ present (S7)
+        id: guard
         run: |
-          if [ -d android ]; then
-            echo "android/ exists — ./gradlew test${{ matrix.brand }}DebugUnitTest lands at S7"
-          else
-            echo "android.yml SKIP (${{ matrix.brand }}): android/ does not exist yet (guarded — lands at S7)"
-          fi
-
-  brand-gate:
-    name: brand-drift gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+          if [ -d android ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "android.yml SKIP (${{ matrix.brand }}): android/ absent (guarded)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-java@v4
+        if: steps.guard.outputs.present == 'true'
         with:
-          node-version: "24"
-      - run: node build/scripts/brand-gate.mjs
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        if: steps.guard.outputs.present == 'true'
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.guard.outputs.present == 'true'
+      # The openapi-generator gradle plugin generates the kotlinx-serialization client from the checked-in
+      # canonical contracts/openapi.v0.json at build time (B17 consumption proof) — never committed.
+      - name: unit + snapshot tests (${{ matrix.flavor }} debug)
+        if: steps.guard.outputs.present == 'true'
+        working-directory: android
+        run: ./gradlew test${{ matrix.flavor }}DebugUnitTest --stacktrace
 
   string-catalog-lint:
-    name: strings.xml / i18n key-parity (guarded)
+    name: strings.xml / i18n key-parity ×4 (ARMED at S7)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - run: node --test tools/i18n-lint/i18n-lint.test.mjs
       - run: node tools/i18n-lint/i18n-lint.mjs
+
+  codegen-openapi-client:
+    name: generate kotlin client from the canonical contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: guard — android/ present (S7)
+        id: guard
+        run: |
+          if [ -d android ] && [ -f contracts/openapi.v0.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "codegen SKIP: android/ or contract absent (guarded)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-java@v4
+        if: steps.guard.outputs.present == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.guard.outputs.present == 'true'
+      - name: run the openapi codegen task (compiles generated client against the contract)
+        if: steps.guard.outputs.present == 'true'
+        working-directory: android
+        run: ./gradlew :apikit:openApiGenerate :apikit:compileWeebDebugKotlin --stacktrace
 
   maestro-brand-smoke:
     name: Maestro brand-smoke (${{ matrix.brand }}) — 14A slot
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        brand: [weeb, friki]
+        include:
+          - brand: weeb
+            flavor: Weeb
+            app_id: app.weeb.client.dev
+            wordmark: Weeb
+            es_handle_title: "Elige tu usuario"
+          - brand: friki
+            flavor: Friki
+            app_id: app.friki.client.dev
+            wordmark: Friki
+            es_handle_title: "Elige tu usuario"
     steps:
       - uses: actions/checkout@v4
-      - name: guarded — Maestro harness lands at S7
+      - name: guard — maestro/ + android/ present (14A; guard points at maestro/, not android/.maestro)
+        id: guard
         run: |
-          if [ -d android/.maestro ]; then
-            echo "Maestro flows present for brand ${{ matrix.brand }} — running would happen here"
-          else
-            echo "maestro-brand-smoke SKIP (${{ matrix.brand }}): android/.maestro does not exist yet (guarded — S7, 14A)"
-          fi
-
-  codegen-openapi-client:
-    name: generate typed client from openapi-contract-v0 (guarded)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: download contract artifact if published
-        id: download
-        continue-on-error: true
-        uses: actions/download-artifact@v4
+          if [ -d maestro ] && [ -d android ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "maestro-brand-smoke SKIP (${{ matrix.brand }}): maestro/ or android/ absent (guarded — 14A)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-java@v4
+        if: steps.guard.outputs.present == 'true'
         with:
-          name: openapi-contract-v0
-          path: /tmp/contract
-      - name: codegen
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        if: steps.guard.outputs.present == 'true'
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.guard.outputs.present == 'true'
+      - name: assemble debug APK
+        if: steps.guard.outputs.present == 'true'
+        working-directory: android
+        run: ./gradlew assemble${{ matrix.flavor }}Debug --stacktrace
+      - name: install maestro
+        if: steps.guard.outputs.present == 'true'
         run: |
-          if [ -f /tmp/contract/openapi.v0.json ]; then
-            echo "codegen: openapi-contract-v0 artifact present — openapi-generator (kotlin client) step lands at S7"
-          else
-            echo "codegen-openapi-client SKIP: openapi-contract-v0 artifact not published yet (guarded — S1 emits it)"
-          fi
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: enable KVM
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: boot emulator, install APK, run brand-smoke
+        if: steps.guard.outputs.present == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            APK=$(find android -path "*/${{ matrix.flavor }}/debug/*.apk" -o -name "*-${{ matrix.brand }}-debug.apk" | head -1)
+            adb install -r "$APK"
+            maestro test maestro/flows/brand-smoke/smoke.yaml \
+              -e APP_ID=${{ matrix.app_id }} \
+              -e BRAND=${{ matrix.brand }} \
+              -e WORDMARK=${{ matrix.wordmark }} \
+              -e ES_HANDLE_TITLE="${{ matrix.es_handle_title }}"
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.guard.outputs.present == 'true'
+        with:
+          name: maestro-android-${{ matrix.brand }}
+          path: ~/.maestro/tests
+          if-no-files-found: ignore

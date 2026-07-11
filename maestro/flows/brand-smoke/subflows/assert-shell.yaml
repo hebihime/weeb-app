@@ -1,0 +1,49 @@
+# assert-shell.yaml — the five-tab shell (DR-1.1 LOCKED) + the two structural ABSENCES that would be
+# fabrication at S7 (Quests tab pre-G4; mode chip while only Online is constructible). Each tab is
+# navigable and shows its designed honest zero-data state — never fabricated data (L6).
+# Every id below IS the element's accessibility label — asserting it verifies VoiceOver/TalkBack labelling.
+appId: ${APP_ID}
+---
+# Five tabs present (Connect · Explore · Crews · Inbox · Profile).
+- assertVisible:
+    id: "tab.connect"
+- assertVisible:
+    id: "tab.explore"
+- assertVisible:
+    id: "tab.crews"
+- assertVisible:
+    id: "tab.inbox"
+- assertVisible:
+    id: "tab.profile"
+
+# Quests tab does NOT exist (pre-G4 absence, no "coming soon").
+- assertNotVisible:
+    id: "tab.quests"
+# Mode chip renders only when mode != Online — never at S7 (a visible chip here would be fabrication).
+- assertNotVisible:
+    id: "mode.chip"
+
+# Each tab navigates to its designed honest zero-data state (empty, never fake counts/people).
+- tapOn:
+    id: "tab.connect"
+- assertVisible:
+    id: "state.connect.empty"
+- tapOn:
+    id: "tab.explore"
+- assertVisible:
+    id: "state.explore.empty"
+- tapOn:
+    id: "tab.crews"
+- assertVisible:
+    id: "state.crews.empty"
+# The sole ratified law-3 exception: the create-crew Premium secondary CTA lives in the Crews empty state.
+- assertVisible:
+    id: "crews.create.premium.cta"
+- tapOn:
+    id: "tab.inbox"
+- assertVisible:
+    id: "state.inbox.empty"
+- tapOn:
+    id: "tab.profile"
+- assertVisible:
+    id: "state.profile.empty"

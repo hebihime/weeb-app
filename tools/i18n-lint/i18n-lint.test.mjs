@@ -7,6 +7,10 @@ import {
   checkBrandOverrideParity,
   checkStoreMetadataCoverage,
   loadLocales,
+  parseXcstrings,
+  parseAndroidStrings,
+  androidResName,
+  checkMessageKeyCoverage,
 } from "./i18n-lint.mjs";
 
 const LOCALES = ["en", "es", "pt", "zh-Hans"];
@@ -112,4 +116,88 @@ test("loadLocales: reads the canonical i18n/locales.json set", () => {
   const repoRoot = new URL("../..", import.meta.url).pathname;
   const locales = loadLocales(repoRoot);
   assert.deepEqual(locales, LOCALES);
+});
+
+// ---------- S7 native catalog parsers ----------
+
+const XCSTRINGS = JSON.stringify({
+  sourceLanguage: "en",
+  version: "1.0",
+  strings: {
+    "signup.handle.title": {
+      localizations: {
+        en: { stringUnit: { state: "translated", value: "Pick a handle" } },
+        es: { stringUnit: { value: "Elige un usuario" } },
+        pt: { stringUnit: { value: "Escolha um nome" } },
+        "zh-Hans": { stringUnit: { value: "选择用户名" } },
+      },
+    },
+    "limit_reached.generic": {
+      localizations: {
+        en: { stringUnit: { value: "You've hit today's limit." } },
+        es: { stringUnit: { value: "Has alcanzado el límite de hoy." } },
+        pt: { stringUnit: { value: "Você atingiu o limite de hoje." } },
+        "zh-Hans": { stringUnit: { value: "已达到今日上限。" } },
+      },
+    },
+  },
+});
+
+test("parseXcstrings: builds per-locale catalogs from a String Catalog", () => {
+  const cats = parseXcstrings(XCSTRINGS, LOCALES);
+  assert.equal(cats.en["signup.handle.title"], "Pick a handle");
+  assert.equal(cats["zh-Hans"]["limit_reached.generic"], "已达到今日上限。");
+  assert.deepEqual(Object.keys(cats.es).sort(), ["limit_reached.generic", "signup.handle.title"]);
+});
+
+test("parseXcstrings: a locale missing a value is flagged by checkKeyParity", () => {
+  const doc = JSON.parse(XCSTRINGS);
+  delete doc.strings["signup.handle.title"].localizations["pt"];
+  const cats = parseXcstrings(JSON.stringify(doc), LOCALES);
+  const v = checkKeyParity(cats, LOCALES);
+  assert.ok(v.some((x) => x.includes('"signup.handle.title"') && x.includes('"pt"')));
+});
+
+test("parseAndroidStrings + androidResName: dotted key maps to underscore resource", () => {
+  const xml = `<resources>
+    <string name="signup_handle_title">Pick a handle</string>
+    <string name="limit_reached_generic">You've hit today's limit.</string>
+  </resources>`;
+  const cat = parseAndroidStrings(xml);
+  assert.equal(cat["signup_handle_title"], "Pick a handle");
+  assert.equal(androidResName("limit_reached.generic"), "limit_reached_generic");
+  assert.ok(androidResName("limit_reached.generic") in cat);
+});
+
+test("checkMessageKeyCoverage: GREEN — all message keys present ×4 in both platforms", () => {
+  const iosCats = parseXcstrings(XCSTRINGS, LOCALES);
+  const androidCats = {};
+  for (const loc of LOCALES) androidCats[loc] = { signup_handle_title: "x", limit_reached_generic: "y" };
+  const v = checkMessageKeyCoverage(
+    [{ platform: "ios", catalogs: iosCats }, { platform: "android", catalogs: androidCats }],
+    ["limit_reached.generic"],
+    LOCALES
+  );
+  assert.deepEqual(v, []);
+});
+
+test("RED: a message key missing from one iOS locale is caught", () => {
+  const doc = JSON.parse(XCSTRINGS);
+  delete doc.strings["limit_reached.generic"].localizations["zh-Hans"];
+  const iosCats = parseXcstrings(JSON.stringify(doc), LOCALES);
+  const v = checkMessageKeyCoverage([{ platform: "ios", catalogs: iosCats }], ["limit_reached.generic"], LOCALES);
+  assert.ok(v.some((x) => x.includes("limit_reached.generic") && x.includes('"zh-Hans"')));
+});
+
+test("RED: a message key missing its underscored Android name is caught", () => {
+  const androidCats = {};
+  for (const loc of LOCALES) androidCats[loc] = { signup_handle_title: "x" }; // no limit_reached_generic
+  const v = checkMessageKeyCoverage([{ platform: "android", catalogs: androidCats }], ["limit_reached.generic"], LOCALES);
+  assert.equal(v.length, LOCALES.length);
+  assert.ok(v.every((x) => x.includes("android") && x.includes("limit_reached_generic")));
+});
+
+test("checkMessageKeyCoverage: an absent platform (empty catalogs) is skipped, not failed", () => {
+  const empty = Object.fromEntries(LOCALES.map((l) => [l, {}]));
+  assert.deepEqual(checkMessageKeyCoverage([{ platform: "ios", catalogs: empty }], ["limit_reached.generic"], LOCALES), []);
 });

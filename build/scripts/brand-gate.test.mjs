@@ -5,7 +5,14 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadBrands, checkBrandDrift, findBrandLiteralLeaks } from "./brand-gate.mjs";
+import {
+  loadBrands,
+  checkBrandDrift,
+  findBrandLiteralLeaks,
+  parseFlavorFile,
+  iosFlavorToCanonical,
+  androidFlavorToCanonical,
+} from "./brand-gate.mjs";
 
 function makeRepo(weeb, friki) {
   const root = mkdtempSync(join(tmpdir(), "brand-gate-"));
@@ -39,6 +46,18 @@ const GOOD_FRIKI = {
   wordmark_asset_ref: "design/assets/logo-friki.png",
   string_pack_id: "friki",
   store_metadata_path: "fastlane/metadata/friki",
+};
+
+// Canonical pair with real (non-blank) ids — mirrors the shipped brands/*.json for flavor-drift tests.
+const GOOD_WEEB_CANON = {
+  ...GOOD_WEEB,
+  bundle_id_ios: "app.weeb.client",
+  application_id_android: "app.weeb.client",
+};
+const GOOD_FRIKI_CANON = {
+  ...GOOD_FRIKI,
+  bundle_id_ios: "app.friki.client",
+  application_id_android: "app.friki.client",
 };
 
 test("loadBrands: golden vector — both canonical files valid", () => {
@@ -148,4 +167,65 @@ test("findBrandLiteralLeaks: clean file produces no violation", () => {
     brands
   );
   assert.deepEqual(violations, []);
+});
+
+test("findBrandLiteralLeaks: token-layer file is allowlisted (the legit palette home)", () => {
+  const brands = { weeb: { ...GOOD_WEEB, brand_primary: "#F7568F" }, friki: GOOD_FRIKI };
+  const tokenPath = "ios/DesignKit/Sources/DesignKit/Tokens.swift";
+  const violations = findBrandLiteralLeaks(
+    [{ path: tokenPath, content: 'static let bubblegum = "#F7568F"' }],
+    brands,
+    { allowlist: new Set([tokenPath]) }
+  );
+  assert.deepEqual(violations, []);
+});
+
+test("findBrandLiteralLeaks: a non-allowlisted component still leaks the same hex", () => {
+  const brands = { weeb: { ...GOOD_WEEB, brand_primary: "#F7568F" }, friki: GOOD_FRIKI };
+  const violations = findBrandLiteralLeaks(
+    [{ path: "ios/Features/Signup/Button.swift", content: 'Color(hex: "#F7568F")' }],
+    brands,
+    { allowlist: new Set(["ios/DesignKit/Sources/DesignKit/Tokens.swift"]) }
+  );
+  assert.equal(violations.length, 1);
+  assert.match(violations[0], /Button\.swift hardcodes brand hex #F7568F/);
+});
+
+// ---------- S7 flavor-file parsers ----------
+
+test("parseFlavorFile: xcconfig-style KEY = value, ignoring // comments", () => {
+  const raw = parseFlavorFile("// header\nBRAND_KEY = weeb\nBUNDLE_ID = app.weeb.client\nBRAND_PRIMARY = F7568F\n");
+  assert.equal(raw.BRAND_KEY, "weeb");
+  assert.equal(raw.BUNDLE_ID, "app.weeb.client");
+  assert.equal(raw.BRAND_PRIMARY, "F7568F");
+});
+
+test("parseFlavorFile: properties-style key=value, ignoring # comments", () => {
+  const raw = parseFlavorFile("# brand\nbrand_key=friki\napplication_id=app.friki.client\nbrand_primary=FF7A3D\n");
+  assert.equal(raw.brand_key, "friki");
+  assert.equal(raw.application_id, "app.friki.client");
+  assert.equal(raw.brand_primary, "FF7A3D");
+});
+
+test("iosFlavorToCanonical: maps + rehashes hex, drift-checks clean against canonical", () => {
+  const brands = { weeb: GOOD_WEEB_CANON, friki: GOOD_FRIKI_CANON };
+  const flavor = iosFlavorToCanonical(
+    parseFlavorFile("BRAND_KEY = weeb\nBUNDLE_ID = app.weeb.client\nBRAND_PRIMARY = F7568F\nBRAND_CELEBRATION = FF9838\nSTRING_PACK_ID = weeb\n"),
+    "ios/Config/Brand-Weeb.xcconfig"
+  );
+  assert.equal(flavor.brandKey, "weeb");
+  assert.equal(flavor.values.brand_primary, "#F7568F");
+  assert.equal(flavor.values.bundle_id_ios, "app.weeb.client");
+  assert.deepEqual(checkBrandDrift(brands, { flavorFiles: [flavor] }), []);
+});
+
+test("androidFlavorToCanonical: drift in a flavor properties file is caught value-for-value", () => {
+  const brands = { weeb: GOOD_WEEB_CANON, friki: GOOD_FRIKI_CANON };
+  const flavor = androidFlavorToCanonical(
+    parseFlavorFile("brand_key=friki\napplication_id=app.friki.client\nbrand_primary=00FF00\nbrand_celebration=F7568F\nstring_pack_id=friki\n"),
+    "android/app/src/friki/brand.properties"
+  );
+  const v = checkBrandDrift(brands, { flavorFiles: [flavor] });
+  assert.equal(v.length, 1);
+  assert.match(v[0], /flavor drift in android\/app\/src\/friki\/brand\.properties: field "brand_primary" is "#00FF00"/);
 });

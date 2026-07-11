@@ -1,18 +1,26 @@
 name: ios
 
-# SLICE_S0_CONTRACT.md §9. Matrix brand in {weeb, friki} per 7A. Directory-guarded end to end so this
-# workflow is green on the empty repo; ios/ arrives at S7. Lane B owns this file (CODEOWNERS).
+# SLICE_S0_CONTRACT.md §9 + SLICE_S7_CONTRACT.md §0/§9g. Matrix brand in {weeb, friki} per 7A.
+# GRADUATED at S7: the four guarded jobs (build-test, maestro-brand-smoke, codegen-openapi-client,
+# string-catalog lint) are now REAL required runs. Each keeps a dir-guard so the file stays valid on any
+# checkout, but ios/ exists from S7 so the real path runs. Lane B owns this file (CODEOWNERS).
 on:
   push:
     branches: [master]
     paths:
       - "ios/**"
+      - "maestro/**"
+      - "contracts/**"
+      - "design/tokens.v1.json"
       - "brands/**"
       - "i18n/**"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
       - "ios/**"
+      - "maestro/**"
+      - "contracts/**"
+      - "design/tokens.v1.json"
       - "brands/**"
       - "i18n/**"
       - ".github/workflows/ios.yml"
@@ -22,76 +30,149 @@ concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Debug simulator builds use the provisional .dev bundle id (§1c); the canonical base is brand-gate-verified.
+  SIMULATOR: "platform=iOS Simulator,name=iPhone 16,OS=latest"
+
 jobs:
   build-test:
     name: xcodebuild test (${{ matrix.brand }})
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       max-parallel: 4
+      fail-fast: false
       matrix:
-        brand: [weeb, friki]
+        include:
+          - brand: weeb
+            scheme: Weeb
+          - brand: friki
+            scheme: Friki
     steps:
       - uses: actions/checkout@v4
-      - name: guarded — ios/ does not exist yet
+      - name: guard — ios/ present (S7)
+        id: guard
         run: |
-          if [ -d ios ]; then
-            echo "ios/ exists — xcodebuild test for brand ${{ matrix.brand }} lands at S7"
-          else
-            echo "ios.yml SKIP (${{ matrix.brand }}): ios/ does not exist yet (guarded — lands at S7)"
-          fi
-
-  brand-gate:
-    name: brand-drift gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+          if [ -d ios ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "ios.yml SKIP (${{ matrix.brand }}): ios/ absent (guarded)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.guard.outputs.present == 'true'
         with:
-          node-version: "24"
-      - run: node build/scripts/brand-gate.mjs
+          xcode-version: latest-stable
+      - name: install xcodegen
+        if: steps.guard.outputs.present == 'true'
+        run: brew install xcodegen
+      - name: bootstrap (sync contract, xcodegen generate) + codegen + unit/snapshot tests
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          ios/scripts/bootstrap.sh
+          xcodebuild test \
+            -project ios/WeebApp.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "$SIMULATOR" \
+            -resultBundlePath "ios/build/${{ matrix.brand }}.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
 
   string-catalog-lint:
-    name: string-catalog / i18n key-parity (guarded)
+    name: string-catalog / i18n key-parity ×4 (ARMED at S7)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - run: node --test tools/i18n-lint/i18n-lint.test.mjs
       - run: node tools/i18n-lint/i18n-lint.mjs
+
+  codegen-openapi-client:
+    name: generate typed client from the canonical contract (${{ matrix.brand }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        brand: [weeb]
+    steps:
+      - uses: actions/checkout@v4
+      - name: guard — ios/ present (S7)
+        id: guard
+        run: |
+          if [ -d ios ] && [ -f contracts/openapi.v0.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "codegen SKIP: ios/ or contract absent (guarded)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      # B17 consumption proof: the ApiKit target's swift-openapi-generator build plugin generates the typed
+      # client from the checked-in canonical contracts/openapi.v0.json (repo file is canonical per
+      # contracts/README; the openapi-contract-v0 artifact remains the cross-repo distribution channel).
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.guard.outputs.present == 'true'
+        with:
+          xcode-version: latest-stable
+      - name: resolve packages + build ApiKit (drives codegen)
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          ios/scripts/bootstrap.sh
+          xcodebuild build \
+            -project ios/WeebApp.xcodeproj \
+            -scheme ApiKit \
+            -destination "$SIMULATOR" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
 
   maestro-brand-smoke:
     name: Maestro brand-smoke (${{ matrix.brand }}) — 14A slot
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
+      fail-fast: false
       matrix:
-        brand: [weeb, friki]
+        include:
+          - brand: weeb
+            scheme: Weeb
+            app_id: app.weeb.client.dev
+            wordmark: Weeb
+            es_handle_title: "Elige tu usuario"
+          - brand: friki
+            scheme: Friki
+            app_id: app.friki.client.dev
+            wordmark: Friki
+            es_handle_title: "Elige tu usuario"
     steps:
       - uses: actions/checkout@v4
-      - name: guarded — Maestro harness lands at S7
+      - name: guard — maestro/ + ios/ present (14A; guard now points at maestro/, not ios/.maestro)
+        id: guard
         run: |
-          if [ -d ios/.maestro ]; then
-            echo "Maestro flows present for brand ${{ matrix.brand }} — running would happen here"
-          else
-            echo "maestro-brand-smoke SKIP (${{ matrix.brand }}): ios/.maestro does not exist yet (guarded — S7, 14A)"
-          fi
-
-  codegen-openapi-client:
-    name: generate typed client from openapi-contract-v0 (guarded)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: download contract artifact if published
-        id: download
-        continue-on-error: true
-        uses: actions/download-artifact@v4
+          if [ -d maestro ] && [ -d ios ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "maestro-brand-smoke SKIP (${{ matrix.brand }}): maestro/ or ios/ absent (guarded — 14A)"; echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: maxim-lobanov/setup-xcode@v1
+        if: steps.guard.outputs.present == 'true'
         with:
-          name: openapi-contract-v0
-          path: /tmp/contract
-      - name: codegen
+          xcode-version: latest-stable
+      - name: install xcodegen + maestro
+        if: steps.guard.outputs.present == 'true'
         run: |
-          if [ -f /tmp/contract/openapi.v0.json ]; then
-            echo "codegen: openapi-contract-v0 artifact present — swift-openapi-generator step lands at S7"
-          else
-            echo "codegen-openapi-client SKIP: openapi-contract-v0 artifact not published yet (guarded — S1 emits it)"
-          fi
+          brew install xcodegen
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: boot simulator, build + install debug app
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          ios/scripts/bootstrap.sh
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 16" | grep -oE '[0-9A-F-]{36}')
+          xcrun simctl boot "$UDID" || true
+          xcodebuild build \
+            -project ios/WeebApp.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "id=$UDID" \
+            -derivedDataPath ios/build/dd \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify || exit 1
+          APP=$(find ios/build/dd/Build/Products -name "*.app" -maxdepth 2 | head -1)
+          xcrun simctl install "$UDID" "$APP"
+      - name: maestro brand-smoke
+        if: steps.guard.outputs.present == 'true'
+        run: |
+          maestro test maestro/flows/brand-smoke/smoke.yaml \
+            -e APP_ID=${{ matrix.app_id }} \
+            -e BRAND=${{ matrix.brand }} \
+            -e WORDMARK=${{ matrix.wordmark }} \
+            -e ES_HANDLE_TITLE="${{ matrix.es_handle_title }}"
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.guard.outputs.present == 'true'
+        with:
+          name: maestro-ios-${{ matrix.brand }}
+          path: ~/.maestro/tests
+          if-no-files-found: ignore

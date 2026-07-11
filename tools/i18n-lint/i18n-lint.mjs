@@ -12,9 +12,9 @@
 //   3. Brand string-pack overrides must exist in the base catalog AND in both brands.
 //   4. Fastlane store metadata dirs (4 listings x 4 locales) in scope — EN-only listing fails that brand.
 
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, basename } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -123,29 +123,154 @@ export function checkStoreMetadataCoverage(presentLocalesByListing, locales, lis
   return violations;
 }
 
+// ---------- S7: native catalog parsers (ARMED — §9e/§12) ----------
+
+/**
+ * Apple `.xcstrings` (String Catalog) → { locale: { key: value } }. A key with no localizations for a
+ * locale simply does not appear there, which is exactly what checkKeyParity flags.
+ */
+export function parseXcstrings(jsonText, allLocales) {
+  const doc = JSON.parse(jsonText);
+  const catalogs = {};
+  for (const loc of allLocales) catalogs[loc] = {};
+  for (const [key, entry] of Object.entries(doc.strings ?? {})) {
+    const locs = entry.localizations ?? {};
+    for (const [loc, data] of Object.entries(locs)) {
+      const value = data?.stringUnit?.value;
+      if (value !== undefined) {
+        (catalogs[loc] ??= {})[key] = value;
+      }
+    }
+  }
+  return catalogs;
+}
+
+/** One Android `strings.xml` → { name: value }. */
+export function parseAndroidStrings(xmlText) {
+  const out = {};
+  const re = /<string\s+name="([^"]+)"[^>]*>([\s\S]*?)<\/string>/g;
+  let m;
+  while ((m = re.exec(xmlText)) !== null) out[m[1]] = m[2].trim();
+  return out;
+}
+
+/** Android resource names can't hold dots — the canonical dotted message key maps to underscores. */
+export function androidResName(key) {
+  return key.replace(/\./g, "_");
+}
+
+// Android res qualifier → canonical locale.
+const ANDROID_QUALIFIER_TO_LOCALE = { "": "en", es: "es", pt: "pt", "b+zh+Hans": "zh-Hans" };
+
+/**
+ * Every contracts/message-keys.json key must exist ×4 in each client catalog that is present
+ * (iOS = dotted key; Android = underscored resource name). §1c activation event.
+ */
+export function checkMessageKeyCoverage(platformCatalogs, messageKeys, locales) {
+  const violations = [];
+  for (const { platform, catalogs } of platformCatalogs) {
+    const present = Object.values(catalogs).some((c) => Object.keys(c).length > 0);
+    if (!present) continue;
+    for (const key of messageKeys) {
+      const wanted = platform === "android" ? androidResName(key) : key;
+      for (const loc of locales) {
+        if (!(wanted in (catalogs[loc] ?? {}))) {
+          violations.push(`message key "${key}" (${platform} "${wanted}") missing from locale "${loc}" — every contracts/message-keys.json key must exist ×4 in ${platform}`);
+        }
+      }
+    }
+  }
+  return violations;
+}
+
+// ---------- file collection ----------
+
+const SKIP = new Set([".git", ".build", "build", "DerivedData", "node_modules", ".gradle", "Pods"]);
+function walk(dir, pick, acc) {
+  let entries;
+  try { entries = readdirSync(dir); } catch { return acc; }
+  for (const name of entries) {
+    const full = join(dir, name);
+    let s; try { s = statSync(full); } catch { continue; }
+    if (s.isDirectory()) { if (!SKIP.has(name)) walk(full, pick, acc); }
+    else if (pick(name, full)) acc.push(full);
+  }
+  return acc;
+}
+
+/** Merge every ios/**\/*.xcstrings into one { locale: {key} } union. */
+export function collectIosCatalogs(repoRoot, locales) {
+  const merged = {};
+  for (const loc of locales) merged[loc] = {};
+  for (const file of walk(join(repoRoot, "ios"), (n) => n.endsWith(".xcstrings"), [])) {
+    const cats = parseXcstrings(readFileSync(file, "utf8"), locales);
+    for (const loc of locales) Object.assign(merged[loc], cats[loc]);
+  }
+  return merged;
+}
+
+/** Merge every android/**\/res/values*\/strings.xml into one { locale: {name} } union. */
+export function collectAndroidCatalogs(repoRoot) {
+  const merged = {};
+  for (const file of walk(join(repoRoot, "android"), (n) => n === "strings.xml", [])) {
+    const m = /values(?:-([^/]+))?\/strings\.xml$/.exec(file.replace(/\\/g, "/"));
+    const qualifier = m ? (m[1] ?? "") : "";
+    const locale = ANDROID_QUALIFIER_TO_LOCALE[qualifier] ?? qualifier;
+    (merged[locale] ??= {});
+    Object.assign(merged[locale], parseAndroidStrings(readFileSync(file, "utf8")));
+  }
+  return merged;
+}
+
 async function main() {
   const repoRoot = join(__dirname, "..", "..");
   const locales = loadLocales(repoRoot);
   console.log(`i18n-lint: canonical locale set = ${locales.join(", ")}`);
 
-  const targets = [
-    ["ios/", "SwiftUI string-catalog + key-parity check"],
-    ["android/", "Compose strings.xml key-parity check"],
-    ["web/", "web catalog key-parity check"],
-    ["backend/admin-host/", "Razor admin-host string check"],
-    ["fastlane/metadata/", "store metadata locale coverage check"],
-  ];
+  let messageKeys = [];
+  try {
+    messageKeys = JSON.parse(readFileSync(join(repoRoot, "contracts", "message-keys.json"), "utf8")).keys.map((k) => k.key);
+  } catch (e) {
+    console.error(`i18n-lint BLOCKED: cannot read contracts/message-keys.json: ${e.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const violations = [];
+  const platformCatalogs = [];
   let anyActive = false;
-  for (const [dir, desc] of targets) {
-    if (existsSync(join(repoRoot, dir))) {
-      anyActive = true;
-      console.log(`i18n-lint: ${dir} exists — ${desc} would run here (wire the file-collection glue when the unit lands)`);
-    } else {
-      console.log(`i18n-lint SKIP: ${dir} does not exist yet — ${desc} guarded until that unit lands`);
-    }
+
+  if (existsSync(join(repoRoot, "ios"))) {
+    anyActive = true;
+    const cats = collectIosCatalogs(repoRoot, locales);
+    violations.push(...checkKeyParity(cats, locales).map((v) => `[ios] ${v}`));
+    platformCatalogs.push({ platform: "ios", catalogs: cats });
+  } else {
+    console.log("i18n-lint SKIP: ios/ does not exist yet — .xcstrings key-parity guarded until S7 iOS lands");
+  }
+
+  if (existsSync(join(repoRoot, "android"))) {
+    anyActive = true;
+    const cats = collectAndroidCatalogs(repoRoot);
+    for (const loc of locales) cats[loc] ??= {};
+    violations.push(...checkKeyParity(cats, locales).map((v) => `[android] ${v}`));
+    platformCatalogs.push({ platform: "android", catalogs: cats });
+  } else {
+    console.log("i18n-lint SKIP: android/ does not exist yet — strings.xml key-parity guarded until S7 Android lands");
+  }
+
+  violations.push(...checkMessageKeyCoverage(platformCatalogs, messageKeys, locales));
+
+  if (violations.length > 0) {
+    console.error("i18n-lint BLOCKED:");
+    for (const v of violations) console.error(`  - ${v}`);
+    process.exitCode = 1;
+    return;
   }
   if (!anyActive) {
-    console.log("i18n-lint OK: no client/admin/store-metadata directories exist yet; all checks guarded (S0 baseline)");
+    console.log("i18n-lint OK: no client catalogs exist yet; key-parity + message-key coverage guarded (arms with S7 native trees)");
+  } else {
+    console.log(`i18n-lint OK: client catalogs key-parity ×${locales.length} clean; all ${messageKeys.length} message keys present ×${locales.length} per platform`);
   }
 }
 
