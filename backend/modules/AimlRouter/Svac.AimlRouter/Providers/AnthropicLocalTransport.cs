@@ -111,8 +111,21 @@ internal sealed class AnthropicLocalTransport : IModelProvider
                 // PII-S2-F4: the user turn (the last-mile prompt content) rides stdin — never a positional
                 // argv value — mirroring `echo "$prompt" | claude -p ...`'s own standard non-interactive
                 // usage. Closing stdin sends EOF, telling the CLI the prompt is complete.
-                await process.StandardInput.WriteAsync(userTurn);
-                process.StandardInput.Close();
+                try
+                {
+                    await process.StandardInput.WriteAsync(userTurn.AsMemory(), timeoutCts.Token);
+                    process.StandardInput.Close();
+                }
+                catch (IOException)
+                {
+                    // The child closed its stdin read end before we finished writing — it already had
+                    // what it needed, or it exited early on its own error. A broken pipe HERE is pipe
+                    // mechanics, not the call's verdict: the real oracle is the exit code + stderr checked
+                    // just below. A nonzero early exit still surfaces its stderr verbatim; a clean exit
+                    // means the CLI consumed enough of the prompt. Never let a broken pipe mask the
+                    // process's own result. (Surfaced by CI: a fast-exiting process raced the stdin write —
+                    // a short prompt fits the OS pipe buffer and wins the race locally, a full one loses it.)
+                }
 
                 await process.WaitForExitAsync(timeoutCts.Token);
                 var stdout = await stdoutTask;
