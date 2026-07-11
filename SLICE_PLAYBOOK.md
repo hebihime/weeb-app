@@ -186,7 +186,7 @@ must build first. Meta: run the deterministic suite AFTER every script edit (my 
 its own fixture ordering because I ran the script's behavior by hand but not `node --test ef-gate.test
 .mjs` post-edit), and a path-filtered workflow won't re-run on an out-of-path fix — dispatch it.
 
-### S2 retro — aiml-router (G0) — DONE_WITH_CONCERNS
+### S2 retro — aiml-router (G0) — DONE (CI green on c2ad189)
 
 **Shipped:** `backend/modules/AimlRouter` — the first `backend/modules/*` occupant (sets the 1A module
 template). `IAimlRouter.InvokeAsync` single verb; closed `AimlTaskKind`/`AimlFailure` unions; pure IO-free
@@ -227,6 +227,20 @@ session had neither, so the canary is deferred to the nightly/periodic lane (alr
 test-author — that's how FINDING 1 surfaced). (4) **CI billing block:** backend.yml + lints.yml went red
 mid-slice — not code, "recent account payments have failed / spending limit"; jobs never started. Local
 gate is the only signal until Julien fixes GitHub Billing & plans, then re-run both workflows on 6eb7bf7.
+**RESOLVED (c2ad189):** billing cleared; re-ran backend.yml + lints.yml. lints went green on 6eb7bf7 but
+backend went RED — NOT billing, a real CI-only test flake: `PiiResidencyLensS2ArgvTests` threw
+`IOException: Broken pipe`. Root cause: `AnthropicLocalTransport` writes the user turn to the child's stdin
+then closes it (PII-S2-F4), but the test stub read only argv and exited without draining stdin. A short
+prompt fits the OS pipe buffer so the write wins the race locally; CI scheduling let the child close its
+stdin read-end first. Fixed two ways — transport now guards the stdin write against a broken pipe (the exit
+code + stderr remain the oracle, so an early nonzero exit surfaces its real stderr instead of a masking
+pipe error) and the stub now drains stdin like a real `claude -p`. Two new regression tests force the race
+deterministically with a 256KB prompt (verified RED on the un-guarded transport, GREEN with it; 0 fails in
+20 stress runs). Backend CI fully green on c2ad189 (test + compose fresh-boot e2e + arch + EF + 13A gates),
+lints green. AimlRouter now 51 pass / 2 skip. **S2 is DONE, no concerns.**
+(5) **Local HARDENED GATE != CI for subprocess pipe timing.** A test double that spawns a process and
+receives stdin MUST drain stdin, and any transport writing to a child's stdin MUST tolerate a broken pipe —
+else it's a CI-vs-local timing flake the local run masks.
 
 ### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
 
