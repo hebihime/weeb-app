@@ -69,4 +69,6 @@
     <string name="email_sessions_revoked_body">We detected reuse of a previously-issued sign-in token and revoked every active session on your account for your protection.</string>
     <string name="email_email_changed_notice_subject">Your Weeb account email changed</string>
     <string name="email_email_changed_notice_body">Your account email was changed. If this wasn\'t you, revoke your sessions immediately.</string>
+    <string name="email_export_ready_subject">Your Weeb data export is ready</string>
+    <string name="email_export_ready_body">Your requested data export is ready to download.</string>
 </resources>

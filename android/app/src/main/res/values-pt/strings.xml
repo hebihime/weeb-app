@@ -69,4 +69,6 @@
     <string name="email_sessions_revoked_body">Detectamos a reutilização de um token de login já emitido e revogamos todas as sessões ativas da sua conta para sua proteção.</string>
     <string name="email_email_changed_notice_subject">O e-mail da sua conta Weeb foi alterado</string>
     <string name="email_email_changed_notice_body">O e-mail da sua conta foi alterado. Se não foi você, revogue suas sessões imediatamente.</string>
+    <string name="email_export_ready_subject">Sua exportação de dados do Weeb está pronta</string>
+    <string name="email_export_ready_body">A exportação de dados que você solicitou já está pronta para download.</string>
 </resources>

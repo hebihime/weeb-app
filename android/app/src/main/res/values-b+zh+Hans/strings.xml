@@ -69,4 +69,6 @@
     <string name="email_sessions_revoked_body">我们检测到一个此前签发的登录令牌被重复使用,为保护你的账户安全,已撤销账户上的所有活跃会话。</string>
     <string name="email_email_changed_notice_subject">你的 Weeb 账户邮箱已更改</string>
     <string name="email_email_changed_notice_body">你的账户邮箱已更改。如果不是你本人操作,请立即撤销你的会话。</string>
+    <string name="email_export_ready_subject">你的 Weeb 数据导出已完成</string>
+    <string name="email_export_ready_body">你请求的数据导出已准备好,可以下载了。</string>
 </resources>

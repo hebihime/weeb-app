@@ -675,6 +675,95 @@
           }
         }
       }
+    },
+    "/v1/me/export": {
+      "post": {
+        "tags": [
+          "ExportEndpoints"
+        ],
+        "operationId": "PostMeExport",
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRequested"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitReached"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/export/{exportId}": {
+      "get": {
+        "tags": [
+          "ExportEndpoints"
+        ],
+        "operationId": "GetMeExport",
+        "parameters": [
+          {
+            "name": "exportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/me/export/{exportId}/download": {
+      "get": {
+        "tags": [
+          "ExportEndpoints"
+        ],
+        "operationId": "GetMeExportDownload",
+        "parameters": [
+          {
+            "name": "exportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -920,6 +1009,36 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ExportRequested": {
+        "required": [
+          "exportId"
+        ],
+        "type": "object",
+        "properties": {
+          "exportId": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportStatus": {
+        "required": [
+          "state",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -1216,6 +1335,9 @@
     },
     {
       "name": "MeEndpoints"
+    },
+    {
+      "name": "ExportEndpoints"
     }
   ]
 }

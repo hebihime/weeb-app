@@ -226,6 +226,22 @@ public sealed class IdentityPolicyTableSource : IPolicyTableSource
             TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.OwnedResource("export"),
             AllowedAccountStates: null).Validate(),
 
+        // [export build] §3b lists "identity.export.read / .download" as one table row group — two
+        // actions, same OwnedResource(export) shape, same "any" accountState (statutory export survives
+        // suspension AND grace, §2). The download leg gets its OWN action (not a re-use of .read) because
+        // it is separately audited (§1c: "download audited, 3A") — a distinct action name is what a
+        // future audit-completeness scan keys on to prove that happened.
+        new PolicyTableEntry(
+            Action: "identity.export.download",
+            ActorKinds: User,
+            Axes: PolicyAxis.AccountState,
+            DenyMode: PolicyDenyMode.DenyAsAbsence,
+            RequiresReason: false,
+            ReasonKey: "n/a",
+            IsReadPath: true,
+            TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.OwnedResource("export"),
+            AllowedAccountStates: null).Validate(),
+
         new PolicyTableEntry(
             Action: "identity.deletion.request",
             ActorKinds: User,

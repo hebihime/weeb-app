@@ -8,5 +8,6 @@ public static class IdentityEndpointsExtensions
         app.MapSignupEndpoints();
         app.MapAuthEndpoints();
         app.MapMeEndpoints();
+        app.MapExportEndpoints();
     }
 }

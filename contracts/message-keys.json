@@ -68,6 +68,14 @@
     {
       "key": "email.email_changed_notice.body",
       "consumer": "IEmailSender template — POST /v1/me/email/confirm, sent to the OLD address (the account-takeover tripwire in passwordless auth, SLICE_S3_CONTRACT.md §1c/§1d/§7)"
+    },
+    {
+      "key": "email.export_ready.subject",
+      "consumer": "IEmailSender template — the data-export-ready notification (SLICE_S3_CONTRACT.md §1d/§6b/§7), sent by Svac.Identity.Export.ExportWorker when a requested export reaches state=ready"
+    },
+    {
+      "key": "email.export_ready.body",
+      "consumer": "IEmailSender template — the data-export-ready notification (SLICE_S3_CONTRACT.md §1d/§6b/§7), sent by Svac.Identity.Export.ExportWorker when a requested export reaches state=ready"
     }
   ]
 }

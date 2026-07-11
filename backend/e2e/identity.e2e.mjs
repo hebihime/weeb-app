@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// backend/e2e/identity.e2e.mjs — SLICE_S3_CONTRACT.md §10.3. Covers BOTH the signup/auth foundation
-// (Pass A) and the /v1/me/* account-management surface (Pass B) — export/deletion remain the NEXT pass,
-// per the build's own DO-NOT list.
+// backend/e2e/identity.e2e.mjs — SLICE_S3_CONTRACT.md §10.3. Covers the signup/auth foundation (Pass A),
+// the /v1/me/* account-management surface (Pass B), and the data-export subsystem (Pass C, §6b) — the
+// export leg exercises POST/GET/download live end-to-end, incl. the export⋈purge registry cross-check
+// (every store export-registry.json declares Contributes for must have a file in the real zip) and the
+// OwnedResource(export) IDOR drill. Deletion remains the NEXT pass, per the build's own DO-NOT list.
 //
 // Live E2E against the compose stack's Svac.PublicApi host — REAL HTTP endpoints, REAL Mailpit (REST
 // oracle at :8025, never SMTP-side inspection), REAL 3A events read back via a real `docker compose exec
@@ -31,6 +33,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 
 const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -151,6 +156,29 @@ async function consentPayloadsFor(accountId) {
 async function sessionRevokedAt(sessionId) {
   const out = await psql(`SELECT revoked_at FROM identity.sessions WHERE session_id = '${sessionId}';`);
   return out; // empty string means NULL
+}
+
+// ---------- export⋈purge registry + zip helpers (SLICE_S3_CONTRACT.md §6b) ----------
+
+/** The same source-of-truth committed manifest ExportPurgeCrossGateTests.cs checks against — every "Contributes" store key this build's export MUST produce a file for. */
+function contributesStoreKeys() {
+  const registry = JSON.parse(readFileSync(join(REPO_ROOT, "backend", "domain-core", "export-registry.json"), "utf8"));
+  return registry.filter((e) => e.state === "Contributes").map((e) => e.storeKey);
+}
+
+/** Writes the downloaded zip to a scratch temp dir and lists its entry names via the system `unzip` (vanilla — no new npm dependency for one CLI tool already assumed present in CI/dev images). */
+async function listZipEntries(zipBuffer) {
+  const dir = await mkdtemp(join(tmpdir(), "identity-e2e-export-"));
+  const zipPath = join(dir, "export.zip");
+  await writeFile(zipPath, zipBuffer);
+  const { stdout } = await execFileAsync("unzip", ["-Z1", zipPath]);
+  const entries = stdout.trim().split("\n").filter(Boolean);
+  return { dir, zipPath, entries };
+}
+
+async function readZipEntry(zipPath, entryName) {
+  const { stdout } = await execFileAsync("unzip", ["-p", zipPath, entryName]);
+  return stdout;
 }
 
 // ---------- the journey, one function per stage ----------
@@ -467,6 +495,96 @@ async function stageEmailChangeDrill(baseUrl, accessToken, oldEmail) {
   return newEmail;
 }
 
+// ---------- export leg (SLICE_S3_CONTRACT.md §1c/§6b/§10.3) ----------
+
+/** POST /v1/me/export -> worker runs -> email.export_ready in Mailpit -> GET state ready -> download the zip -> assert per-store files + manifest present (incl. consent + ledger contributions). Returns the exportId for the IDOR drill below. */
+async function stageExportLeg(baseUrl, accessToken, email) {
+  const { status: postStatus, body: postBody } = await postJson(baseUrl, "/v1/me/export", {}, { authorization: `Bearer ${accessToken}` });
+  assert(postStatus === 202, `POST /v1/me/export -> HTTP ${postStatus}: ${JSON.stringify(postBody)}`);
+  const exportId = postBody.exportId;
+  assert(typeof exportId === "string" && exportId.startsWith("exp_"), `unexpected exportId shape: ${JSON.stringify(postBody)}`);
+
+  // Idempotency: a duplicate POST while the job is active resolves to the SAME job.
+  const { status: dupStatus, body: dupBody } = await postJson(baseUrl, "/v1/me/export", {}, { authorization: `Bearer ${accessToken}` });
+  assert(dupStatus === 202, `duplicate POST /v1/me/export -> HTTP ${dupStatus}`);
+  assert(dupBody.exportId === exportId, `duplicate POST /v1/me/export returned a DIFFERENT job id ("${dupBody.exportId}" vs "${exportId}") — single-active idempotency violated`);
+
+  const mail = await findLatestMailpitMessage(email, "export");
+  assert(mail, `email.export_ready never arrived in Mailpit for ${email}`);
+
+  const { status: getStatus, body: statusBody } = await getJson(baseUrl, `/v1/me/export/${exportId}`, { authorization: `Bearer ${accessToken}` });
+  assert(getStatus === 200, `GET /v1/me/export/${exportId} -> HTTP ${getStatus}: ${JSON.stringify(statusBody)}`);
+  assert(statusBody.state === "ready", `export state = "${statusBody.state}", expected "ready": ${JSON.stringify(statusBody)}`);
+  assert(typeof statusBody.expiresAt === "string" && !Number.isNaN(Date.parse(statusBody.expiresAt)), `export expiresAt is not a valid timestamp: ${JSON.stringify(statusBody)}`);
+
+  const downloadRes = await fetch(new URL(`/v1/me/export/${exportId}/download`, baseUrl), { headers: { authorization: `Bearer ${accessToken}` } });
+  assert(downloadRes.status === 200, `GET /v1/me/export/${exportId}/download -> HTTP ${downloadRes.status}`);
+  assert((downloadRes.headers.get("content-type") ?? "").includes("zip"), `export download content-type = "${downloadRes.headers.get("content-type")}", expected zip`);
+  const zipBuffer = Buffer.from(await downloadRes.arrayBuffer());
+
+  const requiredStoreKeys = contributesStoreKeys();
+  const { dir, zipPath, entries } = await listZipEntries(zipBuffer);
+  try {
+    assert(entries.includes("manifest.json"), `manifest.json missing from export zip entries: ${JSON.stringify(entries)}`);
+    for (const storeKey of requiredStoreKeys) {
+      assert(entries.includes(`${storeKey}.json`), `${storeKey}.json (a registered Contributes store) missing from the export zip — entries: ${JSON.stringify(entries)}`);
+    }
+
+    const manifest = JSON.parse(await readZipEntry(zipPath, "manifest.json"));
+    const manifestStoreKeys = new Set(manifest.stores.map((s) => s.storeKey));
+    for (const storeKey of requiredStoreKeys) {
+      assert(manifestStoreKeys.has(storeKey), `manifest.json stores[] missing "${storeKey}": ${JSON.stringify(manifest.stores)}`);
+    }
+    assert(typeof manifest.generatedAt === "string", `manifest.json missing generatedAt: ${JSON.stringify(manifest)}`);
+    assert(typeof manifest.statutoryDeadlineAt === "string", `manifest.json missing statutoryDeadlineAt: ${JSON.stringify(manifest)}`);
+
+    // The consent CONTRIBUTION, read back for real off the zip (this journey's own real push-category-3
+    // write, stageDeviceAndPushConsent) — content-verified, not just presence-verified.
+    const consentRaw = await readZipEntry(zipPath, "events_consent.json");
+    assert(consentRaw.includes("push_category_3"), `events_consent.json export does not contain this journey's push_category_3 consent write: ${consentRaw}`);
+    const consentCurrentRaw = await readZipEntry(zipPath, "identity.consent_current.json");
+    assert(consentCurrentRaw.includes("push_category_3"), `identity.consent_current.json export does not contain push_category_3: ${consentCurrentRaw}`);
+
+    // The ledger CONTRIBUTION — present and correctly shaped (this journey never earns ledger points,
+    // §0: S3 owns no ledger-earning endpoint, so a real non-zero balance is not this leg's to prove;
+    // presence + the ILedger.BalanceOf shape is).
+    const ledgerRaw = await readZipEntry(zipPath, "ledger_entries.json");
+    const ledgerPayload = JSON.parse(ledgerRaw);
+    assert(typeof ledgerPayload.balance === "object" && ledgerPayload.balance !== null, `ledger_entries.json export missing the balance object: ${ledgerRaw}`);
+    assert(Array.isArray(ledgerPayload.entries), `ledger_entries.json export missing the entries array: ${ledgerRaw}`);
+
+    // The accounts contribution carries the REAL birthdate (Art. 15's own artifact — unlike GET /v1/me).
+    const accountsRaw = await readZipEntry(zipPath, "identity.accounts.json");
+    assert(accountsRaw.includes("\"birthdate\"") && !accountsRaw.includes("\"birthdate\": null"), `identity.accounts.json export missing a real birthdate: ${accountsRaw}`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  return exportId;
+}
+
+/** A second account's exportId ⇒ absence, byte-identical to a random id (both the status read AND the download). */
+async function stageExportIdorDrill(baseUrl, victimExportId, attackerAccessToken) {
+  const randomExportId = "exp_01HZZZZZZZZZZZZZZZZZZZZZZZ";
+  const headers = { authorization: `Bearer ${attackerAccessToken}` };
+
+  const foreignStatusRes = await fetch(new URL(`/v1/me/export/${victimExportId}`, baseUrl), { headers });
+  const randomStatusRes = await fetch(new URL(`/v1/me/export/${randomExportId}`, baseUrl), { headers });
+  assert(foreignStatusRes.status === 404, `GET a foreign account's exportId -> HTTP ${foreignStatusRes.status}, expected 404 (absence)`);
+  assert(foreignStatusRes.status === randomStatusRes.status, `foreign exportId (${foreignStatusRes.status}) and random exportId (${randomStatusRes.status}) rendered DIFFERENT statuses — must be byte-identical`);
+  const foreignStatusText = await foreignStatusRes.text();
+  const randomStatusText = await randomStatusRes.text();
+  assert(foreignStatusText === randomStatusText, `foreign-exportId and random-exportId GET bodies differ: "${foreignStatusText}" vs "${randomStatusText}"`);
+
+  const foreignDownloadRes = await fetch(new URL(`/v1/me/export/${victimExportId}/download`, baseUrl), { headers });
+  const randomDownloadRes = await fetch(new URL(`/v1/me/export/${randomExportId}/download`, baseUrl), { headers });
+  assert(foreignDownloadRes.status === 404, `download a foreign account's exportId -> HTTP ${foreignDownloadRes.status}, expected 404 (absence)`);
+  assert(foreignDownloadRes.status === randomDownloadRes.status, `foreign download (${foreignDownloadRes.status}) and random download (${randomDownloadRes.status}) rendered DIFFERENT statuses — must be byte-identical`);
+  const foreignDownloadText = await foreignDownloadRes.text();
+  const randomDownloadText = await randomDownloadRes.text();
+  assert(foreignDownloadText === randomDownloadText, `foreign-exportId and random-exportId download bodies differ, byte-for-byte comparison failed`);
+}
+
 async function stageEighteenthBirthdayBoundary(baseUrl) {
   // Turns 18 exactly TODAY — must be treated as an adult (the birthday itself already passes, AgeMath.IsAtLeast).
   const today = new Date();
@@ -556,6 +674,19 @@ async function main() {
         );
       } else {
         failures.push("attacker account never signed up — IDOR drill skipped");
+      }
+
+      let exportId;
+      await run("export: POST /v1/me/export -> worker runs -> email.export_ready in Mailpit -> ready -> download the zip (per-store files + manifest, incl. consent + ledger contributions)", async () => {
+        exportId = await stageExportLeg(TARGET, meSession.accessToken, journeyEmail);
+      });
+
+      if (exportId && attackerSession) {
+        await run("export IDOR drill: a second account's exportId -> absence byte-identical to a random id (status + download)", () =>
+          stageExportIdorDrill(TARGET, exportId, attackerSession.accessToken)
+        );
+      } else {
+        failures.push("export leg or attacker account missing — export IDOR drill skipped");
       }
 
       let changedEmail;

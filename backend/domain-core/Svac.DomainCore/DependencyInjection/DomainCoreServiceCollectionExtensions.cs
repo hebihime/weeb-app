@@ -6,6 +6,7 @@ using Svac.DomainCore.Config;
 using Svac.DomainCore.Contracts.Behavioral;
 using Svac.DomainCore.Contracts.Con;
 using Svac.DomainCore.Contracts.Config;
+using Svac.DomainCore.Contracts.Export;
 using Svac.DomainCore.Contracts.FieldEncryption;
 using Svac.DomainCore.Contracts.Ledger;
 using Svac.DomainCore.Contracts.Payment;
@@ -14,6 +15,7 @@ using Svac.DomainCore.Contracts.Purge;
 using Svac.DomainCore.Contracts.Quota;
 using Svac.DomainCore.Contracts.Region;
 using Svac.DomainCore.DevSeams;
+using Svac.DomainCore.Export;
 using Svac.DomainCore.FieldEncryption;
 using Svac.DomainCore.Ledger;
 using Svac.DomainCore.Payment;
@@ -65,6 +67,13 @@ public static class DomainCoreServiceCollectionExtensions
 
         services.AddSingleton<IPurgeRegistry, PurgeRegistry>();
         services.AddScoped<IPurgePipeline, PurgePipeline>();
+
+        // Phase-2a (SLICE_S3_CONTRACT.md §6b): IExportRegistry becomes the boot-time UNION of every
+        // registered IExportRegistrySource, exactly like IPolicyTable above. CoreExportRegistrySource is
+        // domain-core's own slice (the S1 stores S3 is NOT the first real export consumer of); S3
+        // registers its own additional source in AddIdentityModule.
+        services.AddSingleton<IExportRegistrySource, CoreExportRegistrySource>();
+        services.AddSingleton<IExportRegistry>(sp => new ExportRegistry(sp.GetServices<IExportRegistrySource>()));
 
         services.AddScoped<IFieldEncryptor, AesFieldEncryptor>();
         services.AddScoped<IBehavioralStream, SubstrateBehavioralEmitter>();

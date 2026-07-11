@@ -1,5 +1,5 @@
 {
-  "_comment": "SLICE_S3_CONTRACT.md §4/§5 — Pass 1 additive manifest, union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json. Only the §4 keys Pass-1 endpoints actually consume (session.*, email_code.*, email.send_daily_cap, handle.cooldown_days, signup.verified_token_ttl_minutes, email_challenge.retention_hours, handle_history.retention_months, device.register_daily_cap) — export/deletion keys (grace_days, retirement_days, export.*, deletion.*) are Pass 2's, deliberately absent so the dead-tunable lint never sees a key with no live Pass-1 consumer. The two quota.*.cap rows beyond the literal §4 table are the QuotaService.Consume fixed naming convention (`quota.<quotaKey>.cap`, Svac.DomainCore/Quota/QuotaService.cs:24) — §5's two quota keys (identity.email.send.daily, identity.device.register.daily) cannot resolve a cap without a row under exactly that name; identity.email.send_daily_cap/identity.device.register_daily_cap are the contract's own literal key names, kept as the human-facing/desk-facing entries and read directly nowhere else at Pass 1 (the quota.*.cap pair is what QuotaService actually reads).",
+  "_comment": "SLICE_S3_CONTRACT.md §4/§5 — additive manifest, union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json. Signup/auth/me keys from the earlier passes (session.*, email_code.*, email.send_daily_cap, handle.cooldown_days, signup.verified_token_ttl_minutes, email_challenge.retention_hours, handle_history.retention_months, device.register_daily_cap) PLUS the export pass's three keys (export.link_ttl_hours, export.statutory_deadline_days, export.daily_cap) — every key here has a live consumer named in its own `consumer` field (the dead-tunable lint, §4). deletion.* keys (grace_days, retirement_days, deletion.*) remain Pass 2b's, deliberately absent — the deletion pipeline/worker is explicitly out of THIS pass's scope. The quota.*.cap rows beyond the literal §4 table are the QuotaService.Consume fixed naming convention (`quota.<quotaKey>.cap`, Svac.DomainCore/Quota/QuotaService.cs:24) — §5's quota keys (identity.email.send.daily, identity.device.register.daily, identity.export.request.daily) cannot resolve a cap without a row under exactly that name; identity.email.send_daily_cap/identity.device.register_daily_cap/identity.export.daily_cap are the contract's own literal key names, kept as the human-facing/desk-facing entries (the quota.*.cap pair is what QuotaService actually reads).",
   "entries": [
     {
       "key": "identity.session.access_ttl_minutes",
@@ -104,6 +104,38 @@
       "value": 20,
       "requiresReason": false,
       "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.device.register.daily\") — the fixed quota.<key>.cap convention; mirrors identity.device.register_daily_cap"
+    },
+    {
+      "key": "identity.export.link_ttl_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 72,
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Export.ExportWorker.MarkReadyAsync — export download-link TTL + sweep window"
+    },
+    {
+      "key": "identity.export.statutory_deadline_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 30,
+      "requiresReason": true,
+      "consumer": "Svac.Identity.Export.ExportWorker — the Art. 12(3) statutory clock, written onto every export's manifest.json as statutoryDeadlineAt (the S5 desk's future render target)"
+    },
+    {
+      "key": "identity.export.daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 2,
+      "requiresReason": false,
+      "consumer": "identity.export.request.daily quota cap (desk-facing mirror of quota.identity.export.request.daily.cap below); floor 1 — no ops edit can zero a legal right"
+    },
+    {
+      "key": "quota.identity.export.request.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 2,
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.export.request.daily\") — the fixed quota.<key>.cap convention; mirrors identity.export.daily_cap"
     }
   ]
 }

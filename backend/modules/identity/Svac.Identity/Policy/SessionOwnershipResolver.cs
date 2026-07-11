@@ -41,3 +41,25 @@ public sealed class DeviceOwnershipResolver(IdentityDbContext db) : IResourceOwn
         return accountId is null ? null : OpaqueId.Parse(accountId);
     }
 }
+
+/// <summary>
+/// The `export` resource-ownership resolver (SLICE_S3_CONTRACT.md §3b: `identity.export.read` /
+/// `.download`, both OwnedResource(export)) — same predicate-folded shape as <see
+/// cref="SessionOwnershipResolver"/>/<see cref="DeviceOwnershipResolver"/>: an unknown or foreign
+/// exportId resolves to a null owner, which the policy engine collapses into DenyAsAbsence — the IDOR
+/// drill's "another account's exportId ⇒ absence" proof rides this exact resolver.
+/// </summary>
+public sealed class ExportOwnershipResolver(IdentityDbContext db) : IResourceOwnershipResolver
+{
+    public string ResourceType => "export";
+
+    public async Task<OpaqueId?> OwnerOf(string resourceId, CancellationToken ct = default)
+    {
+        var accountId = await db.ExportJobs
+            .Where(e => e.ExportId == resourceId)
+            .Select(e => e.AccountId)
+            .SingleOrDefaultAsync(ct);
+
+        return accountId is null ? null : OpaqueId.Parse(accountId);
+    }
+}

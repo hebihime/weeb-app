@@ -23,6 +23,14 @@ if (args.Length > 0 && args[0] == "--emit-purge-registry")
     return PurgeRegistryEmitter.Run(args);
 }
 
+// `--emit-export-registry [outputPath]` (SLICE_S3_CONTRACT.md §6b): the export registry is pure
+// in-memory data too (no DB, no host) — same emit-then-diff drift-gate shape as
+// --emit-openapi/--emit-purge-registry; see build/scripts/emit-export-registry.sh.
+if (args.Length > 0 && args[0] == "--emit-export-registry")
+{
+    return ExportRegistryEmitter.Run(args);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Configuration (SLICE_S1_CONTRACT.md §0: zero business logic; health, one bootstrap GET, the 4A

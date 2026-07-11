@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Svac.DomainCore.Contracts.Consent;
 using Svac.DomainCore.Contracts.Email;
+using Svac.DomainCore.Contracts.Export;
 using Svac.DomainCore.Contracts.Policy;
 using Svac.DomainCore.Hosting;
 using Svac.Identity.Auth;
@@ -9,6 +10,7 @@ using Svac.Identity.Consent;
 using Svac.Identity.Contracts;
 using Svac.Identity.Email;
 using Svac.Identity.Endpoints;
+using Svac.Identity.Export;
 using Svac.Identity.Persistence;
 using Svac.Identity.Policy;
 
@@ -44,6 +46,7 @@ public static class IdentityServiceCollectionExtensions
         services.AddSingleton<IPolicyTableSource, IdentityPolicyTableSource>();
         services.AddScoped<IResourceOwnershipResolver, SessionOwnershipResolver>();
         services.AddScoped<IResourceOwnershipResolver, DeviceOwnershipResolver>();
+        services.AddScoped<IResourceOwnershipResolver, ExportOwnershipResolver>();
 
         // Overrides AddSvacHosting's AnonymousBearerAuthenticator default — last registration wins for
         // GetRequiredService<T>() (non-enumerable) resolution; call AddIdentityModule AFTER AddSvacHosting.
@@ -76,6 +79,30 @@ public static class IdentityServiceCollectionExtensions
         // SLICE_S3_CONTRACT.md §1c Pass 2 (this build): the /v1/me/* account-management endpoint services.
         services.AddScoped<HandleChangeService>();
         services.AddIdentityRateLimiting();
+
+        // SLICE_S3_CONTRACT.md §6b (export build): S3's own additive slice of the export registry —
+        // unioned at boot with Svac.DomainCore.Export.CoreExportRegistrySource (registered by
+        // AddDomainCore) into ONE IExportRegistry the export⋈purge cross-gate and ExportWorker both read.
+        services.AddSingleton<IExportRegistrySource, IdentityExportRegistrySource>();
+
+        // The 13 real IExportContributor registrants (SLICE_S3_CONTRACT.md §6b): every identity table
+        // that holds the subject's data, PLUS the five S1 stores S3 is the first real consumer of.
+        services.AddScoped<IExportContributor, AccountExportContributor>();
+        services.AddScoped<IExportContributor, SessionsExportContributor>();
+        services.AddScoped<IExportContributor, DevicesExportContributor>();
+        services.AddScoped<IExportContributor, PushCategoryConsentsExportContributor>();
+        services.AddScoped<IExportContributor, ConsentCurrentExportContributor>();
+        services.AddScoped<IExportContributor, HandleHistoryExportContributor>();
+        services.AddScoped<IExportContributor, ExportJobsExportContributor>();
+        services.AddScoped<IExportContributor, DeletionJobsExportContributor>();
+        services.AddScoped<IExportContributor, LedgerEntriesExportContributor>();
+        services.AddScoped<IExportContributor, EventsLedgerExportContributor>();
+        services.AddScoped<IExportContributor, EventsConsentExportContributor>();
+        services.AddScoped<IExportContributor, EventsBehavioralExportContributor>();
+        services.AddScoped<IExportContributor, EventsAuditExportContributor>();
+
+        services.AddScoped<IExportArtifactStore, PostgresExportArtifactStore>();
+        services.AddScoped<ExportWorker>();
 
         return services;
     }

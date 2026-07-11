@@ -69,4 +69,6 @@
     <string name="email_sessions_revoked_body">Detectamos la reutilización de un token de inicio de sesión ya emitido y revocamos todas las sesiones activas de tu cuenta para tu protección.</string>
     <string name="email_email_changed_notice_subject">Se cambió el correo de tu cuenta de Weeb</string>
     <string name="email_email_changed_notice_body">Se cambió el correo de tu cuenta. Si no fuiste tú, revoca tus sesiones de inmediato.</string>
+    <string name="email_export_ready_subject">Tu exportación de datos de Weeb está lista</string>
+    <string name="email_export_ready_body">La exportación de datos que solicitaste ya está lista para descargar.</string>
 </resources>

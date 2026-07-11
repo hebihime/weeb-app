@@ -42,3 +42,6 @@ public sealed record DeviceRegistered(string DeviceId);
 public sealed record PushConsentRow(int Category, bool Enabled);
 
 public sealed record PushConsentSetRequest(bool? Enabled);
+
+/// <summary>`POST /v1/me/export` 202 response (SLICE_S3_CONTRACT.md §1c) — duplicate active request returns the SAME job, idempotent.</summary>
+public sealed record ExportRequested(string ExportId);

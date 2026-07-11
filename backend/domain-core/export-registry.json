@@ -1,0 +1,137 @@
+[
+  {
+    "storeKey": "config_entries",
+    "state": "NotExportable",
+    "reason": "zero personal data by construction \u2014 same registered exemption as its 13A purge registration"
+  },
+  {
+    "storeKey": "data_protection_keys",
+    "state": "NotExportable",
+    "reason": "key material \u2014 never exported (explicit example in SLICE_S3_CONTRACT.md \u00A76b)"
+  },
+  {
+    "storeKey": "events_audit",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "events_behavioral",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "events_consent",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "events_heatmap_provenance",
+    "state": "NotExportable",
+    "reason": "full-history heatmap provenance is deletion-machinery-only per its founder ruling (profilemodel \u00A71c) \u2014 \u0022no read API in the contract assembly (enforced structurally by 1A: it is not in Contracts)\u0022; S3 does not add one"
+  },
+  {
+    "storeKey": "events_ledger",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "events_reputation",
+    "state": "NotExportable",
+    "reason": "zero writers exist yet (real writer lands S16); zero rows possible today \u2014 registered as a disposition, not silently omitted, so S16 must flip this to Contributes when it lands a subject-facing writer"
+  },
+  {
+    "storeKey": "field_key_refs",
+    "state": "NotExportable",
+    "reason": "key material \u2014 never exported (explicit example in SLICE_S3_CONTRACT.md \u00A76b)"
+  },
+  {
+    "storeKey": "identity.accounts",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.ban_evasion_refs",
+    "state": "NotExportable",
+    "reason": "keyed by HMAC(email), not account id \u2014 no subject-id linkage exists to read against; no writer exists before the Pass-2b deletion pipeline (OQ-3)"
+  },
+  {
+    "storeKey": "identity.consent_current",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.deletion_jobs",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.devices",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.email_challenges",
+    "state": "NotExportable",
+    "reason": "transient credential artifacts (explicit example in SLICE_S3_CONTRACT.md \u00A76b) \u2014 no birthdate, no durable subject content, single-use codes only"
+  },
+  {
+    "storeKey": "identity.export_jobs",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.handle_history",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.push_category_consents",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "identity.refresh_tokens",
+    "state": "NotExportable",
+    "reason": "opaque, one-way-hashed rotation-tracking tokens with zero subject-readable content; the session\u0027s own identity/timestamps already export via identity.sessions"
+  },
+  {
+    "storeKey": "identity.reserved_handles",
+    "state": "NotExportable",
+    "reason": "non-personal \u2014 a seeded desk manifest (brand/staff/impersonation terms), zero subject linkage"
+  },
+  {
+    "storeKey": "identity.retired_handles",
+    "state": "NotExportable",
+    "reason": "subject-severed at write by design (OQ-2, SLICE_S3_CONTRACT.md \u00A72) \u2014 pseudonymous by construction, no linkage exists to export against"
+  },
+  {
+    "storeKey": "identity.sessions",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "ledger_balances",
+    "state": "NotExportable",
+    "reason": "rebuildable cache of ledger_entries via summation (\u0022summation is the truth\u0022, \u00A72 OtherEntities.cs) \u2014 ILedger.BalanceOf is the read door and its result is embedded directly in the ledger_entries export contribution; this physical cache is not separately exported"
+  },
+  {
+    "storeKey": "ledger_entries",
+    "state": "Contributes",
+    "reason": "real IExportContributor registered \u2014 writes (path, schema-versioned JSON) to the export sink"
+  },
+  {
+    "storeKey": "projection_checkpoints",
+    "state": "NotExportable",
+    "reason": "non-PII operational per-consumer watermark metadata"
+  },
+  {
+    "storeKey": "purge_runs",
+    "state": "NotExportable",
+    "reason": "operational purge-run receipts (provenance that a purge ran), not the subject\u0027s own personal-data content"
+  },
+  {
+    "storeKey": "quota_counters",
+    "state": "NotExportable",
+    "reason": "derived operational counters, not the subject\u0027s own personal-data content (explicit example in SLICE_S3_CONTRACT.md \u00A76b)"
+  }
+]

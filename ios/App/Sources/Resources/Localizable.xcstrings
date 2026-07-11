@@ -2320,6 +2320,64 @@
           }
         }
       }
+    },
+    "email.export_ready.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb data export is ready"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu exportación de datos de Weeb está lista"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua exportação de dados do Weeb está pronta"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 数据导出已完成"
+          }
+        }
+      }
+    },
+    "email.export_ready.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your requested data export is ready to download."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La exportación de datos que solicitaste ya está lista para descargar."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A exportação de dados que você solicitou já está pronta para download."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你请求的数据导出已准备好,可以下载了。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
