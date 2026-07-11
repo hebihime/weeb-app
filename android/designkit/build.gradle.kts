@@ -40,7 +40,13 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.systemProperty("robolectric.pixelCopyRenderMode", "hardware") }
+            // REPO_ROOT / ANDROID_ROOT set per-module (not via a root subprojects{} block, which
+            // breaks AGP config). NoDisabledTokenTest reads REPO_ROOT to load design/tokens.v1.json.
+            all {
+                it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                it.systemProperty("REPO_ROOT", rootProject.projectDir.parentFile.absolutePath)
+                it.systemProperty("ANDROID_ROOT", rootProject.projectDir.absolutePath)
+            }
         }
     }
 }

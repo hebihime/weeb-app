@@ -91,7 +91,15 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
-            all { it.systemProperty("robolectric.pixelCopyRenderMode", "hardware") }
+            // REPO_ROOT / ANDROID_ROOT: set here (per-module, inside AGP's own testOptions) rather than
+            // via a root `subprojects {}` block — the latter forces cross-project task realization and
+            // breaks AGP configuration ("compileSdkVersion is not specified"). The structural tests
+            // (DependencyDirection / ZeroPersistence / ReleaseConfig / PlayDataSafety) read these.
+            all {
+                it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                it.systemProperty("REPO_ROOT", rootProject.projectDir.parentFile.absolutePath)
+                it.systemProperty("ANDROID_ROOT", rootProject.projectDir.absolutePath)
+            }
         }
     }
 

@@ -36,9 +36,14 @@ appId: ${APP_ID}
     id: "tab.crews"
 - assertVisible:
     id: "state.crews.empty"
-# The sole ratified law-3 exception: the create-crew Premium secondary CTA lives in the Crews empty state.
-- assertVisible:
-    id: "crews.create.premium.cta"
+# The sole ratified law-3 exception: the create-crew Premium secondary CTA lives in the Crews empty state,
+# below the "get invited" hero — scroll to it (a secondary CTA under a hero is reached by scrolling, not
+# a first-fold element). scrollUntilVisible also asserts it, so a missing CTA still fails the gate.
+- scrollUntilVisible:
+    element:
+      id: "crews.create.premium.cta"
+    direction: DOWN
+    timeout: 10000
 - tapOn:
     id: "tab.inbox"
 - assertVisible:

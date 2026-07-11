@@ -47,6 +47,12 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // REPO_ROOT / ANDROID_ROOT set per-module (not via a root subprojects{} block, which
+            // breaks AGP config). ContractShapeTest + NoHandRolledRequestModelTest read these.
+            all {
+                it.systemProperty("REPO_ROOT", rootProject.projectDir.parentFile.absolutePath)
+                it.systemProperty("ANDROID_ROOT", rootProject.projectDir.absolutePath)
+            }
         }
     }
 }

@@ -12,17 +12,16 @@ plugins {
     id("io.github.takahirom.roborazzi") version "1.30.1" apply false
 }
 
-// Every subproject test task gets a deterministic, absolute path to the monorepo root — the same
-// value every time, computed once (deterministic-space per CLAUDE.md), so structural/lint-style unit
-// tests (dependency-direction, zero-persistence, release-config, brand/token drift, i18n parity) can
-// read files across android/, contracts/, brands/, design/, i18n/ without guessing the CWD Gradle
-// happens to use for a given AGP/Gradle version.
-subprojects {
-    tasks.withType<Test>().configureEach {
-        systemProperty("REPO_ROOT", rootProject.projectDir.parentFile.absolutePath)
-        systemProperty("ANDROID_ROOT", rootProject.projectDir.absolutePath)
-    }
-}
+// NOTE: the REPO_ROOT / ANDROID_ROOT test system properties are set INSIDE each module's own
+// build.gradle.kts (android { testOptions { unitTests { all { ... } } } }), NOT here via a
+// `subprojects { tasks.withType<Test>() ... }` block. Touching `.tasks` on a subproject from a root
+// `subprojects {}`/`allprojects {}` block is cross-project configuration that forces AGP's
+// createAndroidTasks (an afterEvaluate action) to run before the module's `android { }` extension is
+// configured — which fails configuration with "compileSdkVersion is not specified". Per-module config
+// keeps every module's AGP lifecycle intact. Structural tests (dependency-direction, zero-persistence,
+// release-config, brand/token/i18n parity, contract-shape, no-hand-rolled-request-model) still receive
+// both properties from their own module (app / apikit / designkit) — the only modules whose tests read
+// them.
 
 tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)
