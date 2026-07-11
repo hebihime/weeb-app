@@ -1914,6 +1914,354 @@
           }
         }
       }
+    },
+    "signup.refused_age_floor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn't create an account with the birthdate you entered."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pudimos crear una cuenta con la fecha de nacimiento que introdujiste."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não conseguimos criar uma conta com a data de nascimento informada."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们无法用你输入的出生日期创建账户。"
+          }
+        }
+      }
+    },
+    "handle.taken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That handle is already taken."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese nombre de usuario ya está en uso."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse nome de usuário já está em uso."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该用户名已被使用。"
+          }
+        }
+      }
+    },
+    "handle.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That handle isn't valid. Use 3-20 letters, numbers, or underscores."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese nombre de usuario no es válido. Usa entre 3 y 20 letras, números o guiones bajos."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse nome de usuário não é válido. Use de 3 a 20 letras, números ou sublinhados."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该用户名无效。请使用3-20个字母、数字或下划线。"
+          }
+        }
+      }
+    },
+    "auth.code_invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That code isn't valid or has expired."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese código no es válido o ha caducado."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse código não é válido ou expirou."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该验证码无效或已过期。"
+          }
+        }
+      }
+    },
+    "email.verify_code.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb verification code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu código de verificación de Weeb"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu código de verificação do Weeb"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 验证码"
+          }
+        }
+      }
+    },
+    "email.verify_code.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your code is {{code}}. It expires in {{ttlMinutes}} minutes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu código es {{code}}. Caduca en {{ttlMinutes}} minutos."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu código é {{code}}. Ele expira em {{ttlMinutes}} minutos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。"
+          }
+        }
+      }
+    },
+    "email.login_code.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb sign-in code"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu código de inicio de sesión de Weeb"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu código de login do Weeb"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 登录验证码"
+          }
+        }
+      }
+    },
+    "email.login_code.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your sign-in code is {{code}}. It expires in {{ttlMinutes}} minutes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu código de inicio de sesión es {{code}}. Caduca en {{ttlMinutes}} minutos."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu código de login é {{code}}. Ele expira em {{ttlMinutes}} minutos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的登录验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。"
+          }
+        }
+      }
+    },
+    "email.already_registered.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You already have a Weeb account"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya tienes una cuenta de Weeb"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você já tem uma conta Weeb"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你已经拥有一个 Weeb 账户"
+          }
+        }
+      }
+    },
+    "email.already_registered.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email is already registered. If this wasn't you, no action is needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este correo ya está registrado. Si no fuiste tú, no es necesario hacer nada."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este e-mail já está registrado. Se não foi você, nenhuma ação é necessária."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此邮箱已被注册。如果不是你本人操作,无需任何操作。"
+          }
+        }
+      }
+    },
+    "email.sessions_revoked.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security notice: your Weeb sessions were revoked"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aviso de seguridad: se revocaron tus sesiones de Weeb"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aviso de segurança: suas sessões do Weeb foram revogadas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全提示:你的 Weeb 会话已被撤销"
+          }
+        }
+      }
+    },
+    "email.sessions_revoked.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We detected reuse of a previously-issued sign-in token and revoked every active session on your account for your protection."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectamos la reutilización de un token de inicio de sesión ya emitido y revocamos todas las sesiones activas de tu cuenta para tu protección."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectamos a reutilização de um token de login já emitido e revogamos todas as sessões ativas da sua conta para sua proteção."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我们检测到一个此前签发的登录令牌被重复使用,为保护你的账户安全,已撤销账户上的所有活跃会话。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -14,15 +14,25 @@ namespace Svac.DomainCore.Hosting;
 /// (<see cref="AnonymousBearerAuthenticator"/>) always returns null, so every S1/S2 request still takes
 /// the exact anonymous-actor path below, byte-identical — BuildAnonymousId is untouched verbatim. Only a
 /// real (non-null) resolution folds AccountState + optional region/locale overrides into the context.
+///
+/// SLICE_S3_CONTRACT.md §1b: <see cref="IBearerAuthenticator"/> is resolved from <c>httpContext.
+/// RequestServices</c> INSIDE InvokeAsync, deliberately NOT as a constructor parameter. Identity's
+/// session-backed resolver is Scoped (it depends on the Scoped IdentityDbContext) — <c>UseMiddleware&lt;T&gt;</c>
+/// constructs middleware ONCE from the app's ROOT service provider, which cannot resolve a Scoped
+/// constructor dependency (a hard DI-validation failure under `ValidateScopes`, the default in
+/// Development — exactly the environment the compose stack boots in). Method injection resolves it fresh
+/// per request from the correctly-scoped `RequestServices`, the standard ASP.NET Core fix for a Scoped
+/// dependency a middleware needs.
 /// </summary>
-public sealed class RequestContextMiddleware(RequestDelegate next, AmbientRequestContextAccessor accessor, IRegionResolver regionResolver, IBearerAuthenticator? bearerAuthenticator = null)
+public sealed class RequestContextMiddleware(RequestDelegate next, AmbientRequestContextAccessor accessor, IRegionResolver regionResolver)
 {
     public async Task InvokeAsync(HttpContext httpContext)
     {
         var correlationId = httpContext.TraceIdentifier;
-        // bearerAuthenticator is optional (defaults null) so existing direct-construction call sites
-        // (tests predating PHASE_2A_SUBSTRATE.md §4) stay byte-identical without edits — a null
-        // authenticator behaves exactly like the registered AnonymousBearerAuthenticator default.
+        // null when no IBearerAuthenticator is registered at all (RequestServices unset, e.g. a bare
+        // DefaultHttpContext in a unit test) — every S1/S2 request still takes the exact anonymous-actor
+        // path below, byte-identical.
+        var bearerAuthenticator = httpContext.RequestServices?.GetService(typeof(IBearerAuthenticator)) as IBearerAuthenticator;
         var authenticated = bearerAuthenticator is null ? null : await bearerAuthenticator.Authenticate(httpContext, httpContext.RequestAborted);
 
         RequestContext ctx;

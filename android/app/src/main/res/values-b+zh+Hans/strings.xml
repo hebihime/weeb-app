@@ -55,4 +55,16 @@
     <string name="signup_submit_cta">完成</string>
     <string name="signup_could_not_send_title">我们无法发送</string>
     <string name="signup_could_not_send_body">未创建任何内容。请稍后再试。</string>
+    <string name="signup_refused_age_floor">我们无法用你输入的出生日期创建账户。</string>
+    <string name="handle_taken">该用户名已被使用。</string>
+    <string name="handle_invalid">该用户名无效。请使用3-20个字母、数字或下划线。</string>
+    <string name="auth_code_invalid">该验证码无效或已过期。</string>
+    <string name="email_verify_code_subject">你的 Weeb 验证码</string>
+    <string name="email_verify_code_body">你的验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。</string>
+    <string name="email_login_code_subject">你的 Weeb 登录验证码</string>
+    <string name="email_login_code_body">你的登录验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。</string>
+    <string name="email_already_registered_subject">你已经拥有一个 Weeb 账户</string>
+    <string name="email_already_registered_body">此邮箱已被注册。如果不是你本人操作,无需任何操作。</string>
+    <string name="email_sessions_revoked_subject">安全提示:你的 Weeb 会话已被撤销</string>
+    <string name="email_sessions_revoked_body">我们检测到一个此前签发的登录令牌被重复使用,为保护你的账户安全,已撤销账户上的所有活跃会话。</string>
 </resources>

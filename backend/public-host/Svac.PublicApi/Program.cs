@@ -54,7 +54,7 @@ builder.Services.AddDomainCore(connectionString, devSeamsEnabled);
 // with DevSeams off gets no SmtpTransportOptions and fails closed at IEmailSender resolution, L18), and
 // the consent ledger writer + its two rebuildable projections.
 var smtpOptions = devSeamsEnabled
-    ? Svac.Identity.Email.SmtpTransportOptions.MailpitDefault()
+    ? Svac.Identity.Email.SmtpTransportOptions.MailpitDefault(builder.Configuration["SVAC_SMTP_HOST"] ?? "localhost")
     : null;
 builder.Services.AddIdentityModule(connectionString, smtpOptions);
 builder.Services.AddOpenApi("v0", OpenApiSetup.Configure);
@@ -67,6 +67,9 @@ var app = builder.Build();
 // RequestContextMiddleware FIRST — every module/endpoint downstream resolves IRequestContextAccessor,
 // never HttpContext directly (SLICE_S1_CONTRACT.md §1b, arch-tested).
 app.UseSvacRequestContext();
+// SLICE_S3_CONTRACT.md §1c: host-level per-IP rate limiting for identity's anonymous mutation endpoints
+// (IdentityRateLimiting, registered by AddIdentityModule above) — transport abuse control, NOT 10A.
+app.UseRateLimiter();
 
 app.MapOpenApi("/openapi/{documentName}.json");
 Endpoints.MapAll(app);
@@ -98,19 +101,32 @@ async Task SeedConfigOnStartup(WebApplication webApp)
     try
     {
         var loader = scope.ServiceProvider.GetRequiredService<ConfigSeedLoader>();
-        var manifestPath = Path.Combine(AppContext.BaseDirectory, "Config", "manifests", "domain-core.config.json");
-        if (!File.Exists(manifestPath))
-        {
-            Log.ConfigManifestNotFound(webApp.Logger, manifestPath);
-            return;
-        }
-
         var systemActor = new Svac.DomainCore.Contracts.Ids.ActorRef(
             Svac.DomainCore.Contracts.Ids.OpaqueId.New(Svac.DomainCore.Contracts.Ids.IdPrefixes.System, DateTimeOffset.UtcNow, Random.Shared),
             Svac.DomainCore.Contracts.Ids.ActorKind.System);
         var ctx = Svac.DomainCore.Contracts.RequestContext.System(systemActor, correlationId: "startup-seed");
-        var seeded = await loader.SeedFromFile(manifestPath, ctx);
-        Log.ConfigSeedingComplete(webApp.Logger, seeded);
+
+        // Every module's additive config manifest (SLICE_S1_CONTRACT.md §4 union-merge) — domain-core's
+        // own substrate keys, then SLICE_S3_CONTRACT.md's identity.*/quota.identity.*.cap keys. Each is
+        // independently idempotent (ConfigSeedLoader re-running on an already-seeded key is a no-op), so
+        // seeding order between manifests never matters.
+        var manifestPaths = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "Config", "manifests", "domain-core.config.json"),
+            Path.Combine(AppContext.BaseDirectory, "Config", "identity.config.json"),
+        };
+
+        var totalSeeded = 0;
+        foreach (var manifestPath in manifestPaths)
+        {
+            if (!File.Exists(manifestPath))
+            {
+                Log.ConfigManifestNotFound(webApp.Logger, manifestPath);
+                continue;
+            }
+            totalSeeded += await loader.SeedFromFile(manifestPath, ctx);
+        }
+        Log.ConfigSeedingComplete(webApp.Logger, totalSeeded);
     }
     catch (Exception ex) when (ex is not OutOfMemoryException)
     {

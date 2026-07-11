@@ -70,6 +70,8 @@ public static class SessionTokens
 {
     public const string AccessTokenPrefix = "sst_";
     public const string RefreshTokenPrefix = "srt_";
+    /// <summary>[S3 build] The confirm→complete single-use ticket (SLICE_S3_CONTRACT.md §1c) — same shape as sst_/srt_ (a bearer secret, hash-stored only), never an OpaqueId (it names no resource, just proves "this email was just confirmed").</summary>
+    public const string VerifiedTokenPrefix = "vft_";
 
     // Session/refresh tokens are bearer SECRETS, not ids (unlike OpaqueId's ULID, which only needs
     // uniqueness) — always a CSPRNG, never the caller-supplied System.Random OpaqueId.New() takes.
@@ -77,9 +79,13 @@ public static class SessionTokens
 
     public static string NewRefreshToken() => RefreshTokenPrefix + RandomBase64Url();
 
+    public static string NewVerifiedToken() => VerifiedTokenPrefix + RandomBase64Url();
+
     public static byte[] HashAccessToken(string token) => SHA256.HashData(Encoding.UTF8.GetBytes(token));
 
     public static byte[] HashRefreshToken(string token) => SHA256.HashData(Encoding.UTF8.GetBytes(token));
+
+    public static byte[] HashVerifiedToken(string token) => SHA256.HashData(Encoding.UTF8.GetBytes(token));
 
     private static string RandomBase64Url()
     {

@@ -12,8 +12,14 @@ namespace Svac.Identity.Email;
 /// </summary>
 public sealed record SmtpTransportOptions(string Host, int Port, string FromAddress, string FromName, bool UseAuth, string? Username, string? Password)
 {
-    /// <summary>Dev default: compose Mailpit at localhost:1025, no auth (SLICE_S3_CONTRACT.md §1b).</summary>
-    public static SmtpTransportOptions MailpitDefault() => new("localhost", 1025, "no-reply@weeb.app", "Weeb", UseAuth: false, null, null);
+    /// <summary>
+    /// Dev default: compose Mailpit, no auth (SLICE_S3_CONTRACT.md §1b). <paramref name="host"/> defaults
+    /// to "localhost" (a bare `dotnet run`/CI dev box reaching Mailpit's published port directly) — the
+    /// caller overrides it to the compose SERVICE NAME ("mailpit") when running inside the compose
+    /// network, where "localhost" resolves to the container itself, never a sibling service (this IS
+    /// environment/config selection, never a 9A entry, exactly per this type's own doc comment).
+    /// </summary>
+    public static SmtpTransportOptions MailpitDefault(string host = "localhost") => new(host, 1025, "no-reply@weeb.app", "Weeb", UseAuth: false, null, null);
 }
 
 /// <summary>

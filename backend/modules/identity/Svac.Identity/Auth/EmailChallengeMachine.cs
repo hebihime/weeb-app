@@ -1,0 +1,276 @@
+using Microsoft.EntityFrameworkCore;
+using Svac.DomainCore.Contracts;
+using Svac.DomainCore.Contracts.Config;
+using Svac.DomainCore.Contracts.Email;
+using Svac.DomainCore.Contracts.FieldEncryption;
+using Svac.DomainCore.Contracts.Ids;
+using Svac.DomainCore.Contracts.Quota;
+using Svac.DomainCore.Contracts.Streams;
+using Svac.DomainCore.Deterministic;
+using Svac.Identity.Config;
+using Svac.Identity.Persistence;
+
+namespace Svac.Identity.Auth;
+
+/// <summary>The one challenge machine (SLICE_S3_CONTRACT.md §1b): purpose signup|login|email_change. This build's real consumers are signup + login; email_change (the /v1/me/email surface) is next-pass.</summary>
+public static class ChallengePurposes
+{
+    public const string Signup = "signup";
+    public const string Login = "login";
+    public const string EmailChange = "email_change";
+}
+
+/// <summary>Outcome of a guarded code confirmation (SLICE_S3_CONTRACT.md §1c: "invalid/expired/exhausted = ONE auth.code_invalid Problem").</summary>
+public abstract record ChallengeConfirmResult
+{
+    public sealed record InvalidResult : ChallengeConfirmResult;
+
+    public sealed record ConfirmedResult(string VerifiedToken) : ChallengeConfirmResult;
+
+    public static readonly ChallengeConfirmResult Invalid = new InvalidResult();
+
+    public static ChallengeConfirmResult Confirmed(string verifiedToken) => new ConfirmedResult(verifiedToken);
+}
+
+/// <summary>
+/// Issues and confirms email challenges (SLICE_S3_CONTRACT.md §1b/§1c/§5/§8). Every issuance path — signup
+/// verification and login code alike — ALWAYS consumes the `identity.email.send.daily` quota keyed on the
+/// HMAC'd mailbox regardless of whether an account exists for it, so alternating between the signup and
+/// login doors can never bypass the per-mailbox flood cap and can never turn "was the quota consumed" into
+/// a second enumeration oracle (§5). Anti-enumeration is structural: every code path returns the SAME
+/// shape (a syntactically valid challengeId) whether or not a row was actually persisted.
+/// </summary>
+public sealed class EmailChallengeMachine(
+    IdentityDbContext db,
+    IFieldKeyVault keyVault,
+    IEmailSender emailSender,
+    IQuotaService quotaService,
+    IEventStore eventStore,
+    IConfigRegistry config)
+{
+    private static readonly IReadOnlyDictionary<string, string> EmptyModel = new Dictionary<string, string>();
+
+    /// <summary>POST /v1/signup/email-verification (SLICE_S3_CONTRACT.md §1c). Never persists a row for an already-registered email — "you already have an account" is a MAIL, not a code.</summary>
+    public async Task<string> IssueForSignup(string emailLower, string locale, RequestContext ctx, CancellationToken ct)
+    {
+        var quotaAllowed = await ConsumeMailboxQuota(emailLower, ctx, ct);
+        var now = DateTimeOffset.UtcNow;
+
+        var existingAccountId = await db.Accounts
+            .Where(a => a.Email != null && a.Email == emailLower && a.TombstonedAt == null)
+            .Select(a => a.AccountId)
+            .FirstOrDefaultAsync(ct);
+
+        if (existingAccountId is not null)
+        {
+            if (quotaAllowed)
+            {
+                await emailSender.SendAsync(new EmailMessage(emailLower, "email.already_registered", locale, EmptyModel), ctx, ct);
+            }
+            else
+            {
+                await EmitQuotaDenied(emailLower, ctx, ct);
+            }
+
+            // No row created — there is no code to confirm for an email that already owns an account
+            // (§1c: "no account row, no birthdate ... persists before ..."); the wire shape stays
+            // identical by minting a syntactically valid, unbacked challengeId.
+            return MintChallengeId(now);
+        }
+
+        // Issuing a new code voids prior unconsumed same-purpose rows (UPDATE, not DELETE, §2).
+        await db.EmailChallenges
+            .Where(c => c.Purpose == ChallengePurposes.Signup && c.EmailLower == emailLower && c.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
+
+        var challengeId = MintChallengeId(now);
+        var code = EmailCodes.NewCode();
+        var ttlMinutes = await config.GetValue<int>(IdentityConfigKeys.EmailCodeTtlMinutes, ct);
+
+        db.EmailChallenges.Add(new EmailChallengeEntity
+        {
+            ChallengeId = challengeId,
+            Purpose = ChallengePurposes.Signup,
+            EmailLower = emailLower,
+            AccountId = null,
+            CodeHash = await EmailCodes.Hash(keyVault, code, ct),
+            Attempts = 0,
+            ExpiresAt = now.AddMinutes(ttlMinutes),
+            CreatedAt = now,
+            Locale = locale,
+            Region = ctx.Region.ToString(),
+            LawfulBasis = ResolveLawfulBasis(ctx, "identity.email_challenges", "challenge.issued"),
+        });
+        await db.SaveChangesAsync(ct);
+
+        if (quotaAllowed)
+        {
+            await emailSender.SendAsync(
+                new EmailMessage(emailLower, "email.verify_code", locale,
+                    new Dictionary<string, string> { ["code"] = code, ["ttlMinutes"] = ttlMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture) }),
+                ctx, ct);
+        }
+        else
+        {
+            await EmitQuotaDenied(emailLower, ctx, ct);
+        }
+
+        await EmitBehavioral("identity.signup_started", ctx, ct);
+        return challengeId;
+    }
+
+    /// <summary>POST /v1/auth/email-code (SLICE_S3_CONTRACT.md §1c). Uniform 202 whether the account exists, is banned, or is absent — code mail sends ONLY for a live, non-banned account.</summary>
+    public async Task IssueForLogin(string emailLower, string locale, RequestContext ctx, CancellationToken ct)
+    {
+        var quotaAllowed = await ConsumeMailboxQuota(emailLower, ctx, ct);
+        var now = DateTimeOffset.UtcNow;
+
+        var account = await db.Accounts
+            .Where(a => a.Email != null && a.Email == emailLower && a.TombstonedAt == null)
+            .Select(a => new { a.AccountId, a.AccountState })
+            .FirstOrDefaultAsync(ct);
+
+        var eligible = account is not null && account.AccountState != "banned";
+
+        if (!quotaAllowed || !eligible)
+        {
+            if (!quotaAllowed)
+            {
+                await EmitQuotaDenied(emailLower, ctx, ct);
+            }
+            return; // silent — wire response stays the uniform 202 regardless (caller renders it)
+        }
+
+        await db.EmailChallenges
+            .Where(c => c.Purpose == ChallengePurposes.Login && c.EmailLower == emailLower && c.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
+
+        var code = EmailCodes.NewCode();
+        var ttlMinutes = await config.GetValue<int>(IdentityConfigKeys.EmailCodeTtlMinutes, ct);
+
+        db.EmailChallenges.Add(new EmailChallengeEntity
+        {
+            ChallengeId = MintChallengeId(now),
+            Purpose = ChallengePurposes.Login,
+            EmailLower = emailLower,
+            AccountId = account!.AccountId,
+            CodeHash = await EmailCodes.Hash(keyVault, code, ct),
+            Attempts = 0,
+            ExpiresAt = now.AddMinutes(ttlMinutes),
+            CreatedAt = now,
+            Locale = locale,
+            Region = ctx.Region.ToString(),
+            LawfulBasis = ResolveLawfulBasis(ctx, "identity.email_challenges", "challenge.issued"),
+        });
+        await db.SaveChangesAsync(ct);
+
+        await emailSender.SendAsync(
+            new EmailMessage(emailLower, "email.login_code", locale,
+                new Dictionary<string, string> { ["code"] = code, ["ttlMinutes"] = ttlMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture) }),
+            ctx, ct);
+    }
+
+    /// <summary>POST /v1/signup/email-verification/confirm (SLICE_S3_CONTRACT.md §1c). Single guarded UPDATE-shaped consumption via SELECT ... FOR UPDATE — a genuine row lock serializes concurrent confirm attempts on the SAME challengeId.</summary>
+    public async Task<ChallengeConfirmResult> ConfirmSignupCode(string challengeId, string code, RequestContext ctx, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var row = await db.EmailChallenges
+            .FromSqlInterpolated($"SELECT * FROM identity.email_challenges WHERE challenge_id = {challengeId} AND purpose = {ChallengePurposes.Signup} FOR UPDATE")
+            .SingleOrDefaultAsync(ct);
+
+        var now = DateTimeOffset.UtcNow;
+        var maxAttempts = await config.GetValue<int>(IdentityConfigKeys.EmailCodeMaxAttempts, ct);
+
+        if (row is null || row.ConsumedAt is not null || row.ExpiresAt <= now || row.Attempts >= maxAttempts)
+        {
+            await tx.RollbackAsync(ct);
+            return ChallengeConfirmResult.Invalid;
+        }
+
+        var presentedHash = await EmailCodes.Hash(keyVault, code, ct);
+        var matches = EmailCodes.FixedTimeEquals(presentedHash, row.CodeHash);
+
+        row.Attempts++;
+
+        if (!matches)
+        {
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return ChallengeConfirmResult.Invalid;
+        }
+
+        var verifiedToken = SessionTokens.NewVerifiedToken();
+        row.VerifiedAt = now;
+        row.VerifiedTokenHash = SessionTokens.HashVerifiedToken(verifiedToken);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        await EmitBehavioral("identity.signup_verified", ctx, ct);
+        return ChallengeConfirmResult.Confirmed(verifiedToken);
+    }
+
+    /// <summary>POST /v1/auth/session (SLICE_S3_CONTRACT.md §1c) — single-step redeem: validates + consumes the login code directly (no separate confirm round trip). Returns the account id on success, null on ANY failure (wrong code, expired, exhausted, unknown email) — one generic Problem for every case.</summary>
+    public async Task<string?> RedeemLoginCode(string emailLower, string code, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var row = await db.EmailChallenges
+            .FromSqlInterpolated($"SELECT * FROM identity.email_challenges WHERE purpose = {ChallengePurposes.Login} AND email_lower = {emailLower} AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1 FOR UPDATE")
+            .SingleOrDefaultAsync(ct);
+
+        var now = DateTimeOffset.UtcNow;
+        var maxAttempts = await config.GetValue<int>(IdentityConfigKeys.EmailCodeMaxAttempts, ct);
+
+        if (row is null || row.ExpiresAt <= now || row.Attempts >= maxAttempts || row.AccountId is null)
+        {
+            await tx.RollbackAsync(ct);
+            return null;
+        }
+
+        var presentedHash = await EmailCodes.Hash(keyVault, code, ct);
+        var matches = EmailCodes.FixedTimeEquals(presentedHash, row.CodeHash);
+        row.Attempts++;
+
+        if (!matches)
+        {
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return null;
+        }
+
+        row.ConsumedAt = now;
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return row.AccountId;
+    }
+
+    private async Task<bool> ConsumeMailboxQuota(string emailLower, RequestContext ctx, CancellationToken ct)
+    {
+        var actor = await EmailQuotaActor.ForMailbox(keyVault, emailLower, ct);
+        var quotaContext = new QuotaContext(
+            new ResetSpec(ResetCadence.Daily, WindowLocality.ConLocal),
+            TimeZoneInfo.Utc,
+            TimeOnly.MinValue,
+            DateTimeOffset.UtcNow);
+        var result = await quotaService.Consume(actor, IdentityQuotaKeys.EmailSendDaily, quotaContext, ct);
+        return result is QuotaResult.Ok;
+    }
+
+    private async Task EmitQuotaDenied(string emailLower, RequestContext ctx, CancellationToken ct)
+    {
+        // §5: "the mail just doesn't send (audited on the behavioral stream)" — a quota deny on an
+        // anonymous mail surface stays wire-silent; the ONLY trace is this behavioral row. Zero raw email
+        // in the payload — the actor's own (already HMAC'd) id is the only mailbox-linked value.
+        var actor = await EmailQuotaActor.ForMailbox(keyVault, emailLower, ct);
+        await eventStore.Append(StreamType.Behavioral, actor.Id.ToString(), "identity.email_send_quota_denied", "{}", ctx, ExpectedVersion.AnyVersion, ct);
+    }
+
+    private async Task EmitBehavioral(string eventType, RequestContext ctx, CancellationToken ct) =>
+        await eventStore.Append(StreamType.Behavioral, ctx.Actor.Id.ToString(), eventType, "{}", ctx, ExpectedVersion.AnyVersion, ct);
+
+    private static string MintChallengeId(DateTimeOffset now) => OpaqueId.New(IdPrefixes.Challenge, now, Random.Shared).ToString();
+
+    private static string ResolveLawfulBasis(RequestContext ctx, string store, string eventType) =>
+        LawfulBasisResolver.Resolve(ctx.LawfulBasisVariant.Key, store, eventType, ctx.Region.ToString());
+}

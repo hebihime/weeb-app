@@ -8,6 +8,7 @@ using Svac.Identity.Auth;
 using Svac.Identity.Consent;
 using Svac.Identity.Contracts;
 using Svac.Identity.Email;
+using Svac.Identity.Endpoints;
 using Svac.Identity.Persistence;
 using Svac.Identity.Policy;
 
@@ -66,6 +67,13 @@ public static class IdentityServiceCollectionExtensions
 
         services.AddScoped<IAccountLifecycle, AccountLifecycleStub>();
         services.AddScoped<IAccountDirectory, AccountDirectory>();
+
+        // SLICE_S3_CONTRACT.md §1c BUILD (signup/* + auth/* + minimal GET /v1/me): the endpoint-facing
+        // services + the host-level per-IP transport rate limiter (never a 10A entry, §1c).
+        services.AddScoped<EmailChallengeMachine>();
+        services.AddScoped<SignupCompletionService>();
+        services.AddScoped<RefreshRotationService>();
+        services.AddIdentityRateLimiting();
 
         return services;
     }

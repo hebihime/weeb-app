@@ -55,4 +55,16 @@
     <string name="signup_submit_cta">Terminar</string>
     <string name="signup_could_not_send_title">No pudimos enviar eso</string>
     <string name="signup_could_not_send_body">No se creó nada. Por favor, inténtalo de nuevo más tarde.</string>
+    <string name="signup_refused_age_floor">No pudimos crear una cuenta con la fecha de nacimiento que introdujiste.</string>
+    <string name="handle_taken">Ese nombre de usuario ya está en uso.</string>
+    <string name="handle_invalid">Ese nombre de usuario no es válido. Usa entre 3 y 20 letras, números o guiones bajos.</string>
+    <string name="auth_code_invalid">Ese código no es válido o ha caducado.</string>
+    <string name="email_verify_code_subject">Tu código de verificación de Weeb</string>
+    <string name="email_verify_code_body">Tu código es {{code}}. Caduca en {{ttlMinutes}} minutos.</string>
+    <string name="email_login_code_subject">Tu código de inicio de sesión de Weeb</string>
+    <string name="email_login_code_body">Tu código de inicio de sesión es {{code}}. Caduca en {{ttlMinutes}} minutos.</string>
+    <string name="email_already_registered_subject">Ya tienes una cuenta de Weeb</string>
+    <string name="email_already_registered_body">Este correo ya está registrado. Si no fuiste tú, no es necesario hacer nada.</string>
+    <string name="email_sessions_revoked_subject">Aviso de seguridad: se revocaron tus sesiones de Weeb</string>
+    <string name="email_sessions_revoked_body">Detectamos la reutilización de un token de inicio de sesión ya emitido y revocamos todas las sesiones activas de tu cuenta para tu protección.</string>
 </resources>

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Svac.DomainCore.Contracts;
 using Svac.DomainCore.Contracts.Api;
 using Svac.DomainCore.Contracts.Behavioral;
+using Svac.Identity.Endpoints;
 
 namespace Svac.PublicApi;
 
@@ -34,5 +35,11 @@ public static class Endpoints
             })
             .WithName("GetClientConfig")
             .Produces<ClientConfigResponse>(StatusCodes.Status200OK);
+
+        // SLICE_S3_CONTRACT.md §1c — the FIRST real path delta: signup/* + auth/* + the minimal GET
+        // /v1/me. Shared between the real host and the DB-free OpenAPI emitter exactly like the two
+        // routes above; the emitter never serves a request, so identity's DI-resolved dependencies
+        // (IdentityDbContext, etc.) never need to be registered there for schema generation to work.
+        app.MapIdentityEndpoints();
     }
 }
