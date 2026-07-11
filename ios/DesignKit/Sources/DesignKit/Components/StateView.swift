@@ -30,10 +30,18 @@ public struct StateView: View {
             IconView(spec.glyph, style: .emptyOrCelebration, size: 48)
                 .foregroundStyle(spec.register.candyAllowed ? Tokens.Candy.skyColor : Tokens.Light.dimColor)
 
+            // The state's accessibilityIdentifier lives on the TITLE (a single leaf element), NOT on the
+            // enclosing VStack. Applying it to the container propagated it down and OVERRODE every child's
+            // own identifier — the CTA button ended up with id "state.crews.empty" instead of
+            // "crews.create.premium.cta", so Maestro's "scroll until crews.create.premium.cta visible"
+            // could never find it (confirmed via an XCUITest accessibility-hierarchy dump). Putting the
+            // id on one leaf keeps `state.<name>.empty` present-and-visible for the shell assertions while
+            // leaving the CTA button free to carry its own distinct id.
             Text(L10n.string(spec.titleKey, locale: locale))
                 .font(.token(Tokens.TypeScale.heading))
                 .foregroundStyle(spec.register.black900Allowed ? Tokens.Light.textColor : Tokens.Light.textColor)
                 .multilineTextAlignment(.center)
+                .modifier(AccessibilityIdentifierIfPresent(id: accessibilityID))
 
             Text(L10n.string(spec.bodyKey, locale: locale))
                 .font(.token(Tokens.TypeScale.body))
@@ -52,7 +60,6 @@ public struct StateView: View {
         }
         .padding(Tokens.Spacing.xl)
         .frame(maxWidth: .infinity)
-        .modifier(AccessibilityIdentifierIfPresent(id: accessibilityID))
     }
 }
 

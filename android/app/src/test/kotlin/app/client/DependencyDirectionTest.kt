@@ -7,9 +7,9 @@ import kotlin.test.assertTrue
 /**
  * SLICE_S7_CONTRACT.md §1b/§10 — "Features never import each other; only AppShell composes." Enforced
  * as a static import scan across the real module trees so a future feature added under
- * `android/features/*` inherits the check for free: only :app is allowed to import both :appshell and
+ * android/features inherits the check for free: only :app is allowed to import both :appshell and
  * a feature; :appshell may never import a feature; a feature may never import :appshell or another
- * feature; :designkit/​:apikit import neither (leaf modules).
+ * feature; :designkit and :apikit import neither (leaf modules).
  */
 class DependencyDirectionTest {
     private val repoRoot = File(System.getProperty("REPO_ROOT") ?: error("REPO_ROOT system property not set"))

@@ -146,6 +146,25 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Friki.app/Friki"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  # XCUITest mirror of the Maestro shell + crews-CTA assertions — an in-repo, deterministic guard for the
+  # "content obscured by the persistent tab bar" regression, runnable where the Maestro CLI is not
+  # installable. Deliberately NOT in the `Weeb` scheme's test list (below): CI's `xcodebuild test -scheme
+  # Weeb` — the coordinator's lane — stays exactly as it was, gaining no UI-test boot flakiness. Run it
+  # via its own `WeebUITests` scheme: `xcodebuild test -scheme WeebUITests`.
+  WeebUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: WeebUITests
+    dependencies:
+      - target: Weeb
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.weeb.client.uitests
+        TEST_TARGET_NAME: Weeb
+
 schemes:
   Weeb:
     build:
@@ -165,6 +184,20 @@ schemes:
     test:
       targets:
         - FrikiStateKitTests
+    run:
+      config: Debug
+
+  # Dedicated scheme for the XCUITest regression guard — kept OUT of the Weeb scheme so the coordinator's
+  # CI `xcodebuild test -scheme Weeb` is unchanged. Opt-in local verification: `xcodebuild test -scheme
+  # WeebUITests -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest'`.
+  WeebUITests:
+    build:
+      targets:
+        Weeb: all
+        WeebUITests: all
+    test:
+      targets:
+        - WeebUITests
     run:
       config: Debug
 

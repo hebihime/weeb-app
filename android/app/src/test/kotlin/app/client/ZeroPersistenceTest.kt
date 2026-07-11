@@ -33,7 +33,10 @@ class ZeroPersistenceTest {
         "SQLiteOpenHelper",
     )
 
-    private fun walk(dir: File, pick: (File) -> Boolean, skipDirs: Set<String> = setOf(".git", "build", ".gradle")): List<File> {
+    // `pick` is the LAST parameter so callers can use trailing-lambda syntax: `walk(dir) { ... }`
+    // binds the lambda to `pick`; `skipDirs` keeps its default. (Kotlin binds a trailing lambda to the
+    // last parameter — with `pick` in the middle it bound to `skipDirs` and failed to type-check.)
+    private fun walk(dir: File, skipDirs: Set<String> = setOf(".git", "build", ".gradle"), pick: (File) -> Boolean): List<File> {
         val out = mutableListOf<File>()
         fun go(d: File) {
             for (f in d.listFiles() ?: emptyArray()) {

@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.client.designkit.Palette
 import app.client.designkit.Radii
-import app.client.designkit.Register
 import app.client.designkit.Spacing
+import app.client.designkit.state.Register
 import app.client.designkit.tokenColor
 
 /**

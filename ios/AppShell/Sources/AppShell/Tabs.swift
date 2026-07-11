@@ -102,24 +102,29 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            BrandBar(wordmarkDisplayName: wordmarkDisplayName, mode: mode, isSignupPresented: $isSignupPresented)
-
-            // Active tab content. The `switch` renders exactly one tab's honest empty state; `.id(tab)`
-            // gives each its own NavigationStack identity so switching tabs is a clean swap, not a
-            // mutated in-place stack.
-            TabContentView(tab: selectedTab)
-                .id(selectedTab)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            AppTabBar(selectedTab: $selectedTab)
-        }
-        .background(Tokens.Light.groundColor)
-        // Force light mode at S7 (DR-6.3: Choco dark tokens carried but rendered nowhere yet).
-        .preferredColorScheme(.light)
-        .signupPresentation(isPresented: $isSignupPresented) {
-            SignupHost(isPresented: $isSignupPresented)
-        }
+        // The chrome (BrandBar) and the persistent tab bar are attached as safe-area INSETS, not VStack
+        // siblings. That is load-bearing: a plain VStack sibling abuts the content visually but leaves the
+        // inner ScrollView's content inset unchanged, so the last scrollable item (the crews
+        // `crews.create.premium.cta`) can never scroll fully clear of the bar — it stays partly obscured,
+        // which failed the Maestro "scroll until 100% visible" assertion. `.safeAreaInset` reserves the
+        // space AND propagates a matching bottom content inset down into the ScrollView, so every tab's
+        // content — the crews secondary CTA included — scrolls to 100% visible above the bar.
+        // `.id(selectedTab)` gives each tab its own NavigationStack identity so switching is a clean swap.
+        TabContentView(tab: selectedTab)
+            .id(selectedTab)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                BrandBar(wordmarkDisplayName: wordmarkDisplayName, mode: mode, isSignupPresented: $isSignupPresented)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                AppTabBar(selectedTab: $selectedTab)
+            }
+            .background(Tokens.Light.groundColor)
+            // Force light mode at S7 (DR-6.3: Choco dark tokens carried but rendered nowhere yet).
+            .preferredColorScheme(.light)
+            .signupPresentation(isPresented: $isSignupPresented) {
+                SignupHost(isPresented: $isSignupPresented)
+            }
     }
 }
 

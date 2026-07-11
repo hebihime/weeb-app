@@ -13,3 +13,5 @@ captures/
 apikit/src/generated/
 **/generated/openapi/
 .DS_Store
+# Roborazzi images: baselines committed from CI artifacts, never local recordings
+**/src/test/snapshots/

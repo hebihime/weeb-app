@@ -25,11 +25,6 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material.icons.outlined.AccountCircle as AccountCircleOutlined
-import androidx.compose.material.icons.outlined.Explore as ExploreOutlined
-import androidx.compose.material.icons.outlined.Group as GroupOutlined
-import androidx.compose.material.icons.outlined.Inbox as InboxOutlined
-import androidx.compose.material.icons.outlined.Layers as LayersOutlined
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -93,19 +88,23 @@ fun interface GlyphSource {
  * [GlyphSource] — a DI swap behind this seam, never a call-site change (Correction 2).
  */
 object FallbackGlyphSource : GlyphSource {
+    // [register] is part of the GlyphSource contract (the real FA Pro-backed source will pick
+    // Solid/Regular/Duotone by register); the bundled Material-icons fallback maps every glyph to a
+    // single Filled variant that is guaranteed to exist — style fidelity arrives with the FA Pro swap
+    // (Correction 2). We deliberately avoid Icons.Outlined.* aliases: those are extension properties
+    // that cannot be referenced without their `Icons.Outlined` receiver.
     override fun resolve(glyph: Glyph, register: IconRegister): ImageVector {
-        val neutral = register == IconRegister.Neutral
         return when (glyph) {
             Glyph.TabConnect -> Icons.Filled.Group
             Glyph.TabExplore -> Icons.Filled.Explore
             Glyph.TabCrews -> Icons.Filled.Group
             Glyph.TabInbox -> Icons.Filled.Inbox
             Glyph.TabProfile -> Icons.Filled.AccountCircle
-            Glyph.EmptyDeck -> if (neutral) LayersOutlined else Icons.Filled.Layers
-            Glyph.EmptyExplore -> if (neutral) ExploreOutlined else Icons.Filled.Explore
-            Glyph.EmptyCrews -> if (neutral) GroupOutlined else Icons.Filled.Group
-            Glyph.EmptyInbox -> InboxOutlined
-            Glyph.EmptyProfile -> AccountCircleOutlined
+            Glyph.EmptyDeck -> Icons.Filled.Layers
+            Glyph.EmptyExplore -> Icons.Filled.Explore
+            Glyph.EmptyCrews -> Icons.Filled.Group
+            Glyph.EmptyInbox -> Icons.Filled.Inbox
+            Glyph.EmptyProfile -> Icons.Filled.AccountCircle
             Glyph.GatePending -> Icons.Filled.Schedule
             Glyph.PresenceFallback -> Icons.Filled.Wifi
             Glyph.BattlePause -> Icons.Filled.Pause

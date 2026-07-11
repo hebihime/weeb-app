@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -67,6 +68,7 @@ data class AppShellStrings(
  * DEFINES the chip (so the branch is a real, compiled, structurally-unreachable path, not a missing
  * feature) — it just never executes it while the sole producer stays [ModeContext.Online].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppShell(
     strings: AppShellStrings,

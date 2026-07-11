@@ -1,6 +1,5 @@
 // android/app/build.gradle.kts — SLICE_S7_CONTRACT.md §1c/§9. Loads brand.properties (the SAME file
-// brand-gate.mjs parses) so gradle and brand-gate share one source — never a duplicated literal.
-
+// brand-gate.mjs parses) so gradle and brand-gate share one source, never a duplicated literal.
 import java.util.Properties
 
 plugins {
@@ -16,11 +15,11 @@ fun loadBrandProperties(flavorDir: String): Properties {
     return props
 }
 
-/** display_name is NOT one of brand.properties' five required keys (HARD CONTRACT #2) — read it from
- * the canonical brands/*.json directly, the same file brand-gate treats as the single source of truth. */
+// display_name is NOT one of brand.properties' five keys (HARD CONTRACT #2): read it from the canonical
+// brands/*.json, the same file brand-gate treats as the single source of truth.
 fun displayNameOf(brandKey: String): String {
     val json = rootDir.resolve("../brands/$brandKey.json").readText()
-    val match = Regex(""""display_name"\s*:\s*"([^"]+)"""").find(json)
+    val match = Regex("\"display_name\"\\s*:\\s*\"([^\"]+)\"").find(json)
         ?: error("brands/$brandKey.json has no display_name")
     return match.groupValues[1]
 }
@@ -71,9 +70,6 @@ android {
 
     buildTypes {
         debug {
-            // The ONLY build type that ever holds a backend URL — src/debug is the ONLY sourceSet
-            // that ever reads it (the diagnostics screen). Release deliberately declares no such field
-            // at all (§9f fail-closed by absence) — see :app's ReleaseConfigTest.
             applicationIdSuffix = ".dev"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080\"")
         }
@@ -91,10 +87,6 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
-            // REPO_ROOT / ANDROID_ROOT: set here (per-module, inside AGP's own testOptions) rather than
-            // via a root `subprojects {}` block — the latter forces cross-project task realization and
-            // breaks AGP configuration ("compileSdkVersion is not specified"). The structural tests
-            // (DependencyDirection / ZeroPersistence / ReleaseConfig / PlayDataSafety) read these.
             all {
                 it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
                 it.systemProperty("REPO_ROOT", rootProject.projectDir.parentFile.absolutePath)
@@ -127,13 +119,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    // apikit's generated + hand-written response models are @Serializable (kotlinx.serialization);
-    // declared here too (not just transitively via :apikit) so :app's own compile classpath never
-    // depends on apikit's `implementation`-scoped choice of serialization library staying exactly as-is.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    // Provides the test-only host Activity `createComposeRule()` launches under Robolectric — merged
-    // into the DEBUG manifest only, which is exactly the variant `test<Flavor>DebugUnitTest` compiles.
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
