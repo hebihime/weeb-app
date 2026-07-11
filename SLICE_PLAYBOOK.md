@@ -242,6 +242,77 @@ lints green. AimlRouter now 51 pass / 2 skip. **S2 is DONE, no concerns.**
 receives stdin MUST drain stdin, and any transport writing to a child's stdin MUST tolerate a broken pipe —
 else it's a CI-vs-local timing flake the local run masks.
 
+### S7 retro — client-skeletons (S7i ios + S7a android) (G0) — Phase 2 build DONE (HARDENED GATE green on be07774)
+
+**Shipped:** the whole client half of the app, both native shells × both brand flavors, against S1's
+frozen contract v0 with ZERO backend delta (drift-gate-asserted). Shared foundation (coordinator-built,
+locally verified): `design/tokens.v1.json` (DESIGN.md mirror), `tools/token-lint` (manifest↔DESIGN.md
+tables + platform layers↔manifest + brand-delta↔brands + forbidden-group laws), `tools/egress-lint`
+(zero third-party egress; brand-domain/loopback allowlist + tracker denylist; Package.swift/*.gradle.kts
+are manifests not runtime source), `brand-gate` xcconfig+properties flavor parsers + token-layer leak
+allowlist, `tools/i18n-lint` ARMED (.xcstrings + strings.xml parsers, key-parity ×4 + message-key
+coverage ×4, dotted→underscored Android names), `maestro/` 14A ×4 brand-smoke harness (accessibility-ID
+contract both shells implement identically), graduated ios.yml/android.yml four jobs + lints token/egress.
+iOS (`ios/`): Swift6/SwiftUI, XcodeGen, 6 SPM packages (DesignKit/Strings/ApiKit/AppShell/Signup +
+DependencyDirectionTests), swift-openapi-generator, custom always-visible tab bar, StateView + 23→18-state
+catalog (named Phase-1 checkpoint), UnavailableSignupGateway (no success case at all), 18+/under-13
+validation, PrivacyInfo, ATS, debug-gated locale override. Android (`android/`): Kotlin2.0/Compose,
+Gradle flavors loading brand.properties, 5 modules, OpenAPI-generator kotlin client, DebugSurface runtime
+hook, Play Data Safety, Roborazzi. Kills the client half of B17; B18 stays dead by construction.
+
+**Green (verified by me, on the pushed commit be07774, never on agent word):** CI all three workflows
+green — **ios** (xcodebuild test weeb+friki, codegen, string-catalog, **Maestro brand-smoke weeb+friki**),
+**android** (gradlew test weeb+friki, codegen, string-catalog, **Maestro brand-smoke weeb+friki**),
+**lints** (13 jobs incl. token-lint/egress-lint/i18n-lint armed/brand-gate). **Maestro ×4 all green on
+one commit = the ledger acceptance.** Locally by me: node 164 (157 pass / 7 skip / 0 fail, every new rule
+red-fixture-proven); Android clean cache-free `testWeeb/FrikiDebugUnitTest` = 140 executions / 0 failures,
+both release variants compile; iOS `xcodebuild build` Weeb+Friki = SUCCEEDED. Zero backend/contract/DDL
+drift (byte-identical). Deferred-findings unchanged (none originate in S7, client-only).
+
+**What worked:** the shared-wiring-first ordering (lock every node-gate contract + Maestro ID contract,
+verify locally, THEN fan out the two native lanes against it) — the deterministic layer was green on CI
+first try and never regressed. Fan-out of S7i/S7a as parallel agents against the locked contracts. Adding
+a real local Android toolchain (JDK17 + cmdline SDK) mid-slice converted 20-min blind CI cycles into
+~2-min local iterations — decisive for root-causing the compileSdk wall. The iOS agent's XCUITest proxy
+(Maestro CLI won't install in-sandbox) caught the StateView id-override regression RED-first.
+
+**What we learned / changed (fold UP into BUILD.md §8 for the next native slice):**
+(1) **The `[Dd]ebug/` / `[Rr]elease/` .gitignore trap.** An unanchored .NET build-output pattern silently
+matched `android/app/src/debug/` — the ENTIRE Android debug source set went uncommitted and absent on
+every CI run (locally present + untracked, so local built fine, CI could not resolve `app.client.debug`).
+Root .gitignore build-output patterns MUST be anchored (bin/ + obj/ already cover .NET). Add a first-CI
+`git ls-files <unit>/src` sanity check for any new native unit. THE lesson of the slice.
+(2) **Local ≠ CI is far wider for native than for .NET/node.** Gradle build-cache + Kotlin daemon
+masked a systemic failure across `clean`/`--no-build-cache`; only clearing `~/.gradle/caches/build-cache-1`
++ `--stop` reproduced CI. A byte-clean `android {}` block that "worked" locally failed on CI; a clean
+rewrite fixed it (exact original trigger never isolated — recorded honestly, not papered over). Always
+reproduce native CI failures against a truly cold local build before trusting a fix.
+(3) **main must never import a build-type source set.** MainActivity importing `app.client.debug.*`
+(src/debug only) is fragile: decouple via a main-owned registry (`DebugSurface`) wired by a debug-only
+ContentProvider. Same class as iOS: a container `.accessibilityIdentifier` PROPAGATES DOWN and OVERRIDES
+children — the crews CTA carried the container's id; put ids on leaves.
+(4) **Maestro/UI-test harness realities.** iOS: `.safeAreaInset` chrome has cold-launch a11y-exposure
+timing quirks — keep the always-present brand chrome a root sibling; a secondary CTA under a hero needs
+`scrollUntilVisible`, not `assertVisible`; Compose testTags are invisible to Maestro without
+`testTagsAsResourceId = true` on the root. Cold-launch + clearState reinstall races the first frame —
+use `extendedWaitUntil` + a `waitForAnimationToEnd` settle, never a bare post-launch `assertVisible`
+(clause 6). The emulator-runner action's script has an unreliable CWD/$GITHUB_WORKSPACE and mangles `\`
+line-continuations — resolve paths in a prior step, pass via `$GITHUB_ENV`, keep each command on one line.
+(5) **CI simulator/SDK specifics:** don't hardcode a simulator name (resolve the first available iPhone
+at runtime); `swift-openapi-generator` needs `-skipPackagePluginValidation`; never pipe `xcodebuild`
+through an uninstalled formatter (pipe-masking); `android-actions/setup-android@v3` installs NO platform
+(install `platforms;android-34` explicitly); set `gradle setup-gradle cache-read-only` across a parallel
+matrix to avoid cache-save contention.
+(6) **Roborazzi baselines** ship `record=true` with locally-recorded images gitignored — REQUIRED
+follow-up: after first green CI, commit the CI-recorded PNG baselines and flip `record=false`.
+
+**Phase 3 (security review) NOT yet run** — the standing client lenses (auth/IDOR CONFIRM zero
+client-side entitlement logic; PII CONFIRM zero device identifiers + egress + truthful manifests;
+minor-protection CONFIRM the 18+ floor + dignity states) are largely gate-enforced already (egress-lint,
+zero-persistence tests, privacy-manifest tests, 18+ validation tests, no-hand-rolled-request-model,
+404-uniformity) and green on CI, but the formal SECURITY_REVIEW_S7.md is the next phase, not part of this
+build phase. S7 build phase stops here for Julien (stop-after-slice).
+
 ### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
 
 | Finding | From | Severity | Carry to |
