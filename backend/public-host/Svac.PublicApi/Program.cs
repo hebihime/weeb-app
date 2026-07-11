@@ -65,6 +65,10 @@ Endpoints.MapAll(app);
 // the moment a future module maps a policy-less mutation endpoint onto this host. Pure endpoint-metadata
 // inspection — no DB dependency, so it runs before StartAsync.
 app.RequireMutationsPolicyMapped();
+// PHASE_2A_SUBSTRATE.md §1/§3a: fail-closed both directions on target-binding/TargetRule pairing. A
+// no-op today (S1/S2 ships zero SelfOnly/OwnedResource rows and zero non-None bindings) — wired in now
+// so the check is proven end-to-end on the real host, not just in TestHost-based arch tests.
+app.RequireTargetBindingConsistent();
 
 // StartAsync (not Run()) so every registered IHostedService — MigrationHostedService first, applying
 // the schema under the advisory lock — completes before this process does its own startup work AND

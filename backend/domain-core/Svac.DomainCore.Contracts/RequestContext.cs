@@ -37,7 +37,13 @@ public sealed record RequestContext(
     RegionSource RegionSource,
     LawfulBasisVariant LawfulBasisVariant,
     string Locale,
-    string CorrelationId)
+    string CorrelationId,
+    // --- Phase-2a additive (PHASE_2A_SUBSTRATE.md §2/§4) — both null-defaulted, so every S1/S2 caller
+    // (none of which set either) constructs a byte-identical RequestContext. ---
+    /// <summary>[S3] The caller's account state (active/suspended/banned/deleted), resolved server-side from the session join — NEVER client input. Null until identity's bearer resolver sets it.</summary>
+    string? AccountState = null,
+    /// <summary>[S5] Which staff hat acted + the full grant snapshot. Null on every non-admin host.</summary>
+    StaffContext? Staff = null)
 {
     /// <summary>The pure-system context used for scheduler/migration/seed-loader work with no subject.</summary>
     public static RequestContext System(ActorRef systemActor, string correlationId) => new(
@@ -46,7 +52,9 @@ public sealed record RequestContext(
         Svac.DomainCore.Contracts.RegionSource.System,
         LawfulBasisVariant.ConservativeGlobalV0,
         "en",
-        correlationId);
+        correlationId,
+        AccountState: null,
+        Staff: null);
 }
 
 /// <summary>Ambient accessor for the current request's RequestContext (SLICE_S1_CONTRACT.md §1b). Modules

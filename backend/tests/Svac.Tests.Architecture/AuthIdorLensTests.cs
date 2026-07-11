@@ -107,6 +107,11 @@ public sealed class AuthIdorLensTests
     private static WebApplication BuildMinimalApp()
     {
         var builder = WebApplication.CreateBuilder();
+        // PHASE_2A_SUBSTRATE.md §1: IPolicyTable now resolves as the union of registered
+        // IPolicyTableSource(s) — register the real core rows so this DI-constructed PolicyTable is
+        // byte-identical to the pre-Phase-2a table (CatchAllMapMutationEndpoint_MustNotBypassBootRefusal
+        // below relies on the real core.ledger.append row existing).
+        builder.Services.AddSingleton<IPolicyTableSource, CorePolicyTableSource>();
         builder.Services.AddSingleton<IPolicyTable, PolicyTable>();
         return builder.Build();
     }
@@ -133,10 +138,10 @@ public sealed class AuthIdorLensTests
     {
         public TargetRef? LastTarget { get; private set; }
 
-        public PolicyDecision Authorize(ActorRef actor, string action, TargetRef target)
+        public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default)
         {
             LastTarget = target;
-            return PolicyDecision.Allowed;
+            return Task.FromResult(PolicyDecision.Allowed);
         }
     }
 }

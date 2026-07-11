@@ -263,6 +263,9 @@ public sealed class AimlPurgeCompletenessLensTests : IAsyncLifetime
 
         public Task SetValue<T>(string key, T value, string reason, ActorRef actor, RequestContext ctx, CancellationToken ct = default) =>
             throw new NotSupportedException("the purge lens never writes config.");
+
+        public Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ConfigEntryView>>(Array.Empty<ConfigEntryView>());
     }
 
     private sealed class AllowAllQuota : IQuotaService

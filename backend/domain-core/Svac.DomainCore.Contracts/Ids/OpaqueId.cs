@@ -89,11 +89,30 @@ public static class IdPrefixes
     /// here so it is a registered member of the closed set instead of a bare literal at the mint site.</summary>
     public const string Pseudonym = "pseudo";
 
+    // --- Phase-2a additive (PHASE_2A_SUBSTRATE.md §2) — RESOURCE id prefixes (sessions/devices/challenges/
+    // export/deletion jobs, staff role grants), never actor-kind prefixes. Deliberately absent from
+    // ActorKindForPrefix below: ActorPrefixConsistencyArchTests's bijection proof enumerates only the
+    // fixed, closed set of MINTABLE ActorKinds (User/Staff/Partner/System/Anonymous) and is unaffected by
+    // additions to All that carry no corresponding ActorKind.
+    /// <summary>[S3] An identity session id.</summary>
+    public const string Session = "ses";
+    /// <summary>[S3] An identity device/push-token registration id.</summary>
+    public const string Device = "dev";
+    /// <summary>[S3] An identity email-challenge (signup/login/email-change) id.</summary>
+    public const string Challenge = "chl";
+    /// <summary>[S3] An identity export-job id.</summary>
+    public const string Export = "exp";
+    /// <summary>[S3] An identity deletion-job id.</summary>
+    public const string Deletion = "del";
+    /// <summary>[S5] An admin staff-role-grant id.</summary>
+    public const string StaffRoleGrant = "srg";
+
     /// <summary>The closed set of every prefix ever minted (SLICE_S1_CONTRACT.md §1b/§12.11).
     /// OpaqueId.Parse validates against exactly this set. Extend only via a versioned contract change.</summary>
     public static readonly IReadOnlySet<string> All = new HashSet<string>
     {
         User, Staff, Partner, System, Anonymous, Event, Ledger, PurgeRun, Pseudonym,
+        Session, Device, Challenge, Export, Deletion, StaffRoleGrant,
     };
 
     /// <summary>The subset of prefixes that identify an ACTOR, mapped to the ActorKind each one carries

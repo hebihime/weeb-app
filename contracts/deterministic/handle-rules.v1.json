@@ -1,0 +1,20 @@
+{
+  "$comment": "PHASE_2A_SUBSTRATE.md §3, SLICE_S3_CONTRACT.md §2 — HandleRules golden vectors. Shared verbatim with iOS/Android/web test suites once a client handle-test exists (file-to-file lint DEFERRED, noted not built).",
+  "minLength": 3,
+  "maxLength": 20,
+  "canonicalizations": [
+    { "name": "mixed_case_lowercases", "raw": "JohnDoe", "canonical": "johndoe" },
+    { "name": "nfkc_fullwidth_folds_to_ascii", "raw": "Ｆｕｌｌｗｉｄｔｈ", "canonical": "fullwidth" }
+  ],
+  "valid": [
+    { "name": "underscored_alnum_handle", "raw": "weeb_fan_92", "canonical": "weeb_fan_92" },
+    { "name": "min_length_boundary", "raw": "abc", "canonical": "abc" },
+    { "name": "max_length_boundary_twenty_chars", "raw": "abcdefghijklmnopqrst", "canonical": "abcdefghijklmnopqrst" }
+  ],
+  "invalid": [
+    { "name": "below_min_length", "raw": "ab", "reasonKey": "handle.invalid_length" },
+    { "name": "above_max_length", "raw": "this_handle_is_definitely_too_long_yes", "reasonKey": "handle.invalid_length" },
+    { "name": "space_and_punctuation_rejected", "raw": "bad handle!", "reasonKey": "handle.invalid_charset" },
+    { "name": "cyrillic_confusable_a_rejected", "raw": "аdmin", "reasonKey": "handle.confusable_rejected" }
+  ]
+}

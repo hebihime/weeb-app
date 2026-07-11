@@ -34,7 +34,7 @@ public sealed class SilentRejectionLeakLensTests
     // instead of the silent absence §8 requires. PolicyEngine.cs:26-28 → DenyFor → PolicyEngine.cs:43.
     // ------------------------------------------------------------------------------------------------
     [Fact]
-    public void ShippedTable_NeverHandsAConsumerAnObservableDenyStandard()
+    public async Task ShippedTable_NeverHandsAConsumerAnObservableDenyStandard()
     {
         var engine = new PolicyEngine(new PolicyTable());
         var consumer = Consumer();
@@ -42,7 +42,7 @@ public sealed class SilentRejectionLeakLensTests
         var leaks = new List<string>();
         foreach (var entry in new PolicyTable().Entries)
         {
-            var decision = engine.Authorize(consumer, entry.Action, TargetRef.ForAction(entry.Action));
+            var decision = await engine.Authorize(consumer, entry.Action, TargetRef.ForAction(entry.Action));
             if (decision is PolicyDecision.DenyStandard standard)
             {
                 // A consumer just learned this action EXISTS and its policy reason — an observable
@@ -65,7 +65,7 @@ public sealed class SilentRejectionLeakLensTests
     // is exactly the mapping §1b says an arch test must fail, undetected.
     // ------------------------------------------------------------------------------------------------
     [Fact]
-    public void StaffOnlyDenyStandardReadRow_DeniesConsumerObservably_AndGuardMissesIt()
+    public async Task StaffOnlyDenyStandardReadRow_DeniesConsumerObservably_AndGuardMissesIt()
     {
         // A plausible future read-path row: a staff-only "reversal preview" style read.
         var readRow = new PolicyTableEntry(
@@ -83,7 +83,7 @@ public sealed class SilentRejectionLeakLensTests
 
         // (b) But the engine hands a consumer DenyStandard for that same row → observable exclusion.
         var engine = new PolicyEngine(new SingleRowTable(readRow));
-        var decision = engine.Authorize(Consumer(), readRow.Action, TargetRef.ForAction(readRow.Action));
+        var decision = await engine.Authorize(Consumer(), readRow.Action, TargetRef.ForAction(readRow.Action));
 
         Assert.IsNotType<PolicyDecision.DenyStandard>(decision); // FAILS: it IS DenyStandard.
     }
@@ -95,10 +95,10 @@ public sealed class SilentRejectionLeakLensTests
     // removed from the table boots cleanly, then leaks a 403 to consumers instead of absence.
     // ------------------------------------------------------------------------------------------------
     [Fact]
-    public void UnmappedActionFailClosed_HandsConsumerDenyStandard_NotAbsence()
+    public async Task UnmappedActionFailClosed_HandsConsumerDenyStandard_NotAbsence()
     {
         var engine = new PolicyEngine(new PolicyTable());
-        var decision = engine.Authorize(Consumer(), "core.some.readpath.typo", TargetRef.ForAction("x"));
+        var decision = await engine.Authorize(Consumer(), "core.some.readpath.typo", TargetRef.ForAction("x"));
 
         Assert.IsNotType<PolicyDecision.DenyStandard>(decision); // FAILS: unmapped → DenyStandard for a consumer.
     }
@@ -197,6 +197,7 @@ public sealed class SilentRejectionTimingChannelLensTests : IAsyncLifetime, IDis
 
     private sealed class AlwaysAbsenceEngine : IPolicyEngine
     {
-        public PolicyDecision Authorize(ActorRef actor, string action, TargetRef target) => PolicyDecision.AsAbsence;
+        public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default) =>
+            Task.FromResult(PolicyDecision.AsAbsence);
     }
 }

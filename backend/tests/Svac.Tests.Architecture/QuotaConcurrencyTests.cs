@@ -148,5 +148,8 @@ public sealed class QuotaConcurrencyTests : IAsyncLifetime
 
         public Task SetValue<T>(string key, T value, string reason, Svac.DomainCore.Contracts.Ids.ActorRef actor, Svac.DomainCore.Contracts.RequestContext ctx, CancellationToken ct = default) =>
             throw new NotSupportedException("fixture adapter: QuotaService never calls SetValue.");
+
+        public Task<IReadOnlyList<Svac.DomainCore.Contracts.Config.ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Svac.DomainCore.Contracts.Config.ConfigEntryView>>(Array.Empty<Svac.DomainCore.Contracts.Config.ConfigEntryView>());
     }
 }

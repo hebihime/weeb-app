@@ -35,12 +35,26 @@ public static class DomainCoreServiceCollectionExtensions
     {
         services.AddDbContext<CoreDbContext>(options => options.UseNpgsql(postgresConnectionString));
 
-        services.AddSingleton<IPolicyTable, PolicyTable>();
+        // Phase-2a (PHASE_2A_SUBSTRATE.md §1): IPolicyTable becomes the boot-time UNION of every
+        // registered IPolicyTableSource. CorePolicyTableSource is source #1 (domain-core's own 7 rows) —
+        // with ONLY this source registered (true at S1/S2), the union is byte-identical to the old table.
+        // Every feature module registers its OWN additional IPolicyTableSource; a duplicate action key
+        // across sources is a boot refusal (PolicyTable's constructor throws).
+        services.AddSingleton<IPolicyTableSource, CorePolicyTableSource>();
+        services.AddSingleton<IPolicyTable>(sp => new PolicyTable(sp.GetServices<IPolicyTableSource>()));
+        // IStaffRoleResolver default (PHASE_2A_SUBSTRATE.md §1, SLICE_S5_CONTRACT.md §1d): fail-closed —
+        // a staff actor with no real resolver has no roles. The admin host (S5 build) overrides this with
+        // its grant-table-backed resolver. IResourceOwnershipResolver has zero registrants at S1/S2 by
+        // design (none registered here; IEnumerable<T> resolves to empty, which PolicyEngine treats as
+        // "no resolver for any resource type" — the OwnedResource axis is a structural no-op until S3).
+        services.AddSingleton<IStaffRoleResolver, DenyAllStaffRoleResolver>();
         services.AddScoped<IPolicyEngine, PolicyEngine>();
 
         services.AddScoped<Svac.DomainCore.Contracts.Streams.IEventStore, Svac.DomainCore.EventStore.PostgresEventStore>();
         services.AddScoped<IConfigRegistry, ConfigRegistry>();
         services.AddScoped<ConfigSeedLoader>();
+        services.AddScoped<Svac.DomainCore.Contracts.Audit.IAuditReader, Svac.DomainCore.Audit.AuditReader>();
+        services.AddScoped<IPurgeRunReader, Svac.DomainCore.Purge.PurgeRunReader>();
 
         services.AddScoped<ICapModifier, Svac.DomainCore.Quota.PremiumCapModifier>();
         services.AddScoped<ICapModifier, Svac.DomainCore.Quota.ReputationCapModifier>();

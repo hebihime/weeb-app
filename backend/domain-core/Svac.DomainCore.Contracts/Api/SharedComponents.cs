@@ -8,3 +8,11 @@ public sealed record ClientConfigResponse(string ApiVersion, IReadOnlyList<strin
 
 /// <summary>Pagination shape pinned early (SLICE_S1_CONTRACT.md §1c) so no later slice invents a second cursor shape.</summary>
 public sealed record CursorPage<T>(IReadOnlyList<T> Items, string? NextCursor, bool HasMore);
+
+/// <summary>
+/// The REQUEST side of opaque-cursor pagination (PHASE_2A_SUBSTRATE.md §2, SLICE_S5_CONTRACT.md §1d) —
+/// the counterpart <see cref="CursorPage{T}"/> already pins for responses. Single definition so
+/// <see cref="Svac.DomainCore.Contracts.Audit.IAuditReader"/>/<see
+/// cref="Svac.DomainCore.Contracts.Purge.IPurgeRunReader"/> and every later paginated read share it.
+/// </summary>
+public sealed record CursorPageRequest(string? Cursor = null, int Limit = 50);

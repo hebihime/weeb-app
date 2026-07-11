@@ -134,13 +134,13 @@ public sealed class SilentRejectionIndistinguishabilityTests : IAsyncLifetime, I
     /// </summary>
     private sealed class FixturePolicyEngine : IPolicyEngine
     {
-        public PolicyDecision Authorize(ActorRef actor, string action, TargetRef target) => action switch
+        public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default) => Task.FromResult(action switch
         {
             "fixture.absence" => PolicyDecision.AsAbsence,
             "fixture.silent404" => PolicyDecision.Silent404,
             "fixture.limit" => PolicyDecision.AsLimit("fixture.limit.key"),
             "fixture.allowed" => PolicyDecision.Allowed,
             _ => PolicyDecision.Standard("fixture.unmapped"),
-        };
+        });
     }
 }

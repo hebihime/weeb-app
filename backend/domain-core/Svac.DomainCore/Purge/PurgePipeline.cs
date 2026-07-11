@@ -56,7 +56,7 @@ public sealed class PurgePipeline(
 
     public async Task<IReadOnlyList<PurgeReport>> Run(PurgeClass purgeClass, SubjectRef subject, ActorRef actor, RequestContext ctx, CancellationToken ct = default)
     {
-        var decision = policyEngine.Authorize(actor, "core.purge.execute", TargetRef.ForAction("core.purge.execute"));
+        var decision = await policyEngine.Authorize(actor, "core.purge.execute", TargetRef.ForAction("core.purge.execute"), ct);
         if (!decision.IsAllowed)
         {
             throw new UnauthorizedAccessException($"4A denied \"core.purge.execute\" for actor {actor} — {decision.GetType().Name}.");

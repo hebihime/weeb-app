@@ -10,6 +10,9 @@ public enum FieldEncryptionPurpose
     Birthdate,
     VerificationAudit,
     IdentityExclusionFilters,
+
+    /// <summary>[S6, PHASE_2A_SUBSTRATE.md §7] Raw anime-test answers. No S1/S2 code encrypts under this purpose — byte-identical addition.</summary>
+    AnimeAnswers,
 }
 
 /// <summary>Scope a Shred call applies to — usually a subject id, sometimes a whole purpose-key retirement.</summary>

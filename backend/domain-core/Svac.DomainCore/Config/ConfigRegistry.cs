@@ -51,4 +51,10 @@ public sealed class ConfigRegistry(CoreDbContext db, Svac.DomainCore.Contracts.S
         // same tx"). Do not call SaveChangesAsync a second time here — that would split the tx in two.
         await eventStore.Append(StreamType.Audit, streamId: key, eventType: "config.set", payloadJson: payload, ctx, ExpectedVersion.AnyVersion, ct);
     }
+
+    /// <summary>[S5, PHASE_2A_SUBSTRATE.md §2] The admin config editor's read source — every registered row, unfiltered. No S1/S2 caller exists yet.</summary>
+    public async Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+        await db.ConfigEntries
+            .Select(e => new ConfigEntryView(e.Key, e.Type, e.Scope, e.ValueJson, e.BoundsJson, e.RequiresReason, e.UpdatedAt, e.UpdatedBy))
+            .ToListAsync(ct);
 }

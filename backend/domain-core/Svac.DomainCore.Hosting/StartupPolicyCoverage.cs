@@ -70,4 +70,73 @@ public static class StartupPolicyCoverage
 
         return app;
     }
+
+    /// <summary>
+    /// [S3, PHASE_2A_SUBSTRATE.md §1/§3a] Fail-closed BOTH directions on the target-binding/TargetRule
+    /// pairing, red-fixture-proven: (a) a row demanding SelfOnly/OwnedResource whose endpoint conveys
+    /// PolicyTargetBinding.None refuses to boot; (b) a FromRoute binding naming a route parameter absent
+    /// from the endpoint's own route pattern refuses to boot; (c) the reverse — an ActionScoped row given
+    /// a non-None binding — also refuses. A resource-scoped action without a correctly-wired target
+    /// conveyance is structurally unshippable, forever. Call AFTER <see cref="RequireMutationsPolicyMapped"/>
+    /// (that check already proves every mutation endpoint has a mapped, table-registered action) — this
+    /// check is a no-op for every S1/S2 endpoint (every real row today is ActionScoped + binds None).
+    /// </summary>
+    public static WebApplication RequireTargetBindingConsistent(this WebApplication app)
+    {
+        var policyTable = app.Services.GetRequiredService<IPolicyTable>();
+        var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(ds => ds.Endpoints);
+
+        var violations = new List<string>();
+        foreach (var endpoint in endpoints)
+        {
+            var policyAction = endpoint.Metadata.GetMetadata<PolicyActionAttribute>();
+            if (policyAction is null)
+            {
+                continue; // no [PolicyAction] at all — RequireMutationsPolicyMapped's job, not this one.
+            }
+
+            var entry = policyTable.Find(policyAction.Action);
+            if (entry is null)
+            {
+                continue; // action has no table row — RequireMutationsPolicyMapped's job, not this one.
+            }
+
+            var binding = endpoint.Metadata.GetMetadata<PolicyTargetBindingMetadata>()?.Binding ?? PolicyTargetBinding.None;
+            var demandsTarget = entry.TargetRule is TargetRule.SelfOnlyRule or TargetRule.OwnedResourceRule;
+            var conveysTarget = binding is not PolicyTargetBinding.NoneBinding;
+            var name = endpoint.DisplayName ?? endpoint.ToString() ?? "<unnamed endpoint>";
+
+            if (demandsTarget && !conveysTarget)
+            {
+                violations.Add($"{name} (action \"{policyAction.Action}\" declares SelfOnly/OwnedResource but the endpoint binds PolicyTargetBinding.None)");
+                continue;
+            }
+
+            if (!demandsTarget && conveysTarget)
+            {
+                violations.Add($"{name} (action \"{policyAction.Action}\" is ActionScoped/unset but the endpoint conveys a non-None target binding)");
+                continue;
+            }
+
+            if (binding is PolicyTargetBinding.FromRouteBinding fromRoute)
+            {
+                var routePattern = (endpoint as Microsoft.AspNetCore.Routing.RouteEndpoint)?.RoutePattern;
+                var paramExists = routePattern?.Parameters.Any(p => p.Name == fromRoute.ParamName) ?? false;
+                if (!paramExists)
+                {
+                    violations.Add($"{name} (FromRoute names route parameter \"{fromRoute.ParamName}\", which is absent from the endpoint's own route pattern)");
+                }
+            }
+        }
+
+        if (violations.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "4A boot refusal: target-binding / TargetRule mismatch (PHASE_2A_SUBSTRATE.md §1/§3a — a " +
+                "resource-scoped action without correct target conveyance is structurally unshippable):\n  - " +
+                string.Join("\n  - ", violations));
+        }
+
+        return app;
+    }
 }
