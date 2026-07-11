@@ -77,8 +77,8 @@ captures/
 # so every FA Pro binary is hard-ignored here regardless of where it is placed in the tree. The glyph→
 # codepoint MAPPING (design/fa-glyph-map.json) is data, not a font, and IS committed. See the pointer
 # pointer docs ios/DesignKit/FONTS.md and android/designkit/FONTS.md for how the licensed .otf files get
-# placed locally (ios/DesignKit/Fonts/, android/designkit/src/main/assets/fonts/) / injected into a
-# build. Matched by NAME so the
+# placed locally (ios/DesignKit/Sources/DesignKit/Resources/, android/designkit/src/main/assets/fonts/)
+# / injected into a build. Matched by NAME so the
 # ignore holds no matter the directory. M PLUS Rounded 1c (OFL) is NOT matched — it is freely
 # redistributable and its own asset-drop task.
 **/FontAwesome*.otf

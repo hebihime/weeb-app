@@ -25,7 +25,8 @@ let package = Package(
     targets: [
         .target(
             name: "DesignKit",
-            dependencies: ["Strings"]
+            dependencies: ["Strings"],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "DesignKitTests",

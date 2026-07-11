@@ -15,6 +15,19 @@ import { dirname, join } from "node:path";
 
 const HEX = /^[0-9a-f]+$/;
 
+// The canonical map (design/) is bundled into each client as a runtime resource so the FA icon seam has
+// ONE source of codepoints (never a per-platform embedded table that can drift). These copies MUST stay
+// byte-identical to the canonical.
+export const BUNDLED_COPIES = [
+  "ios/DesignKit/Sources/DesignKit/Resources/fa-glyph-map.json",
+  "android/designkit/src/main/assets/fa-glyph-map.json",
+];
+
+/** Returns the paths whose bytes differ from `canonicalBytes` (only those that exist are checked). */
+export function findDriftedCopies(canonicalBytes, copies) {
+  return copies.filter((c) => c.exists && c.bytes !== canonicalBytes).map((c) => c.path);
+}
+
 /** Extract the identifiers of a named enum's members from source text. lang: "swift" | "kotlin". */
 export function extractGlyphEnum(source, lang) {
   if (lang === "swift") {
@@ -88,8 +101,19 @@ function main() {
     console.log(`fa-map-lint: ${MAP} not present — guarded (nothing to check)`);
     return;
   }
-  const map = JSON.parse(readFileSync(mapPath, "utf8"));
+  const canonicalBytes = readFileSync(mapPath, "utf8");
+  const map = JSON.parse(canonicalBytes);
   const violations = checkMap(map);
+
+  // Bundled copies must be byte-identical to the canonical (single source of codepoints).
+  const copies = BUNDLED_COPIES.map((rel) => {
+    const p = join(repoRoot, rel);
+    const exists = existsSync(p);
+    return { path: rel, exists, bytes: exists ? readFileSync(p, "utf8") : null };
+  });
+  for (const d of findDriftedCopies(canonicalBytes, copies)) {
+    violations.push(`${d}: bundled FA map copy is NOT byte-identical to design/fa-glyph-map.json (re-sync: cp design/fa-glyph-map.json <copy>)`);
+  }
 
   const iosPath = join(repoRoot, IOS_ICON);
   const andPath = join(repoRoot, AND_ICON);
@@ -109,7 +133,8 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`fa-map-lint OK: ${Object.keys(map.glyphs).length} glyphs, map ↔ iOS ↔ Android Glyph enums in sync`);
+  const present = copies.filter((c) => c.exists).length;
+  console.log(`fa-map-lint OK: ${Object.keys(map.glyphs).length} glyphs, map ↔ iOS ↔ Android Glyph enums in sync; ${present}/${BUNDLED_COPIES.length} bundled copies byte-identical`);
 }
 
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;

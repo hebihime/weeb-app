@@ -42,7 +42,10 @@ struct StateViewSnapshotTests {
     func iconographyIsTotal() {
         let source = BundledFallbackIconography()
         for glyph in Glyph.allCases {
-            let name = source.systemName(for: glyph)
+            guard case let .sfSymbol(name) = source.resolve(glyph, style: .neutral) else {
+                Issue.record("\(glyph) did not resolve to an SF Symbol via the bundled fallback")
+                continue
+            }
             #expect(!name.isEmpty, "\(glyph) has no bundled fallback glyph — Correction 2 requires the kit to render without the FA Pro kit")
         }
     }
@@ -51,7 +54,76 @@ struct StateViewSnapshotTests {
     func everyStateHasARenderableGlyph() {
         let source = BundledFallbackIconography()
         for spec in StateCatalog.all {
-            #expect(!source.systemName(for: spec.glyph).isEmpty, "\(spec.id) references an unrenderable glyph")
+            guard case let .sfSymbol(name) = source.resolve(spec.glyph, style: .neutral) else {
+                Issue.record("\(spec.id) references an unrenderable glyph")
+                continue
+            }
+            #expect(!name.isEmpty, "\(spec.id) references an unrenderable glyph")
+        }
+    }
+
+    @Test("FontAwesomeIconography maps every Glyph to a non-zero scalar + non-empty PostScript name (all styles)")
+    func faMapsEveryGlyph() {
+        let source = FontAwesomeIconography()
+        for glyph in Glyph.allCases {
+            for style in [IconStyle.playful, .neutral, .emptyOrCelebration] {
+                guard case let .faText(postScriptName, scalar) = source.resolve(glyph, style: style) else {
+                    Issue.record("\(glyph)/\(style) did not resolve to FA text")
+                    continue
+                }
+                #expect(scalar != 0, "\(glyph)/\(style) resolved to scalar 0")
+                #expect(!postScriptName.isEmpty, "\(glyph)/\(style) resolved to an empty PostScript name")
+            }
+        }
+    }
+
+    @Test("FontAwesomeIconography spot-checks known codepoints from fa-glyph-map.json")
+    func faSpotChecksCodepoints() {
+        let source = FontAwesomeIconography()
+        let expected: [(Glyph, UInt32)] = [
+            (.checkmark, 0xF058),
+            (.tabConnect, 0xF0C0),
+            (.chevronForward, 0xF054),
+            (.signupHandle, 0x40),
+        ]
+        for (glyph, want) in expected {
+            guard case let .faText(_, scalar) = source.resolve(glyph, style: .neutral) else {
+                Issue.record("\(glyph) did not resolve to FA text")
+                continue
+            }
+            #expect(scalar == want, "\(glyph) expected scalar \(String(want, radix: 16)) got \(String(scalar, radix: 16))")
+        }
+    }
+
+    @Test("FontAwesomeIconography picks Solid face for playful/celebration and Regular for neutral")
+    func faPicksFaceByStyle() {
+        let source = FontAwesomeIconography()
+        guard case let .faText(playfulPS, _) = source.resolve(.checkmark, style: .playful),
+              case let .faText(neutralPS, _) = source.resolve(.checkmark, style: .neutral),
+              case let .faText(emptyPS, _) = source.resolve(.checkmark, style: .emptyOrCelebration) else {
+            Issue.record("checkmark did not resolve to FA text for all styles")
+            return
+        }
+        #expect(playfulPS == "FontAwesome7Pro-Solid")
+        #expect(neutralPS == "FontAwesome7Pro-Regular")
+        #expect(emptyPS == "FontAwesome7Pro-Solid") // duotone deferred -> Solid for now
+    }
+
+    @Test("chooseSource returns FontAwesome when available and Bundled when absent (env-independent)")
+    func chooseSourceIsInjectable() {
+        // FA available -> FA text.
+        let faSource = IconographyProvider.chooseSource(faAvailable: true)
+        if case .faText = faSource.resolve(.checkmark, style: .neutral) {
+            // ok
+        } else {
+            Issue.record("chooseSource(faAvailable: true) did not yield the FA backend")
+        }
+        // FA absent -> SF Symbol fallback.
+        let fallback = IconographyProvider.chooseSource(faAvailable: false)
+        if case .sfSymbol = fallback.resolve(.checkmark, style: .neutral) {
+            // ok
+        } else {
+            Issue.record("chooseSource(faAvailable: false) did not yield the SF Symbols fallback")
         }
     }
 

@@ -8,6 +8,7 @@ import {
   setDiff,
   checkMap,
   checkParity,
+  findDriftedCopies,
 } from "./fa-map-lint.mjs";
 
 const SWIFT = `
@@ -77,4 +78,20 @@ test("checkParity RED: a Glyph in the map but missing from Android is caught", (
   const e = checkParity(keys, extractGlyphEnum(SWIFT, "swift"), extractGlyphEnum(KOTLIN, "kotlin"));
   assert.ok(e.some((s) => s.includes("iOS Glyph enum missing map keys")));
   assert.ok(e.some((s) => s.includes("Android Glyph enum missing map keys")));
+});
+
+test("findDriftedCopies GREEN: identical + absent copies pass", () => {
+  const copies = [
+    { path: "ios/...json", exists: true, bytes: "X" },
+    { path: "android/...json", exists: false, bytes: null }, // absent copy is not drift
+  ];
+  assert.deepEqual(findDriftedCopies("X", copies), []);
+});
+
+test("findDriftedCopies RED: a copy whose bytes differ is flagged", () => {
+  const copies = [
+    { path: "ios/...json", exists: true, bytes: "X" },
+    { path: "android/...json", exists: true, bytes: "Y" },
+  ];
+  assert.deepEqual(findDriftedCopies("X", copies), ["android/...json"]);
 });
