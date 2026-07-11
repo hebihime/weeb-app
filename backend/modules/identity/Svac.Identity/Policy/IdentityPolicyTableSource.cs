@@ -185,6 +185,22 @@ public sealed class IdentityPolicyTableSource : IPolicyTableSource
             TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.SelfOnly,
             AllowedAccountStates: ActiveOrSuspended).Validate(),
 
+        // [/v1/me/push-consents build] The GET-side row §3b's table left implicit alongside the PUT verb
+        // it lists explicitly — added now so the read, like `identity.me.read`/`identity.session.list`
+        // before it, goes through the SAME chokepoint rather than shipping ungated (SilentRej-L4's own
+        // logic: every consumer-reachable read gets a row, not just mutations). Same accountState axis as
+        // the PUT row — push-category management is settings-shaped and denies in grace, same as the write.
+        new PolicyTableEntry(
+            Action: "identity.consent.read_push_categories",
+            ActorKinds: User,
+            Axes: PolicyAxis.AccountState,
+            DenyMode: PolicyDenyMode.DenyAsAbsence,
+            RequiresReason: false,
+            ReasonKey: "n/a",
+            IsReadPath: true,
+            TargetRule: Svac.DomainCore.Contracts.Policy.TargetRule.SelfOnly,
+            AllowedAccountStates: ActiveOrSuspended).Validate(),
+
         // --- Pass-2-adjacent rows registered now per §3b (schema exists; endpoints/pipelines are Pass 2).
         // Registering them now means an ungated export/deletion HTTP route can never ship even before
         // Pass 2 exists (B1 machinery) — but NO endpoint in THIS build maps onto either action.

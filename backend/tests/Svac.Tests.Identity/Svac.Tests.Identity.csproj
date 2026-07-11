@@ -18,6 +18,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- [/v1/me/* build] Needed to boot a REAL, in-process Kestrel host (IdentityHttpFixture) wired with
+         AddDomainCore + AddIdentityModule + MapIdentityEndpoints against the shared Testcontainer — the
+         HTTP-level IDOR/absence/category-8 proofs exercise the real policy chokepoint end to end, not a
+         DB-service-layer stand-in. Mirrors Svac.Tests.Architecture's own FrameworkReference. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">
@@ -41,6 +46,7 @@
     <ProjectReference Include="..\..\modules\identity\Svac.Identity\Svac.Identity.csproj" />
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

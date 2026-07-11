@@ -67,4 +67,6 @@
     <string name="email_already_registered_body">This email is already registered. If this wasn\'t you, no action is needed.</string>
     <string name="email_sessions_revoked_subject">Security notice: your Weeb sessions were revoked</string>
     <string name="email_sessions_revoked_body">We detected reuse of a previously-issued sign-in token and revoked every active session on your account for your protection.</string>
+    <string name="email_email_changed_notice_subject">Your Weeb account email changed</string>
+    <string name="email_email_changed_notice_body">Your account email was changed. If this wasn\'t you, revoke your sessions immediately.</string>
 </resources>

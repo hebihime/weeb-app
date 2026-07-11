@@ -73,6 +73,8 @@ public static class IdentityServiceCollectionExtensions
         services.AddScoped<EmailChallengeMachine>();
         services.AddScoped<SignupCompletionService>();
         services.AddScoped<RefreshRotationService>();
+        // SLICE_S3_CONTRACT.md §1c Pass 2 (this build): the /v1/me/* account-management endpoint services.
+        services.AddScoped<HandleChangeService>();
         services.AddIdentityRateLimiting();
 
         return services;

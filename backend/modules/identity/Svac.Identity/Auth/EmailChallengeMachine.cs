@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Svac.DomainCore.Contracts;
 using Svac.DomainCore.Contracts.Config;
 using Svac.DomainCore.Contracts.Email;
@@ -30,6 +31,16 @@ public abstract record ChallengeConfirmResult
     public static readonly ChallengeConfirmResult Invalid = new InvalidResult();
 
     public static ChallengeConfirmResult Confirmed(string verifiedToken) => new ConfirmedResult(verifiedToken);
+}
+
+/// <summary>Outcome of POST /v1/me/email/confirm (SLICE_S3_CONTRACT.md §1c/§1b/§7): the swap + the old address the security notice must go to, or the ONE generic invalid outcome every other failure of this challenge machine renders.</summary>
+public abstract record EmailChangeConfirmResult
+{
+    public sealed record InvalidResult : EmailChangeConfirmResult;
+
+    public sealed record SwappedResult(string OldEmail, string NewEmail) : EmailChangeConfirmResult;
+
+    public static readonly EmailChangeConfirmResult Invalid = new InvalidResult();
 }
 
 /// <summary>
@@ -243,6 +254,134 @@ public sealed class EmailChallengeMachine(
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return row.AccountId;
+    }
+
+    /// <summary>PUT /v1/me/email (SLICE_S3_CONTRACT.md §1c): "email change via the SAME challenge machine (code to the NEW address)". Mirrors <see cref="IssueForSignup"/>'s anti-enumeration shape: if the requested new address already belongs to a DIFFERENT live account, no code is ever sent there and no row is ever persisted — the wire renders the SAME 202 {challengeId} either way, and the actual owner of that mailbox gets the "already registered" mail instead (never told WHO tried it).</summary>
+    public async Task<string> IssueForEmailChange(string accountId, string newEmailLower, string locale, RequestContext ctx, CancellationToken ct)
+    {
+        var quotaAllowed = await ConsumeMailboxQuota(newEmailLower, ctx, ct);
+        var now = DateTimeOffset.UtcNow;
+
+        var collidingAccountId = await db.Accounts
+            .Where(a => a.Email != null && a.Email == newEmailLower && a.AccountId != accountId && a.TombstonedAt == null)
+            .Select(a => a.AccountId)
+            .FirstOrDefaultAsync(ct);
+
+        if (collidingAccountId is not null)
+        {
+            if (quotaAllowed)
+            {
+                await emailSender.SendAsync(new EmailMessage(newEmailLower, "email.already_registered", locale, EmptyModel), ctx, ct);
+            }
+            else
+            {
+                await EmitQuotaDenied(newEmailLower, ctx, ct);
+            }
+
+            return MintChallengeId(now);
+        }
+
+        await db.EmailChallenges
+            .Where(c => c.Purpose == ChallengePurposes.EmailChange && c.AccountId == accountId && c.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.ConsumedAt, now), ct);
+
+        var challengeId = MintChallengeId(now);
+        var code = EmailCodes.NewCode();
+        var ttlMinutes = await config.GetValue<int>(IdentityConfigKeys.EmailCodeTtlMinutes, ct);
+
+        db.EmailChallenges.Add(new EmailChallengeEntity
+        {
+            ChallengeId = challengeId,
+            Purpose = ChallengePurposes.EmailChange,
+            EmailLower = newEmailLower,
+            AccountId = accountId,
+            CodeHash = await EmailCodes.Hash(keyVault, code, ct),
+            Attempts = 0,
+            ExpiresAt = now.AddMinutes(ttlMinutes),
+            CreatedAt = now,
+            Locale = locale,
+            Region = ctx.Region.ToString(),
+            LawfulBasis = ResolveLawfulBasis(ctx, "identity.email_challenges", "challenge.issued"),
+        });
+        await db.SaveChangesAsync(ct);
+
+        if (quotaAllowed)
+        {
+            await emailSender.SendAsync(
+                new EmailMessage(newEmailLower, "email.verify_code", locale,
+                    new Dictionary<string, string> { ["code"] = code, ["ttlMinutes"] = ttlMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture) }),
+                ctx, ct);
+        }
+        else
+        {
+            await EmitQuotaDenied(newEmailLower, ctx, ct);
+        }
+
+        return challengeId;
+    }
+
+    /// <summary>
+    /// POST /v1/me/email/confirm (SLICE_S3_CONTRACT.md §1c/§1b/§7). Atomic across schema `identity`
+    /// (challenge consumption + account.email swap) and schema `core` (the `identity.email_changed` audit
+    /// event) via <see cref="IdentityAtomicScope"/> — the SAME cross-schema-tx seam <see
+    /// cref="Svac.Identity.Auth.SignupCompletionService"/> uses. The caller sends the old-address security
+    /// notice AFTER this returns (outside this tx, exactly like <see cref="RefreshRotationService"/>'s
+    /// post-commit mail send) — email delivery is never inside the DB transaction.
+    /// </summary>
+    public async Task<EmailChangeConfirmResult> ConfirmEmailChange(string accountId, string challengeId, string code, RequestContext ctx, CancellationToken ct)
+    {
+        var connectionString = db.Database.GetConnectionString()
+            ?? throw new InvalidOperationException("IdentityDbContext has no connection string configured.");
+        await using var scope = await Svac.Identity.Persistence.IdentityAtomicScope.OpenAsync(connectionString, ct);
+
+        var row = await scope.Db.EmailChallenges
+            .FromSqlInterpolated($"SELECT * FROM identity.email_challenges WHERE challenge_id = {challengeId} AND purpose = {ChallengePurposes.EmailChange} FOR UPDATE")
+            .SingleOrDefaultAsync(ct);
+
+        var now = DateTimeOffset.UtcNow;
+        var maxAttempts = await config.GetValue<int>(IdentityConfigKeys.EmailCodeMaxAttempts, ct);
+
+        if (row is null || row.ConsumedAt is not null || row.ExpiresAt <= now || row.Attempts >= maxAttempts || row.AccountId != accountId)
+        {
+            await scope.RollbackAsync(ct);
+            return EmailChangeConfirmResult.Invalid;
+        }
+
+        var presentedHash = await EmailCodes.Hash(keyVault, code, ct);
+        var matches = EmailCodes.FixedTimeEquals(presentedHash, row.CodeHash);
+        row.Attempts++;
+
+        if (!matches)
+        {
+            await scope.Db.SaveChangesAsync(ct);
+            await scope.CommitAsync(ct);
+            return EmailChangeConfirmResult.Invalid;
+        }
+
+        var account = await scope.Db.Accounts.SingleAsync(a => a.AccountId == accountId, ct);
+        var oldEmail = account.Email ?? string.Empty;
+        var newEmail = row.EmailLower;
+        account.Email = newEmail;
+        row.ConsumedAt = now;
+
+        try
+        {
+            await scope.Db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException dbEx) when (dbEx.InnerException is PostgresException pg
+            && pg.SqlState == PostgresErrorCodes.UniqueViolation && pg.ConstraintName == "ux_accounts_email")
+        {
+            // Vanishingly rare race (email uniqueness is already gated at issue time by the collision
+            // check above) — the SAME generic Problem every other failure of this challenge machine
+            // renders, never a dedicated "email taken" surface (§1c names no such key).
+            await scope.RollbackAsync(ct);
+            return EmailChangeConfirmResult.Invalid;
+        }
+
+        await scope.Events.Append(StreamType.Audit, accountId, "identity.email_changed", "{}", ctx, ExpectedVersion.AnyVersion, ct);
+        await scope.CommitAsync(ct);
+
+        return new EmailChangeConfirmResult.SwappedResult(oldEmail, newEmail);
     }
 
     private async Task<bool> ConsumeMailboxQuota(string emailLower, RequestContext ctx, CancellationToken ct)

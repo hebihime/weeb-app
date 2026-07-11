@@ -23,3 +23,22 @@ public sealed record AuthEmailCodeRequest(string? Email);
 public sealed record AuthSessionRequest(string? Email, string? Code);
 
 public sealed record AuthRefreshRequest(string? RefreshToken);
+
+// --- /v1/me/* wire DTOs (SLICE_S3_CONTRACT.md §1c) — same "internal transport shape, never a cross-
+// module contract" rule as the block above; AccountSelf/SessionSummary/SessionCreated (the shapes OTHER
+// modules or the OpenAPI "New components" list name) live in Svac.Identity.Contracts instead.
+
+public sealed record SettingsUpdateRequest(string? Locale);
+
+public sealed record HandleChangeRequest(string? Handle);
+
+public sealed record EmailChangeRequest(string? Email);
+
+public sealed record DeviceRegisterRequest(string? Platform, string? PushToken);
+
+public sealed record DeviceRegistered(string DeviceId);
+
+/// <summary>One row of `GET /v1/me/push-consents` (SLICE_S3_CONTRACT.md §1c) — categories 1-7,9 only; category 8 never appears (absence law, §0/§12 item 10).</summary>
+public sealed record PushConsentRow(int Category, bool Enabled);
+
+public sealed record PushConsentSetRequest(bool? Enabled);

@@ -1,20 +1,26 @@
 #!/usr/bin/env node
-// backend/e2e/identity.e2e.mjs — SLICE_S3_CONTRACT.md §10.3, S3 BUILD phase (signup/* + auth/* +
-// minimal GET /v1/me — the /v1/me/* management surface and export/deletion are the NEXT pass, per the
-// build's own DO-NOT list).
+// backend/e2e/identity.e2e.mjs — SLICE_S3_CONTRACT.md §10.3. Covers BOTH the signup/auth foundation
+// (Pass A) and the /v1/me/* account-management surface (Pass B) — export/deletion remain the NEXT pass,
+// per the build's own DO-NOT list.
 //
 // Live E2E against the compose stack's Svac.PublicApi host — REAL HTTP endpoints, REAL Mailpit (REST
 // oracle at :8025, never SMTP-side inspection), REAL 3A events read back via a real `docker compose exec
 // postgres psql` probe (the same sanctioned pattern backend/e2e/substrate.e2e.mjs already uses for its
 // own behavioral-event read-back — a READ-only verification probe, never a fake of the mutation flow
 // itself, which runs 100% through real HTTP). SQL/stub bypass of the FLOW is banned (L30); this script
-// never does that — every account/session/challenge exists ONLY because a real HTTP call created it.
+// never does that — every account/session/challenge/device/consent exists ONLY because a real HTTP call
+// created it.
 //
 // Journey: handle-availability -> email-verification (code fetched from Mailpit) -> confirm -> complete
 // (18th-birthday boundary vector) -> GET /v1/me works -> refresh rotation -> reuse drill (old refresh =>
 // family revoked + audit event read back + email.sessions_revoked in Mailpit) -> old access token dies
-// -> login via auth/email-code + auth/session -> GET /v1/me -> logout -> under-18 + under-13 refusal
-// drills (wire byte-identical, DB row count unchanged, under-13 challenge row destroyed).
+// -> device register + push-consent write (read back off events_consent) -> category-8 drill (PUT /…/8
+// byte-identical to /…/17) -> handle change, immediate second change denied LimitReached w/ correct
+// resetsAt -> IDOR drill (a second account's sessionId DELETEd by the first ⇒ absence byte-identical to a
+// random id, victim session survives) -> email change + confirm (old address gets email.email_changed_
+// notice in Mailpit) -> login via auth/email-code + auth/session -> GET /v1/me -> logout -> under-18 +
+// under-13 refusal drills (wire byte-identical, DB row count unchanged, under-13 challenge row
+// destroyed).
 //
 // Usage: IDENTITY_E2E_TARGET=http://localhost:8090 node backend/e2e/identity.e2e.mjs
 //        (no IDENTITY_E2E_TARGET set -> SKIP, not a lie)
@@ -134,6 +140,19 @@ async function auditEventTypesFor(accountId) {
   return out.length > 0 ? out.split("\n") : [];
 }
 
+async function consentPayloadsFor(accountId) {
+  const out = await psql(`SELECT payload FROM core.events_consent WHERE stream_id = '${accountId}' ORDER BY seq;`);
+  if (out.length === 0) {
+    return [];
+  }
+  return out.split("\n").map((line) => JSON.parse(line));
+}
+
+async function sessionRevokedAt(sessionId) {
+  const out = await psql(`SELECT revoked_at FROM identity.sessions WHERE session_id = '${sessionId}';`);
+  return out; // empty string means NULL
+}
+
 // ---------- the journey, one function per stage ----------
 
 async function stageHealth(baseUrl) {
@@ -226,7 +245,8 @@ async function stageRefreshRotationAndReuseAlarm(baseUrl, session, accountId, em
   assert(notice, "email.sessions_revoked mail never arrived in Mailpit after the reuse drill");
 }
 
-async function stageLoginJourney(baseUrl, email, handle) {
+/** Logs in via the two-step email-code flow and returns the fresh SessionCreated body. */
+async function stageLogin(baseUrl, email) {
   const { status: codeStatus, body: codeBody } = await postJson(baseUrl, "/v1/auth/email-code", { email });
   assert(codeStatus === 202, `POST auth/email-code -> HTTP ${codeStatus}: ${JSON.stringify(codeBody)}`);
   assert(Object.keys(codeBody).length === 0, `POST auth/email-code body should be {} per §1c, got ${JSON.stringify(codeBody)}`);
@@ -237,7 +257,11 @@ async function stageLoginJourney(baseUrl, email, handle) {
   const { status: sessionStatus, body: sessionBody } = await postJson(baseUrl, "/v1/auth/session", { email, code });
   assert(sessionStatus === 200, `POST auth/session -> HTTP ${sessionStatus}: ${JSON.stringify(sessionBody)}`);
   assert(typeof sessionBody.accessToken === "string" && sessionBody.accessToken.startsWith("sst_"));
+  return sessionBody;
+}
 
+async function stageLoginJourney(baseUrl, email, handle) {
+  const sessionBody = await stageLogin(baseUrl, email);
   await stageMeWorks(baseUrl, sessionBody.accessToken, handle, email);
 
   const { status: logoutStatus } = await postJson(baseUrl, "/v1/auth/logout", {}, { authorization: `Bearer ${sessionBody.accessToken}` });
@@ -306,6 +330,143 @@ async function stageMinorProtectionDrills(baseUrl) {
   assert(!under13ChallengeSurvives, "under-13 drill's challenge row SURVIVED — §1g requires a same-tx hard delete");
 }
 
+// ---------- /v1/me/* stages (SLICE_S3_CONTRACT.md §1c Pass 2) ----------
+
+async function stageDeviceAndPushConsent(baseUrl, accessToken, accountId) {
+  const { status: deviceStatus, body: deviceBody } = await postJson(
+    baseUrl,
+    "/v1/me/devices",
+    { platform: "ios", pushToken: "e2e-push-token-abc" },
+    { authorization: `Bearer ${accessToken}` }
+  );
+  assert(deviceStatus === 201, `POST /v1/me/devices -> HTTP ${deviceStatus}: ${JSON.stringify(deviceBody)}`);
+  assert(typeof deviceBody.deviceId === "string" && deviceBody.deviceId.startsWith("dev_"), `unexpected deviceId shape: ${JSON.stringify(deviceBody)}`);
+
+  const putRes = await fetch(new URL("/v1/me/push-consents/3", baseUrl), {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ enabled: true }),
+  });
+  assert(putRes.status === 204, `PUT /v1/me/push-consents/3 -> HTTP ${putRes.status}, expected 204`);
+
+  const { status: getStatus, body: rows } = await getJson(baseUrl, "/v1/me/push-consents", { authorization: `Bearer ${accessToken}` });
+  assert(getStatus === 200, `GET /v1/me/push-consents -> HTTP ${getStatus}`);
+  assert(Array.isArray(rows) && rows.length === 8, `GET /v1/me/push-consents expected exactly 8 rows (1-7,9), got ${JSON.stringify(rows)}`);
+  assert(!rows.some((r) => r.category === 8), "GET /v1/me/push-consents returned a row for category 8 — must be absent");
+  const row3 = rows.find((r) => r.category === 3);
+  assert(row3 && row3.enabled === true, `push-consent category 3 not enabled after PUT: ${JSON.stringify(rows)}`);
+
+  // The write landed on events_consent, read back for real (never a stub/SQL bypass of the WRITE path).
+  const payloads = await consentPayloadsFor(accountId);
+  const push3 = payloads.find((p) => p.consent_key === "push_category_3");
+  assert(push3, `no push_category_3 consent.recorded event found for account ${accountId} in core.events_consent (found: ${JSON.stringify(payloads)})`);
+  assert(push3.decision === "granted", `push_category_3 consent decision = "${push3.decision}", expected "granted"`);
+}
+
+async function stagePutMethod(baseUrl, path, body, headers) {
+  const res = await fetch(new URL(path, baseUrl), {
+    method: "PUT",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, text };
+}
+
+async function stageCategoryEightDrill(baseUrl, accessToken) {
+  const headers = { authorization: `Bearer ${accessToken}` };
+  const eight = await stagePutMethod(baseUrl, "/v1/me/push-consents/8", { enabled: true }, headers);
+  const seventeen = await stagePutMethod(baseUrl, "/v1/me/push-consents/17", { enabled: true }, headers);
+
+  assert(eight.status === 404, `PUT /v1/me/push-consents/8 -> HTTP ${eight.status}, expected 404 (unrepresentable)`);
+  assert(eight.status === seventeen.status, `category-8 (${eight.status}) and category-17 (${seventeen.status}) rendered DIFFERENT statuses — must be byte-identical`);
+  assert(eight.text === seventeen.text, `category-8 and category-17 response bodies differ: "${eight.text}" vs "${seventeen.text}"`);
+}
+
+async function stageHandleChangeCooldown(baseUrl, accessToken) {
+  const headers = { authorization: `Bearer ${accessToken}` };
+  const newHandle = uniqueHandle("hc1");
+  const first = await postJson(baseUrl, "/v1/me/handle", { handle: newHandle }, headers);
+  assert(first.status === 200, `POST /v1/me/handle (first change) -> HTTP ${first.status}: ${JSON.stringify(first.body)}`);
+
+  const second = await postJson(baseUrl, "/v1/me/handle", { handle: uniqueHandle("hc2") }, headers);
+  assert(second.status === 429, `POST /v1/me/handle (immediate second change) -> HTTP ${second.status}, expected 429 LimitReached: ${JSON.stringify(second.body)}`);
+  assert(second.body.quotaKey === "identity.handle.change", `second handle-change LimitReached.quotaKey = "${second.body.quotaKey}", expected "identity.handle.change"`);
+  assert(second.body.premiumExtends === false, `second handle-change LimitReached.premiumExtends = ${second.body.premiumExtends}, expected false`);
+  assert(typeof second.body.resetsAt === "string" && !Number.isNaN(Date.parse(second.body.resetsAt)), `second handle-change LimitReached.resetsAt is not a valid timestamp: ${JSON.stringify(second.body)}`);
+  const resetsAt = new Date(second.body.resetsAt);
+  const now = new Date();
+  assert(resetsAt.getTime() > now.getTime(), `second handle-change LimitReached.resetsAt (${second.body.resetsAt}) is not in the future`);
+
+  return newHandle;
+}
+
+async function stageIdorSessionDrill(baseUrl, victimAccessToken, attackerAccessToken) {
+  const { status: sessionsStatus, body: sessions } = await getJson(baseUrl, "/v1/me/sessions", { authorization: `Bearer ${victimAccessToken}` });
+  assert(sessionsStatus === 200, `GET /v1/me/sessions (victim) -> HTTP ${sessionsStatus}`);
+  const currentSession = sessions.find((s) => s.current === true);
+  assert(currentSession, `no session marked "current" for the victim: ${JSON.stringify(sessions)}`);
+  const victimSessionId = currentSession.sessionId;
+
+  const randomSessionId = "ses_01HZZZZZZZZZZZZZZZZZZZZZZZ";
+  const foreignRes = await fetch(new URL(`/v1/me/sessions/${victimSessionId}`, baseUrl), {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${attackerAccessToken}` },
+  });
+  const randomRes = await fetch(new URL(`/v1/me/sessions/${randomSessionId}`, baseUrl), {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${attackerAccessToken}` },
+  });
+
+  assert(foreignRes.status === 404, `DELETE /v1/me/sessions/{victim's session} by attacker -> HTTP ${foreignRes.status}, expected 404 (absence)`);
+  assert(foreignRes.status === randomRes.status, `foreign session (${foreignRes.status}) and random session (${randomRes.status}) rendered DIFFERENT statuses — IDOR must be byte-identical to nonexistence`);
+  const foreignText = await foreignRes.text();
+  const randomText = await randomRes.text();
+  assert(foreignText === randomText, `foreign-session and random-session DELETE bodies differ: "${foreignText}" vs "${randomText}"`);
+
+  // The victim's session is provably untouched (both the DB row AND the wire GET /v1/me still work).
+  const revokedAt = await sessionRevokedAt(victimSessionId);
+  assert(revokedAt === "", `victim's session was revoked by the attacker's failed DELETE attempt (revoked_at = "${revokedAt}") — deny-as-absence must never mutate what it denies`);
+
+  const { status: stillWorksStatus } = await getJson(baseUrl, "/v1/me", { authorization: `Bearer ${victimAccessToken}` });
+  assert(stillWorksStatus === 200, `GET /v1/me with the victim's still-live session -> HTTP ${stillWorksStatus}, expected 200 (untouched)`);
+}
+
+async function stageEmailChangeDrill(baseUrl, accessToken, oldEmail) {
+  const newEmail = uniqueEmail("changed");
+  const putRes = await fetch(new URL("/v1/me/email", baseUrl), {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ email: newEmail }),
+  });
+  const putText = await putRes.text();
+  const putStatus = putRes.status;
+  const putBody = putText.length > 0 ? JSON.parse(putText) : {};
+  assert(putStatus === 202, `PUT /v1/me/email -> HTTP ${putStatus}: ${JSON.stringify(putBody)}`);
+  assert(typeof putBody.challengeId === "string" && putBody.challengeId.startsWith("chl_"), `unexpected challengeId shape: ${JSON.stringify(putBody)}`);
+
+  const mail = await findLatestMailpitMessage(newEmail, "verification code");
+  const code = await extractSixDigitCode(mail);
+
+  const { status: confirmStatus, body: confirmBody } = await postJson(
+    baseUrl,
+    "/v1/me/email/confirm",
+    { challengeId: putBody.challengeId, code },
+    { authorization: `Bearer ${accessToken}` }
+  );
+  assert(confirmStatus === 200, `POST /v1/me/email/confirm -> HTTP ${confirmStatus}: ${JSON.stringify(confirmBody)}`);
+
+  // The account-takeover tripwire: the OLD address gets the security notice.
+  const notice = await findLatestMailpitMessage(oldEmail, "email changed");
+  assert(notice, `email.email_changed_notice never arrived at the OLD address (${oldEmail}) in Mailpit`);
+
+  const { status: meStatus, body: meBody } = await getJson(baseUrl, "/v1/me", { authorization: `Bearer ${accessToken}` });
+  assert(meStatus === 200, `GET /v1/me after email change -> HTTP ${meStatus}`);
+  assert(meBody.email === newEmail, `GET /v1/me email = "${meBody.email}" after change, expected "${newEmail}"`);
+
+  return newEmail;
+}
+
 async function stageEighteenthBirthdayBoundary(baseUrl) {
   // Turns 18 exactly TODAY — must be treated as an adult (the birthday itself already passes, AgeMath.IsAtLeast).
   const today = new Date();
@@ -361,9 +522,60 @@ async function main() {
       stageRefreshRotationAndReuseAlarm(TARGET, journey.session, journey.session.accountId, journeyEmail)
     );
 
-    await run("login via auth/email-code + auth/session, then logout", () =>
-      stageLoginJourney(TARGET, journeyEmail, journey.handle)
-    );
+    // The reuse-alarm drill above revokes journey.session's ENTIRE family (the theft alarm is
+    // "the whole session dies", §1b) — every /v1/me/* stage from here needs a FRESH session, exactly
+    // what a real client would do after that revoke: log back in via the email-code door.
+    let meSession;
+    await run("re-login after the reuse-alarm revoke (fresh session for the /v1/me/* stages)", async () => {
+      meSession = await stageLogin(TARGET, journeyEmail);
+    });
+
+    if (meSession) {
+      await run("device register + push-consent write, read back off events_consent", () =>
+        stageDeviceAndPushConsent(TARGET, meSession.accessToken, meSession.accountId)
+      );
+
+      await run("category-8 drill: PUT /v1/me/push-consents/8 wire-identical to /17", () =>
+        stageCategoryEightDrill(TARGET, meSession.accessToken)
+      );
+
+      let currentHandle = journey.handle;
+      await run("handle change, then immediate second change denied as LimitReached", async () => {
+        currentHandle = await stageHandleChangeCooldown(TARGET, meSession.accessToken);
+      });
+
+      let attackerSession;
+      await run("second account signup (IDOR drill attacker)", async () => {
+        const attackerJourney = await stageSignupThroughSession(TARGET, uniqueEmail("attacker"), "1999-03-03");
+        attackerSession = attackerJourney.session;
+      });
+
+      if (attackerSession) {
+        await run("IDOR drill: attacker DELETEs the victim's sessionId, byte-identical to a random id, victim session survives", () =>
+          stageIdorSessionDrill(TARGET, meSession.accessToken, attackerSession.accessToken)
+        );
+      } else {
+        failures.push("attacker account never signed up — IDOR drill skipped");
+      }
+
+      let changedEmail;
+      await run("email change: confirm swaps the email, old address gets email.email_changed_notice in Mailpit", async () => {
+        changedEmail = await stageEmailChangeDrill(TARGET, meSession.accessToken, journeyEmail);
+      });
+
+      await run("logout the /v1/me/* session; GET /v1/me then renders absence", async () => {
+        const { status: logoutStatus } = await postJson(TARGET, "/v1/auth/logout", {}, { authorization: `Bearer ${meSession.accessToken}` });
+        assert(logoutStatus === 204, `POST auth/logout -> HTTP ${logoutStatus}, expected 204`);
+        const { status: postLogoutStatus } = await getJson(TARGET, "/v1/me", { authorization: `Bearer ${meSession.accessToken}` });
+        assert(postLogoutStatus === 404, `GET /v1/me after logout -> HTTP ${postLogoutStatus}, expected 404 (absence)`);
+      });
+
+      await run("login via auth/email-code + auth/session (post email-change), then logout", () =>
+        stageLoginJourney(TARGET, changedEmail ?? journeyEmail, currentHandle)
+      );
+    } else {
+      failures.push("re-login after the reuse-alarm revoke failed — /v1/me/* stages skipped");
+    }
   } else {
     failures.push("signup journey never completed — dependent stages skipped");
   }

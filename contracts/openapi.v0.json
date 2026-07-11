@@ -338,6 +338,342 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PatchMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/handle": {
+      "post": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PostMeHandle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandleChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitReached"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/email": {
+      "put": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PutMeEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/email/confirm": {
+      "post": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PostMeEmailConfirm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/sessions": {
+      "get": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "GetMeSessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/sessions/{sessionId}": {
+      "delete": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "DeleteMeSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/me/devices": {
+      "post": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PostMeDevices",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistered"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitReached"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/devices/{deviceId}": {
+      "delete": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "DeleteMeDevice",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/me/push-consents": {
+      "get": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "GetMePushConsents",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PushConsentRow"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/push-consents/{category}": {
+      "put": {
+        "tags": [
+          "MeEndpoints"
+        ],
+        "operationId": "PutMePushConsent",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushConsentSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
       }
     }
   },
@@ -499,6 +835,52 @@
           }
         }
       },
+      "DeviceRegistered": {
+        "required": [
+          "deviceId"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          }
+        }
+      },
+      "DeviceRegisterRequest": {
+        "required": [
+          "platform",
+          "pushToken"
+        ],
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pushToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EmailChangeRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "EmailVerificationConfirmRequest": {
         "required": [
           "challengeId",
@@ -549,6 +931,20 @@
         "properties": {
           "available": {
             "type": "boolean"
+          }
+        }
+      },
+      "HandleChangeRequest": {
+        "required": [
+          "handle"
+        ],
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -641,6 +1037,40 @@
           }
         }
       },
+      "PushConsentRow": {
+        "required": [
+          "category",
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PushConsentSetRequest": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
       "SessionCreated": {
         "required": [
           "accessToken",
@@ -662,6 +1092,52 @@
           },
           "accountId": {
             "$ref": "#/components/schemas/OpaqueId"
+          }
+        }
+      },
+      "SessionSummary": {
+        "required": [
+          "sessionId",
+          "platform",
+          "createdAt",
+          "lastSeenAt",
+          "current"
+        ],
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "platform": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SettingsUpdateRequest": {
+        "required": [
+          "locale"
+        ],
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -722,8 +1198,9 @@
     "securitySchemes": {
       "bearer": {
         "type": "http",
-        "description": "Placeholder declared at S1; S3 (identity) fills real semantics.",
-        "scheme": "bearer"
+        "description": "Opaque, server-side, revocable session access token (SLICE_S3_CONTRACT.md §1b). Prefix \"sst_\", minted by /v1/signup/complete, /v1/auth/session, and /v1/auth/refresh. Header only: `Authorization: Bearer sst_...` — never a cookie or query parameter at S3. Carries zero decodable claims (never a JWT); revoked/expired/unknown tokens resolve to the anonymous actor server-side, never a distinct 401 oracle.",
+        "scheme": "bearer",
+        "bearerFormat": "sst_<256-bit-random>"
       }
     }
   },

@@ -60,6 +60,14 @@
     {
       "key": "email.sessions_revoked.body",
       "consumer": "IEmailSender template — category-8 security notice on refresh-token reuse detection (SLICE_S3_CONTRACT.md §1b/§1d/§7)"
+    },
+    {
+      "key": "email.email_changed_notice.subject",
+      "consumer": "IEmailSender template — POST /v1/me/email/confirm, sent to the OLD address (the account-takeover tripwire in passwordless auth, SLICE_S3_CONTRACT.md §1c/§1d/§7)"
+    },
+    {
+      "key": "email.email_changed_notice.body",
+      "consumer": "IEmailSender template — POST /v1/me/email/confirm, sent to the OLD address (the account-takeover tripwire in passwordless auth, SLICE_S3_CONTRACT.md §1c/§1d/§7)"
     }
   ]
 }

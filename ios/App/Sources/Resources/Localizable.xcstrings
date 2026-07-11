@@ -2262,6 +2262,64 @@
           }
         }
       }
+    },
+    "email.email_changed_notice.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Weeb account email changed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió el correo de tu cuenta de Weeb"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O e-mail da sua conta Weeb foi alterado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 Weeb 账户邮箱已更改"
+          }
+        }
+      }
+    },
+    "email.email_changed_notice.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account email was changed. If this wasn't you, revoke your sessions immediately."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió el correo de tu cuenta. Si no fuiste tú, revoca tus sesiones de inmediato."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O e-mail da sua conta foi alterado. Se não foi você, revogue suas sessões imediatamente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的账户邮箱已更改。如果不是你本人操作,请立即撤销你的会话。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

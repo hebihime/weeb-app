@@ -67,4 +67,6 @@
     <string name="email_already_registered_body">Este correo ya está registrado. Si no fuiste tú, no es necesario hacer nada.</string>
     <string name="email_sessions_revoked_subject">Aviso de seguridad: se revocaron tus sesiones de Weeb</string>
     <string name="email_sessions_revoked_body">Detectamos la reutilización de un token de inicio de sesión ya emitido y revocamos todas las sesiones activas de tu cuenta para tu protección.</string>
+    <string name="email_email_changed_notice_subject">Se cambió el correo de tu cuenta de Weeb</string>
+    <string name="email_email_changed_notice_body">Se cambió el correo de tu cuenta. Si no fuiste tú, revoca tus sesiones de inmediato.</string>
 </resources>

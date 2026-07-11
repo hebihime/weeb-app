@@ -67,4 +67,6 @@
     <string name="email_already_registered_body">此邮箱已被注册。如果不是你本人操作,无需任何操作。</string>
     <string name="email_sessions_revoked_subject">安全提示:你的 Weeb 会话已被撤销</string>
     <string name="email_sessions_revoked_body">我们检测到一个此前签发的登录令牌被重复使用,为保护你的账户安全,已撤销账户上的所有活跃会话。</string>
+    <string name="email_email_changed_notice_subject">你的 Weeb 账户邮箱已更改</string>
+    <string name="email_email_changed_notice_body">你的账户邮箱已更改。如果不是你本人操作,请立即撤销你的会话。</string>
 </resources>
