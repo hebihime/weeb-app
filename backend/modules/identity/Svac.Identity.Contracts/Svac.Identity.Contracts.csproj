@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Identity.Contracts — SLICE_S3_CONTRACT.md §1a. The ONLY assembly later modules (S10's privacy
+    matrix via IAccountDirectory, S12/S18 via IAccountLifecycle, S17 via the consent plumbing it rides
+    on, ...) may reference to reach identity. References only Svac.DomainCore.Contracts — mirrors the S2
+    module template exactly (backend/modules/AimlRouter/Svac.AimlRouter.Contracts/
+    Svac.AimlRouter.Contracts.csproj). Zero business logic here at Phase 1 (SLICE_PLAYBOOK.md scaffold
+    gate): interfaces + frozen DTO/event shapes only, no implementation.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Identity.Contracts</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

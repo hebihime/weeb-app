@@ -1,0 +1,4 @@
+{
+  "_comment": "SLICE_S3_CONTRACT.md §4 — Phase 1 (SLICE_PLAYBOOK.md scaffold gate) ships an EMPTY manifest, additive/union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json (never edits to that file's rows), same ConfigManifestFile shape ConfigSeedLoader.SeedFromFile deserializes (entries: []). The real S3 entries — the 18-key table in §4 (identity.deletion.grace_days, identity.session.access_ttl_minutes, ...) — land in Phase 2, each wired to a live consumer: the dead-tunable lint (ConfigSeedLoader.SeedFromFile's 'no consumer' throw, mirrored as a gate-lane test the way backend/tests/Svac.Tests.AimlRouter/ConfigManifestShapeTests.cs proves it for aiml-router.config.json) requires a real reader for every key, so Phase 1 ships zero rows rather than dead ones.",
+  "entries": []
+}

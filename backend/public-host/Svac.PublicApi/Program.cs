@@ -3,6 +3,7 @@ using Svac.DomainCore.DependencyInjection;
 using Svac.DomainCore.DevSeams;
 using Svac.DomainCore.FieldEncryption;
 using Svac.DomainCore.Hosting;
+using Svac.Identity.DependencyInjection;
 using Svac.PublicApi;
 
 // `--emit-openapi [outputPath]`: contract emission mode (SLICE_S1_CONTRACT.md §1c). Boots a minimal,
@@ -46,6 +47,10 @@ builder.Services.AddSvacHosting();
 // already-migrated schema — stream consumers (none exist at S1; the first lands with a feature module)
 // must register after this same hosted service for the identical reason.
 builder.Services.AddDomainCore(connectionString, devSeamsEnabled);
+// SLICE_S3_CONTRACT.md §0, Phase 1 (SLICE_PLAYBOOK.md scaffold gate): the identity module's DI
+// registration only — stub IAccountLifecycle/IAccountDirectory impls, zero DbContext, zero routes
+// mapped. Real endpoints/policy rows/config land in the S3 BUILD phase.
+builder.Services.AddIdentityModule();
 builder.Services.AddOpenApi("v0", OpenApiSetup.Configure);
 
 var localesPath = builder.Configuration["SVAC_I18N_LOCALES_PATH"] ?? ClientConfigLoader.ResolveDefaultLocalesPath(builder.Environment.ContentRootPath);

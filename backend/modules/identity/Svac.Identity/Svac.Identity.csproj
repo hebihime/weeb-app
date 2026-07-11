@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Identity — SLICE_S3_CONTRACT.md §1a. Internal implementation; InternalsVisibleTo the test
+    project (mirrors backend/modules/AimlRouter/Svac.AimlRouter/Svac.AimlRouter.csproj's module-template
+    shape). Phase 1 (SLICE_PLAYBOOK.md scaffold gate) ships ONLY DI-resolvable stub implementations of
+    IAccountLifecycle/IAccountDirectory (each throws NotImplementedException("S3 Phase 2")) — no
+    IdentityDbContext, no EF entity, no migration, no HTTP endpoint (§0 DO-NOT list).
+
+    DEVIATION FROM §1a's LITERAL ASSEMBLY LIST, RECORDED: §1a names this project's references as
+    "Svac.Identity.Contracts + Svac.DomainCore.Contracts + Svac.DomainCore + Svac.DomainCore.Hosting".
+    Phase 1's stub code touches zero symbols from Svac.DomainCore or Svac.DomainCore.Hosting, so this
+    project references only Svac.Identity.Contracts + Svac.DomainCore.Contracts for now. Adding the other
+    two references today would make backend/tests/Svac.Tests.Architecture/ModuleBoundaryTests.cs's
+    NoFeatureModuleExistsYet_TheCrossModuleHalfOfThisRuleIsVacuousByRecordedDesign test fail — it scans
+    every backend/modules/*.csproj for a literal reference to either of those two csproj files and is
+    part of the 156-pass/4-skip Architecture baseline this scaffold commit must leave untouched. §8 of the
+    contract itself names the fix: "module-boundary arch tests get their first two-feature-module
+    exercise (identity ↔ AimlRouter mutual non-reference proven)" — that is S3 BUILD-phase work (the real
+    EF DbContext + the session-backed IBearerAuthenticator need these two references), landing together
+    with the matching ModuleBoundaryTests update in the same commit, never as a silent scaffold workaround.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Identity</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Svac.Identity.Contracts\Svac.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Svac.Tests.Identity" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\config\identity.config.json" Link="Config\identity.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

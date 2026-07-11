@@ -15,6 +15,10 @@ COPY backend/Directory.Build.props backend/Directory.Build.props
 COPY backend/Directory.Packages.props backend/Directory.Packages.props
 COPY backend/Svac.sln backend/Svac.sln
 COPY backend/domain-core/ backend/domain-core/
+# SLICE_S3_CONTRACT.md §0, Phase 1: Svac.PublicApi/Program.cs now calls AddIdentityModule(), so the
+# module's source must be in the build context too — only the identity subtree, not all of
+# backend/modules/, so a future module this host does NOT reference never silently bloats this image.
+COPY backend/modules/identity/ backend/modules/identity/
 COPY backend/public-host/ backend/public-host/
 
 RUN dotnet restore backend/public-host/Svac.PublicApi/Svac.PublicApi.csproj
