@@ -169,10 +169,16 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
+          # The action's script CWD is not guaranteed to be the workspace root — use absolute
+          # $GITHUB_WORKSPACE paths for both the APK and the flow (a relative `find android`/`maestro
+          # test maestro/...` silently resolved to nothing and adb got an empty filename).
           script: |
-            APK=$(find android -path "*/${{ matrix.flavor }}/debug/*.apk" -o -name "*-${{ matrix.brand }}-debug.apk" | head -1)
+            set -e
+            APK=$(find "$GITHUB_WORKSPACE/android" -name "app-${{ matrix.brand }}-debug.apk" | head -1)
+            echo "APK: $APK"
+            test -n "$APK"
             adb install -r "$APK"
-            maestro test maestro/flows/brand-smoke/smoke.yaml \
+            maestro test "$GITHUB_WORKSPACE/maestro/flows/brand-smoke/smoke.yaml" \
               -e APP_ID=${{ matrix.app_id }} \
               -e BRAND=${{ matrix.brand }} \
               -e WORDMARK=${{ matrix.wordmark }} \
