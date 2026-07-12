@@ -1,4 +1,366 @@
 {
-  "_comment": "SLICE_S5_CONTRACT.md §4 — the eng-review §5 v0 config batch (verification.age_gate_challenge_threshold, match.swipe_cap_free_daily, premium.price_usd_monthly, romantic.superlike_budget, battle.freemium_limit, ads.sponsored_card_ratio, heatmap.cell_provenance_days, and the rest of the founder-ratified table). SCAFFOLD: this manifest ships EMPTY-VALID — a sibling, union-merge-friendly 9A manifest per S1's format that loads cleanly at boot with zero rows. Full row seeding is Phase 2, THE LEDGER HEADLINE ('config change = audited 3A event, rendered from registry') — seeded then, with each key's `pending_consumer_slice` honestly naming the BUILD.md §7 slice that actually reads it (S12/S14/S18/S19/S20/S22/S23/S25/S27/S28/S30/S32/S33/S34/S35), per the dead-tunable lint's pending-key extension (PHASE_2A_SUBSTRATE.md §6: 'rides the S5 build', not this scaffold pass).",
-  "entries": []
+  "_comment": "SLICE_S5_CONTRACT.md §4 -- the eng-review §5 v0 config batch, THE LEDGER HEADLINE ('config change = audited 3A event, rendered from registry'). Seeded now as real, typed, desk-editable rows -- every founder-ratified value from day one. Each key's pending_consumer_slice honestly names the BUILD.md §7 slice that actually reads it; today's ConfigSeedLoader ignores that extra JSON property (harmless, forward-compatible) until Pass C's dead-tunable-lint extension (PHASE_2A_SUBSTRATE.md §6) adds the matching ConfigManifestEntry.PendingConsumerSlice property and enforces it in CI -- this manifest's DATA does not wait on that CI wiring to land. Deliberately NOT seeded here, reasons recorded in SLICE_S5_CONTRACT.md §4: nakama_rep_floor (unratified unit), ε-budget-per-principal (defers to pre-G3.5b), annual Premium (\"annual later\"). core.con_day_cutoff is already S1-seeded in domain-core.config.json -- never duplicated here (union-merge, one truth).",
+  "entries": [
+    {
+      "key": "verification.age_gate_challenge_threshold",
+      "scope": "founder",
+      "type": "int",
+      "value": 21,
+      "requiresReason": true,
+      "pending_consumer_slice": "S18",
+      "consumer": "pending -- lands with BUILD.md §7 slice S18 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "verification.reverify_deadline_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 7,
+      "requiresReason": true,
+      "pending_consumer_slice": "S18",
+      "consumer": "pending -- lands with BUILD.md §7 slice S18 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "integrity.minor_report_rate_limit",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "count": 3,
+        "window_days": 30
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S12",
+      "consumer": "pending -- lands with BUILD.md §7 slice S12 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "integrity.l4_reporter_tenure",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "days": 30,
+        "requires_photo_verified": true,
+        "fallback_days": 90
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S12",
+      "consumer": "pending -- lands with BUILD.md §7 slice S12 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.swipe_cap_free_daily",
+      "scope": "founder",
+      "type": "int",
+      "value": 100,
+      "requiresReason": true,
+      "pending_consumer_slice": "S14",
+      "consumer": "pending -- lands with BUILD.md §7 slice S14 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "premium.price_usd_monthly",
+      "scope": "founder",
+      "type": "number",
+      "value": 9.99,
+      "requiresReason": true,
+      "pending_consumer_slice": "S23",
+      "consumer": "pending -- lands with BUILD.md §7 slice S23 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "premium.grace_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 16,
+      "requiresReason": true,
+      "pending_consumer_slice": "S23",
+      "consumer": "pending -- lands with BUILD.md §7 slice S23 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "romantic.superlike_budget",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "free": 1,
+        "premium": 3
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S20",
+      "consumer": "pending -- lands with BUILD.md §7 slice S20 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "romantic.pending_ttl",
+      "scope": "founder",
+      "type": "string",
+      "value": "disabled",
+      "requiresReason": true,
+      "pending_consumer_slice": "S20",
+      "consumer": "pending -- lands with BUILD.md §7 slice S20 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "nakama.daily_budget",
+      "scope": "founder",
+      "type": "int",
+      "value": 3,
+      "requiresReason": true,
+      "pending_consumer_slice": "S34",
+      "consumer": "pending -- lands with BUILD.md §7 slice S34 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.reciprocity_signal_budget",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "requiresReason": true,
+      "pending_consumer_slice": "S14",
+      "consumer": "pending -- lands with BUILD.md §7 slice S14 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "battle.freemium_limit",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "free": 5,
+        "premium": 20
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S22",
+      "consumer": "pending -- lands with BUILD.md §7 slice S22 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "invite.combined_budget_r8",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "free": 5,
+        "premium": 25
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S28",
+      "consumer": "pending -- lands with BUILD.md §7 slice S28 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "crew.captain_invite_daily",
+      "scope": "founder",
+      "type": "int",
+      "value": 10,
+      "requiresReason": true,
+      "pending_consumer_slice": "S27",
+      "consumer": "pending -- lands with BUILD.md §7 slice S27 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "premium.dm_baseline_daily",
+      "scope": "founder",
+      "type": "int",
+      "value": 5,
+      "requiresReason": true,
+      "pending_consumer_slice": "S23",
+      "consumer": "pending -- lands with BUILD.md §7 slice S23 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "economy.gifting_daily",
+      "scope": "founder",
+      "type": "int",
+      "value": 5,
+      "requiresReason": true,
+      "pending_consumer_slice": "S35",
+      "consumer": "pending -- lands with BUILD.md §7 slice S35 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "economy.trade_status",
+      "scope": "set",
+      "type": "json",
+      "value": {
+        "free": true,
+        "new_account_cooldown_days": 7,
+        "min_level": 5
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S35",
+      "consumer": "pending -- lands with BUILD.md §7 slice S35 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "ads.sponsored_card_ratio",
+      "scope": "founder",
+      "type": "json",
+      "value": {
+        "operating_one_in": 25,
+        "structural_ceiling_one_in": 15
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S30",
+      "consumer": "pending -- lands with BUILD.md §7 slice S30 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "characters.ai_card_frequency_cap_one_in",
+      "scope": "founder",
+      "type": "int",
+      "value": 20,
+      "requiresReason": true,
+      "pending_consumer_slice": "S25",
+      "consumer": "pending -- lands with BUILD.md §7 slice S25 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "quest.party_cap",
+      "scope": "set",
+      "type": "int",
+      "value": 8,
+      "requiresReason": true,
+      "pending_consumer_slice": "S33",
+      "consumer": "pending -- lands with BUILD.md §7 slice S33 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "crew.squad_cap",
+      "scope": "set",
+      "type": "int",
+      "value": 11,
+      "requiresReason": true,
+      "pending_consumer_slice": "S27",
+      "consumer": "pending -- lands with BUILD.md §7 slice S27 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "heatmap.cell_provenance_days",
+      "scope": "set",
+      "type": "int",
+      "value": 365,
+      "requiresReason": true,
+      "pending_consumer_slice": "S32",
+      "consumer": "pending -- lands with BUILD.md §7 slice S32 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "heatmap.cell_history_months",
+      "scope": "set",
+      "type": "int",
+      "value": 12,
+      "requiresReason": true,
+      "pending_consumer_slice": "S32",
+      "consumer": "pending -- lands with BUILD.md §7 slice S32 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "heatmap.residential_geohash_floor",
+      "scope": "ops",
+      "type": "int",
+      "value": 5,
+      "requiresReason": true,
+      "pending_consumer_slice": "S32",
+      "consumer": "pending -- lands with BUILD.md §7 slice S32 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "nakama.radius_km",
+      "scope": "ops",
+      "type": "int",
+      "value": 25,
+      "requiresReason": true,
+      "pending_consumer_slice": "S34",
+      "consumer": "pending -- lands with BUILD.md §7 slice S34 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "nakama.presence_ttl_days",
+      "scope": "ops",
+      "type": "int",
+      "value": 14,
+      "requiresReason": true,
+      "pending_consumer_slice": "S34",
+      "consumer": "pending -- lands with BUILD.md §7 slice S34 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "nakama.per_pair_cap",
+      "scope": "ops",
+      "type": "json",
+      "value": {
+        "count": 3,
+        "window_days": 30
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S34",
+      "consumer": "pending -- lands with BUILD.md §7 slice S34 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "battle.modal_ttl_seconds",
+      "scope": "set",
+      "type": "int",
+      "value": 90,
+      "requiresReason": true,
+      "pending_consumer_slice": "S22",
+      "consumer": "pending -- lands with BUILD.md §7 slice S22 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "battle.resume_window",
+      "scope": "set",
+      "type": "string",
+      "value": "same_con_day",
+      "requiresReason": true,
+      "pending_consumer_slice": "S22",
+      "consumer": "pending -- lands with BUILD.md §7 slice S22 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.category_density_floor",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "requiresReason": true,
+      "pending_consumer_slice": "S19",
+      "consumer": "pending -- lands with BUILD.md §7 slice S19 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.category_density_resume",
+      "scope": "ops",
+      "type": "int",
+      "value": 40,
+      "requiresReason": true,
+      "pending_consumer_slice": "S19",
+      "consumer": "pending -- lands with BUILD.md §7 slice S19 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.pass_reserve",
+      "scope": "set",
+      "type": "json",
+      "value": {
+        "hours": 48,
+        "alt": "next_con_day",
+        "max": 2
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S14",
+      "consumer": "pending -- lands with BUILD.md §7 slice S14 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "match.exposure_floor",
+      "scope": "ops",
+      "type": "json",
+      "value": {
+        "eligible_min_serve_per_active_con_day": 1,
+        "watch_tier_per_days": 2,
+        "restricted_exempt": true
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S19",
+      "consumer": "pending -- lands with BUILD.md §7 slice S19 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "quest.spot_check_rates",
+      "scope": "set",
+      "type": "json",
+      "value": {
+        "general": 0.05,
+        "sponsored": 0.1
+      },
+      "requiresReason": true,
+      "pending_consumer_slice": "S30",
+      "consumer": "pending -- lands with BUILD.md §7 slice S30 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "quest.kill_bonus_threshold",
+      "scope": "set",
+      "type": "number",
+      "value": 0.5,
+      "requiresReason": true,
+      "pending_consumer_slice": "S33",
+      "consumer": "pending -- lands with BUILD.md §7 slice S33 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    },
+    {
+      "key": "economy.svac_weekly_cap",
+      "scope": "set",
+      "type": "int",
+      "value": 50,
+      "requiresReason": true,
+      "pending_consumer_slice": "S35",
+      "consumer": "pending -- lands with BUILD.md §7 slice S35 (see pending_consumer_slice); founder-ratified v0 value seeded now per SLICE_S5_CONTRACT.md §4"
+    }
+  ]
 }

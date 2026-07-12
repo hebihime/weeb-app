@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Svac.DomainCore.Config;
 using Svac.DomainCore.Contracts;
+using Svac.DomainCore.Contracts.Ids;
 using Svac.DomainCore.Contracts.Policy;
 using Svac.DomainCore.EventStore;
 using Svac.DomainCore.Policy;

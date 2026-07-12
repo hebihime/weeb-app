@@ -7,12 +7,14 @@ namespace Svac.AdminHost;
 /// The admin host's own boot-refusal law (SLICE_S5_CONTRACT.md §1c): "every action key registered with
 /// the executor resolves to a PolicyTable row at startup or the host refuses to boot" — the S1
 /// boot-refusal law (Svac.DomainCore.Hosting.StartupPolicyCoverage.RequireMutationsPolicyMapped) applied
-/// at the layer the admin host actually mutates through. SCAFFOLD: AdminActionExecutor itself (staff
-/// re-read, hat computation, four-eyes, reason check, the one same-tx audit event) is real business
-/// logic and explicitly out of this slice's deliverable list; <see cref="AdminActionKeys.All"/> is the
-/// DATA half of this law, checked here today against the REAL, boot-time-unioned PolicyTable — Phase 2's
-/// executor wires itself against this same list (or a superset it asserts contains it), never a second,
-/// drifting enumeration.
+/// at the layer the admin host actually mutates through. REAL as of Pass B:
+/// <see cref="Svac.AdminHost.Domain.Execution.AdminActionExecutor"/> (staff re-read, hat computation,
+/// four-eyes, reason check, the one same-tx audit event) is the real business logic this data half backs
+/// — <see cref="AdminActionKeys.All"/> is checked here against the REAL, boot-time-unioned PolicyTable,
+/// and the executor's own <c>Execute</c> call defensively re-asserts <c>policyTable.Find(action)</c> is
+/// non-null too (belt-and-suspenders: this boot check should make an unregistered action unreachable at
+/// runtime, but the executor never trusts that silently). Every future desk slice adds its own verbs to
+/// this SAME list (or a superset it asserts contains it), never a second, drifting enumeration.
 /// </summary>
 public static class AdminHostBootChecks
 {

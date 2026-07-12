@@ -1,0 +1,156 @@
+@* SLICE_S5_CONTRACT.md §0/§8 seam 1 (Pass B): the Staff & Roles desk. Static SSR + enhanced form posts
+   (§1a) -- every mutating form here posts to a REAL HTTP endpoint
+   (Svac.AdminHost.Staff.StaffRolesEndpointExtensions), never a Blazor interactive handler. This page
+   ITSELF only ever READS AdminDbContext (rendering the roster) -- every WRITE happens behind the
+   audited-action chokepoint in the endpoint handlers, never here. No admin.staff.read policy row exists
+   in SLICE_S5_CONTRACT.md §3's table (staff PII, like admin.audit.read's raw events, is least-privilege
+   by construction) -- this page enforces the SAME SuperAdmin-only bar the desk's nav visibility already
+   implies, using the SAME IStaffRoleResolver AdminLayout reads for nav filtering, so a non-SuperAdmin (or
+   anonymous) request that reaches this URL directly renders an honest access-denied message, never the
+   staff roster's PII.
+
+   Every form/row below carries the data-testid + field-name WIRE CONTRACT literally specified by
+   backend/e2e/admin-host.e2e.mjs's own header comment (SLICE_S5_CONTRACT.md §10.3's live-E2E leg) --
+   that file is the test-author's authoritative target for this exact surface; this markup implements TO
+   it, not to an independently-invented shape. *@
+@page "/staff"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.staff_roles.title"]</PageTitle>
+
+@if (!_canView)
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.staff_roles.title"]</h1>
+        <p>@Strings["admin.staff_roles.access_denied"]</p>
+    </div>
+}
+else
+{
+    @if (Notice is not null)
+    {
+        @if (Error == "1")
+        {
+            <p class="admin-badge admin-badge--danger" data-testid="action-denied">@(Strings[Notice]) @Detail</p>
+        }
+        else
+        {
+            <p class="admin-badge">@(Strings[Notice]) @Detail</p>
+        }
+    }
+
+    <div class="admin-card">
+        <h1>@Strings["admin.staff_roles.title"]</h1>
+        <p>@Strings["admin.staff_roles.body"]</p>
+    </div>
+
+    <div class="admin-card">
+        <h2>@Strings["admin.staff_roles.provision.title"]</h2>
+        <form data-testid="staff-provision-form" method="post" action="/staff/provision" class="admin-form">
+            <AntiforgeryToken />
+            <label class="admin-field">
+                <span>@Strings["admin.staff_roles.provision.external_subject"]</span>
+                <input class="admin-input" name="externalSubject" required />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.staff_roles.provision.email"]</span>
+                <input class="admin-input" type="email" name="email" required />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.staff_roles.provision.display_name"]</span>
+                <input class="admin-input" name="displayName" required />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.staff_roles.provision.region"]</span>
+                <input class="admin-input" name="region" maxlength="2" required />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.staff_roles.reason_label"]</span>
+                <input class="admin-input" name="reason" required />
+            </label>
+            <button type="submit" class="admin-button">@Strings["admin.staff_roles.action.provision"]</button>
+        </form>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-table-wrap">
+            <table class="admin-data admin-table">
+                <thead>
+                    <tr>
+                        <th>@Strings["admin.staff_roles.table.email"]</th>
+                        <th>@Strings["admin.staff_roles.table.display_name"]</th>
+                        <th>@Strings["admin.staff_roles.table.status"]</th>
+                        <th>@Strings["admin.staff_roles.table.region"]</th>
+                        <th>@Strings["admin.staff_roles.table.roles"]</th>
+                        <th>@Strings["admin.staff_roles.table.actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _staff)
+                    {
+                        <tr data-testid="@($"staff-row-{s.Id}")">
+                            <td>
+                                @s.Email
+                                <div class="admin-dim" data-testid="@($"staff-external-subject-{s.Id}")">@s.ExternalSubject</div>
+                            </td>
+                            <td>@s.DisplayName</td>
+                            <td>
+                                <span class="admin-badge @(s.Status == "active" ? "" : "admin-badge--danger")">
+                                    @Strings[s.Status == "active" ? "admin.staff_roles.status.active" : "admin.staff_roles.status.deactivated"]
+                                </span>
+                            </td>
+                            <td>@s.Region</td>
+                            <td>
+                                <div class="admin-role-list">
+                                    @if (s.ActiveGrantRoleCodes.Count == 0)
+                                    {
+                                        <span class="admin-dim">@Strings["admin.staff_roles.no_active_grants"]</span>
+                                    }
+                                    @foreach (var roleCode in s.ActiveGrantRoleCodes)
+                                    {
+                                        <form data-testid="@($"staff-revoke-form-{s.Id}-{roleCode}")" method="post" action="@($"/staff/{s.Id}/revoke/{roleCode}")" class="admin-inline-form">
+                                            <AntiforgeryToken />
+                                            <span class="admin-badge">@roleCode</span>
+                                            <input class="admin-input admin-input--sm" name="reason" placeholder="@Strings["admin.staff_roles.reason_label"]" required />
+                                            <button type="submit" class="admin-button admin-button--ghost admin-button--sm">@Strings["admin.staff_roles.action.revoke"]</button>
+                                        </form>
+                                    }
+                                </div>
+                                <form data-testid="@($"staff-grant-form-{s.Id}")" method="post" action="@($"/staff/{s.Id}/grant")" class="admin-inline-form">
+                                    <AntiforgeryToken />
+                                    <select class="admin-input admin-input--sm" name="role">
+                                        @foreach (var roleCode in AllRoleCodes)
+                                        {
+                                            <option value="@roleCode">@roleCode</option>
+                                        }
+                                    </select>
+                                    <input class="admin-input admin-input--sm" name="reason" placeholder="@Strings["admin.staff_roles.reason_label"]" required />
+                                    <button type="submit" class="admin-button admin-button--sm">@Strings["admin.staff_roles.action.grant"]</button>
+                                </form>
+                            </td>
+                            <td>
+                                @if (s.Status == "active")
+                                {
+                                    <form data-testid="@($"staff-deactivate-form-{s.Id}")" method="post" action="@($"/staff/{s.Id}/deactivate")" class="admin-inline-form">
+                                        <AntiforgeryToken />
+                                        <input class="admin-input admin-input--sm" name="reason" placeholder="@Strings["admin.staff_roles.reason_label"]" required />
+                                        <button type="submit" class="admin-button admin-button--danger admin-button--sm">@Strings["admin.staff_roles.action.deactivate"]</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form data-testid="@($"staff-reactivate-form-{s.Id}")" method="post" action="@($"/staff/{s.Id}/reactivate")" class="admin-inline-form">
+                                        <AntiforgeryToken />
+                                        <input class="admin-input admin-input--sm" name="reason" placeholder="@Strings["admin.staff_roles.reason_label"]" required />
+                                        <button type="submit" class="admin-button admin-button--sm">@Strings["admin.staff_roles.action.reactivate"]</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

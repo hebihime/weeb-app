@@ -1,4 +1,53 @@
 {
-  "_comment": "SLICE_S5_CONTRACT.md §4 — admin-host tunables (admin.session_lifetime_hours, admin.session_revalidate_seconds, admin.user_search_daily_cap, admin.four_eyes_required, admin.staff_pii_retention_years). SCAFFOLD: this manifest ships EMPTY-VALID — a sibling, union-merge-friendly 9A manifest per S1's format (never an edit to backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json) that loads cleanly at boot with zero rows. Full row seeding (every key requiring a real consumer per the dead-tunable lint, §4) is Phase 2, once the config editor / four-eyes check / staff-PII-retention purge verb that would actually consume each key exists — seeding the keys before their consumer exists would itself fail the lint this manifest format enforces.",
-  "entries": []
+  "_comment": "SLICE_S5_CONTRACT.md §4 -- admin-host tunables. PHASE 2 (real row seeding, this pass): every key below has a REAL S5 consumer as of this pass (cookie lifetime, revalidation interval, the §5 quota cap, the executor's four-eyes step, the 13A retention verb) -- none is pending. Bounds seeded verbatim into ConfigEntryEntity.BoundsJson so ConfigBounds.ValidateAsync's generic check has real data on the actual SetValue path (OPS-3).",
+  "entries": [
+    {
+      "key": "admin.session_lifetime_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 8,
+      "requiresReason": false,
+      "bounds": [
+        1,
+        24
+      ],
+      "consumer": "StaffAuthServiceCollectionExtensions.AddStaffAuth (CookieAuthenticationOptions.ExpireTimeSpan, SLICE_S5_CONTRACT.md §1b)"
+    },
+    {
+      "key": "admin.session_revalidate_seconds",
+      "scope": "ops",
+      "type": "int",
+      "value": 300,
+      "requiresReason": false,
+      "bounds": [
+        15,
+        900
+      ],
+      "consumer": "StaffAuthServiceCollectionExtensions.RevalidateStaffSession (stamp+status revalidation interval, §1b)"
+    },
+    {
+      "key": "admin.user_search_daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 500,
+      "requiresReason": false,
+      "consumer": "admin.user_search.daily 10A quota key's cap (§5) — Pass C/S3's user-search desk"
+    },
+    {
+      "key": "admin.four_eyes_required",
+      "scope": "founder",
+      "type": "bool",
+      "value": false,
+      "requiresReason": true,
+      "consumer": "AdminActionExecutor.Execute step 5 (§1c/§4) — armed second-approver placeholder"
+    },
+    {
+      "key": "admin.staff_pii_retention_years",
+      "scope": "founder",
+      "type": "int",
+      "value": 6,
+      "requiresReason": true,
+      "consumer": "13A retention_expiry Pseudonymize verb for deactivated admin.staff_accounts rows (§6)"
+    }
+  ]
 }

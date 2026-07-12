@@ -4,6 +4,7 @@ using Svac.AdminHost.Desks;
 using Svac.AdminHost.Domain.Auth;
 using Svac.AdminHost.Domain.Bootstrap;
 using Svac.AdminHost.Domain.DependencyInjection;
+using Svac.AdminHost.Staff;
 using Svac.DomainCore.Config;
 using Svac.DomainCore.Contracts.Api;
 using Svac.DomainCore.Contracts.Policy;
@@ -77,6 +78,9 @@ builder.Services.AddStaffAuth(connectionString, devSeamsEnabled, entraConfig);
 // SLICE_S5_CONTRACT.md §8 seam 1: the desk-registration seam's first live registrant. Every later desk
 // slice adds itself with one more line here — zero edits to AdminLayout/AdminNav.
 builder.Services.AddSingleton<IDeskModule, DashboardDeskModule>();
+// SLICE_S5_CONTRACT.md §0/§8 seam 1/3 (Pass B): the Staff & Roles desk — the second live registrant,
+// proving the seam composes (zero edits to DashboardDeskModule or AdminLayout to add it).
+builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.StaffRolesDeskModule>();
 
 builder.Services.AddRazorComponents();
 builder.Services.AddAntiforgery();
@@ -98,6 +102,12 @@ app.MapGet("/health", () => Results.Ok(new HealthStatus("healthy", DateTimeOffse
 // challenge redirect (prod/staging, only mapped when Entra is actually configured — absence law), and
 // sign-out. All three carry "admin.host.transport" — never a second pre-auth-reachability row.
 app.MapStaffAuthEndpoints(devSeamsEnabled, entraConfig.IsComplete);
+
+// SLICE_S5_CONTRACT.md §0/§1c/§8 seam 3 (Pass B): the Staff & Roles desk's real HTTP form-post surface —
+// provision/deactivate/reactivate/role_grant/role_revoke, every one routed through
+// IAdminActionExecutor. Carries "admin.host.transport" exactly like MapStaffAuthEndpoints above (the
+// specific admin.staff.* Authorize + audit happens INSIDE the executor, never at this transport layer).
+app.MapStaffRolesEndpoints();
 
 // SLICE_S5_CONTRACT.md §3/§8 seam 1: "admin.host.transport" maps EVERY Razor Component endpoint
 // (the sign-in page + every desk page) honestly for RequireMutationsPolicyMapped — attached UNIFORMLY

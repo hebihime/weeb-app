@@ -134,14 +134,14 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
     // Builds the REAL union (CorePolicyTableSource + AdminPolicyTableSource) + the REAL grant-table
     // resolver over the SAME adminDb the executor itself uses — never a hand-rolled test double
     // standing in for the Role axis (L30: exercise the real chokepoint).
-    private static IPolicyTable RealPolicyTable() =>
+    private static PolicyTable RealPolicyTable() =>
         new PolicyTable(new IPolicyTableSource[]
         {
             new CorePolicyTableSource(),
             new Svac.AdminHost.Domain.Policy.AdminPolicyTableSource(),
         });
 
-    private static IPolicyEngine RealPolicyEngine(IPolicyTable table, AdminDbContext adminDb) =>
+    private static PolicyEngine RealPolicyEngine(IPolicyTable table, AdminDbContext adminDb) =>
         new PolicyEngine(table, staffRoleResolver: new Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver(adminDb));
 
     private static Svac.AdminHost.Domain.Execution.AdminActionExecutor NewExecutor(AdminDbContext adminDb, CoreDbContext coreDb)
@@ -389,7 +389,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         var executorB = NewExecutor(adminDbB, coreDbB);
         var target = new TargetRef("staff_account", targetId);
 
-        Func<AdminDbContext, Task> Grant(AdminDbContext db) => async ctx =>
+        Func<RequestContext, Task> Grant(AdminDbContext db) => async _ =>
         {
             db.StaffRoleGrants.Add(new Svac.AdminHost.Domain.Persistence.StaffRoleGrantEntity
             {
@@ -405,8 +405,8 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
             await db.SaveChangesAsync();
         };
 
-        var taskA = executorA.Execute(CallerCtx(superAdmin, "grant-race-a"), "admin.staff.role_grant", target, "grant-race drill", _ => Grant(adminDbA)(_));
-        var taskB = executorB.Execute(CallerCtx(superAdmin, "grant-race-b"), "admin.staff.role_grant", target, "grant-race drill", _ => Grant(adminDbB)(_));
+        var taskA = executorA.Execute(CallerCtx(superAdmin, "grant-race-a"), "admin.staff.role_grant", target, "grant-race drill", Grant(adminDbA));
+        var taskB = executorB.Execute(CallerCtx(superAdmin, "grant-race-b"), "admin.staff.role_grant", target, "grant-race drill", Grant(adminDbB));
 
         var results = await Task.WhenAll(taskA, taskB); // neither call may throw unhandled — the race is idempotent, not a crash
         Assert.All(results, r => Assert.IsType<Svac.AdminHost.Domain.Execution.AdminActionResult.Success>(r));

@@ -195,3 +195,97 @@ a:hover {
   color: var(--admin-danger);
   border-color: var(--admin-danger);
 }
+
+/* Staff & Roles desk (SLICE_S5_CONTRACT.md §0/§8 seam 1, Pass B) — additive, same token set, same
+   neutral-professional register (Sky action, radius <=16, no candy, no Black 900). */
+
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-input);
+  padding: 8px 10px;
+  min-width: 160px;
+}
+
+.admin-input:focus {
+  outline: 2px solid var(--admin-action);
+  outline-offset: 1px;
+}
+
+.admin-input--sm {
+  min-width: 96px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.admin-button--sm {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.admin-button--danger {
+  border-color: var(--admin-danger);
+  background: var(--admin-danger);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--admin-hairline);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.admin-inline-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 6px 0;
+  flex-wrap: wrap;
+}
+
+.admin-dim {
+  color: var(--admin-dim);
+  font-size: 13px;
+}

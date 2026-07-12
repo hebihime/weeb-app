@@ -10,6 +10,7 @@ using Svac.AdminHost.Auth;
 using Svac.AdminHost.Desks;
 using Svac.AdminHost.Domain.DependencyInjection;
 using Svac.AdminHost.Domain.Persistence;
+using Svac.AdminHost.Staff;
 using Svac.DomainCore.DependencyInjection;
 using Svac.DomainCore.Hosting;
 using Svac.DomainCore.Persistence;
@@ -62,6 +63,11 @@ public sealed class AdminHostFixture : IAsyncLifetime
         // DevSeams transport is the only sign-in path this fixture exercises, exactly as it is in dev.
         builder.Services.AddStaffAuth(connectionString, devSeamsEnabled: true, new StaffAuthEntraConfig(null, null, null));
         builder.Services.AddSingleton<IDeskModule, DashboardDeskModule>();
+        // Pass B: the Staff & Roles desk — kept in sync with Program.cs's own registration so this
+        // fixture's "wired EXACTLY like Svac.AdminHost's own Program.cs" promise (this file's own doc
+        // comment) stays true, and the boot-refusal checks below (RequireMutationsPolicyMapped/
+        // RequireAdminActionsCovered) exercise the REAL composition, including MapStaffRolesEndpoints.
+        builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.StaffRolesDeskModule>();
         builder.Services.AddRazorComponents();
         builder.Services.AddAntiforgery();
 
@@ -71,6 +77,7 @@ public sealed class AdminHostFixture : IAsyncLifetime
         _app.UseAntiforgery();
         _app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new Svac.DomainCore.Contracts.Api.HealthStatus("healthy", DateTimeOffset.UtcNow)));
         _app.MapStaffAuthEndpoints(devSeamsEnabled: true, entraConfigured: false);
+        _app.MapStaffRolesEndpoints();
         _app.MapRazorComponents<Svac.AdminHost.Components.App>()
             .WithMetadata(new Svac.DomainCore.Contracts.Policy.PolicyActionAttribute("admin.host.transport"))
             .AddEndpointFilter(new PolicyEnforcementFilter("admin.host.transport"));
