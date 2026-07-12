@@ -704,3 +704,28 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260712035346_AddEventsAuditReadIndexes') THEN
+    CREATE INDEX "IX_events_audit_actor_ref_recorded_at" ON core.events_audit (actor_ref, recorded_at DESC);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260712035346_AddEventsAuditReadIndexes') THEN
+    CREATE INDEX "IX_events_audit_event_type_recorded_at" ON core.events_audit (event_type, recorded_at DESC);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260712035346_AddEventsAuditReadIndexes') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260712035346_AddEventsAuditReadIndexes', '10.0.9');
+    END IF;
+END $EF$;
+COMMIT;
+
