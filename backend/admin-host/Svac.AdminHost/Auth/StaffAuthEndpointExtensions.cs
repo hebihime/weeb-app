@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -50,9 +51,20 @@ public static class StaffAuthEndpointExtensions
         StaffSignInPipeline pipeline,
         IStaffContextProvider contextProvider,
         AdminDbContext adminDb,
+        IAntiforgery antiforgery,
         HttpContext httpContext,
         CancellationToken ct)
     {
+        // SECURITY_REVIEW_S5.md S5-11 — before any mutation/executor call, exactly like the config/staff
+        // handlers. Matches the "unknown_fixture" refusal below verbatim (a plain redirect, no audit) —
+        // this leg has no resolved subject/claims yet (the antiforgery check runs before ResolveClaims),
+        // so there is no admin.signin.refused audit to reuse without inventing a new one; the SAME
+        // no-audit shape this handler already uses for "unknown_fixture" is the existing pattern to match.
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return Results.Redirect("/signin?refused=csrf");
+        }
+
         var fixtureKey = httpContext.Request.Form["fixture"].ToString();
         var claims = await transport.ResolveClaims(fixtureKey, ct);
         if (claims is null)

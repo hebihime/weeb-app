@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Svac.AdminHost.ConfigRegistry;
 using Svac.AdminHost.Domain.Persistence;
 using Svac.DomainCore.Persistence;
 using Xunit;
@@ -8,11 +10,12 @@ using Xunit;
 namespace Svac.Tests.AdminHost;
 
 /// <summary>
-/// SLICE_PLAYBOOK's deferred-finding discipline — the S5 DEFER rows that need a LIVE HTTP round-trip
+/// SLICE_PLAYBOOK's deferred-finding discipline — S5 DEFER/fixNow rows that need a LIVE HTTP round-trip
 /// against the real <see cref="AdminHostFixture"/> composition to prove (never provable at the direct-
-/// call level, unlike DeferredFindingsProofTests.cs's own rows). Each is a Skip-annotated proof test
-/// documenting the exact finding + the shape that would fail the moment someone un-Skips it — none are
-/// fixed in this pass, see SECURITY_REVIEW_S5.md's DEFER table.
+/// call level, unlike DeferredFindingsProofTests.cs's own rows). SECURITY_REVIEW_S5.md's "Round 2
+/// (orchestrator pull-forward)" moved S5-11 and S5-14 (and S5-12's admin-host half, added below) from
+/// DEFER to FIX NOW — their tests are real, green, un-Skipped regression tests now. Every OTHER test in
+/// this file stays a Skip-annotated proof test documenting a finding still on the DEFER table.
 /// </summary>
 [Collection("AdminHostHttp")]
 public sealed class DeferredFindingsHttpProofTests(AdminHostFixture fixture)
@@ -25,6 +28,13 @@ public sealed class DeferredFindingsHttpProofTests(AdminHostFixture fixture)
 
     private CoreDbContext NewCoreDb() => new(
         new DbContextOptionsBuilder<CoreDbContext>().UseNpgsql(fixture.ConnectionString).Options);
+
+    private static string ExtractAntiforgeryToken(string html)
+    {
+        var m = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]*)\"");
+        Assert.True(m.Success, "no <input name=\"__RequestVerificationToken\" ...> found on the page");
+        return m.Groups[1].Value;
+    }
 
     private static async Task<string> Get(HttpClient client, string path) =>
         await (await client.GetAsync(path)).Content.ReadAsStringAsync();
@@ -63,45 +73,128 @@ public sealed class DeferredFindingsHttpProofTests(AdminHostFixture fixture)
     }
 
     // ------------------------------------------------------------------------------------------------
-    // S5-11 (LOW, Lens5 F1): every config/staff mutation endpoint reads its antiforgery token off
-    // Request.Form MANUALLY (never a [FromForm]-bound parameter, which is what would let ASP.NET Core's
-    // built-in automatic antiforgery validation opt in) and never calls IAntiforgery.ValidateRequestAsync
-    // itself. app.UseAntiforgery() alone does not retroactively validate a minimal-API handler that reads
-    // the form by hand — the token minted by <AntiforgeryToken /> is decorative unless SOMETHING calls
-    // ValidateRequestAsync. Mitigated today by SameSite=Lax (a genuine cross-site POST never carries the
-    // cookie at all), but that is the ONLY thing standing between a same-site CSRF vector (an XSS
-    // elsewhere on the same origin, an open redirect, a misconfigured subdomain) and a real mutation.
+    // S5-11 (LOW, Lens5 F1) — FIXED (Round 2 pull-forward): every config/staff mutation endpoint used to
+    // read its antiforgery token off Request.Form MANUALLY (never a [FromForm]-bound parameter, which is
+    // what would let ASP.NET Core's built-in automatic antiforgery validation opt in) and NEVER called
+    // IAntiforgery.ValidateRequestAsync itself. app.UseAntiforgery() alone does not retroactively validate
+    // a minimal-API handler that reads the form by hand — the token minted by <AntiforgeryToken /> was
+    // decorative unless SOMETHING calls ValidateRequestAsync. Fixed: every mutation handler now calls
+    // AntiforgeryGate.IsValid (Svac.AdminHost.AntiforgeryGate) as the very first thing it does, before any
+    // mutation/executor call, and returns its OWN existing denied-refusal shape on failure (never a new
+    // shape) — for the config editor that is RedirectToConfigPage(..., errorKind: "denied", ...), never a
+    // raw 400 (there is no pre-existing 400 shape in this handler family to reuse, and inventing one would
+    // violate "match the existing pattern, do not invent a new one"). This test proves the REJECTION
+    // itself: a tokenless mutation POST no longer commits — the stored value stays byte-identical and the
+    // response is the standard denied redirect, never the silent 302-on-success it used to be.
     // ------------------------------------------------------------------------------------------------
-    [Fact(Skip = "deferred: SECURITY_REVIEW_S5.md S5-11 (config/staff mutation endpoints manually bind Request.Form and never call IAntiforgery.ValidateRequestAsync -- mitigated only by SameSite=Lax) -> call ValidateRequestAsync on every mutation POST")]
+    [Fact]
     public async Task ConfigEditorAntiforgery_TokenlessPost_Rejected()
     {
+        const string key = "admin.session_lifetime_hours"; // real v0-batch key: bounds [1,24] (SLICE_S5_CONTRACT.md §4)
+        using (var coreDbSeed = NewCoreDb())
+        {
+            // This fixture never runs the v0-batch manifest loader (it migrates only, mirrors every other
+            // HTTP test class in this collection) -- seed the real key by hand, exactly like
+            // ConfigEditorBoundsTests.cs does for the same key.
+            await AdminTestSupport.SeedConfigEntry(coreDbSeed, key, "ops", "int", "8", requiresReason: false, boundsJson: "[1,24]");
+        }
+
         var client = await SignInAs("superadmin");
 
+        using var coreDbBefore = NewCoreDb();
+        var before = await coreDbBefore.ConfigEntries.Where(e => e.Key == key).Select(e => e.ValueJson).SingleAsync();
+
         // A real ops-scope key, posted with NO antiforgery token field at all.
-        var res = await PostForm(client, "/config/admin.session_lifetime_hours/edit", new Dictionary<string, string>
+        var res = await PostForm(client, $"/config/{key}/edit", new Dictionary<string, string>
         {
             ["newValue"] = "5",
             ["reason"] = "s5-11 tokenless drill",
         });
 
-        // Desired: a tokenless mutation POST is REJECTED (400) once ValidateRequestAsync is actually
-        // called. Today it silently proceeds (a 302 redirect on success, since nothing validates the
-        // token's presence at all) -- SameSite=Lax is the only real protection in place.
-        Assert.Equal(HttpStatusCode.BadRequest, res.Status);
+        // Desired (as actually implemented): a tokenless mutation POST is REJECTED — the handler's own
+        // denied-redirect shape, never the 302-on-success it used to silently return. Today (pre-fix) this
+        // would have been a 302 redirect straight to the saved-notice with the value actually changed.
+        Assert.Equal(HttpStatusCode.Redirect, res.Status);
+        Assert.Contains("errorKind=denied", res.Location ?? "", StringComparison.Ordinal);
+
+        using var coreDbAfter = NewCoreDb();
+        var after = await coreDbAfter.ConfigEntries.Where(e => e.Key == key).Select(e => e.ValueJson).SingleAsync();
+        Assert.Equal(before, after); // byte-identical -- the tokenless POST never committed.
     }
 
     // ------------------------------------------------------------------------------------------------
-    // S5-14 (LOW, Lens6): UserSearch.razor.cs's OnInitializedAsync returns BEFORE ever calling
-    // UserSearchExecutionService.Execute when Query is empty/whitespace or QueryClassRaw fails to parse
-    // -- so that GET request is neither audited (admin.user_search.executed) nor quota-consumed
-    // (admin.user_search_daily_cap), deviating from SLICE_S5_CONTRACT.md §0's own "EVERY query (even
-    // empty) is audited ... and quota-consumed." Not an enumeration vector (the page renders identically
-    // either way) -- a detection-completeness gap: a scripted zero-length-query flood never shows up in
-    // the audit trail or against the daily cap at all.
+    // S5-12 (LOW, Lens5 F2) admin-host half — FIXED (Round 2 pull-forward): HandleConfirm now re-reads the
+    // entry and refuses a set-scope key itself (mirrors HandlePropose's own guard), so the write-refusal
+    // no longer rests on HandlePropose's single line alone. This drills the confirm endpoint DIRECTLY with
+    // a hand-minted confirmToken for a set-scope key — the exact bypass HandlePropose's own check cannot
+    // reach (HandlePropose never even mints a token for a set-scope key; a hand-crafted POST straight at
+    // /confirm is the only way to exercise this line). The domain-core half (ConfigRegistry.SetValue's own
+    // scope assert) stays DEFERRED — see DeferredFindingsProofTests.SetValue_SetScopeKey_Refused (Skip).
     // ------------------------------------------------------------------------------------------------
-    [Fact(Skip = "deferred: SECURITY_REVIEW_S5.md S5-14 (UserSearch.razor.cs returns on an empty/malformed query BEFORE calling UserSearchExecutionService.Execute -- that request is neither audited nor quota-consumed) -> move the empty-term decision into the service as a typed outcome")]
+    [Fact]
+    public async Task ConfigConfirm_SetScopeKey_RefusedEvenWithAValidHandCraftedToken()
+    {
+        const string key = "test.admin.s5_12_http.set_scope_key";
+        using (var coreDb = NewCoreDb())
+        {
+            await AdminTestSupport.SeedConfigEntry(coreDb, key, "set", "int", "8", requiresReason: false);
+        }
+
+        var client = await SignInAs("superadmin");
+
+        // A valid antiforgery token from THIS SAME session (S5-11 is enforced now too) — isolating the
+        // scope-recheck specifically, never conflating it with an antiforgery refusal.
+        var page = await Get(client, "/config");
+        var antiforgeryToken = ExtractAntiforgeryToken(page);
+
+        // Mint the EXACT confirmToken HandlePropose would have minted, straight from the DI container —
+        // HandlePropose itself never reaches this key (its own scope guard refuses first), so this is the
+        // only way to exercise HandleConfirm's own independent recheck.
+        using var scope = fixture.NewScope();
+        var confirmToken = scope.ServiceProvider.GetRequiredService<ConfigConfirmToken>();
+        const string newValueJson = "999";
+        const string reason = "s5-12 http-half drill";
+        var sealedToken = confirmToken.Mint(key, newValueJson, reason);
+
+        var res = await PostForm(client, $"/config/{Uri.EscapeDataString(key)}/confirm", new Dictionary<string, string>
+        {
+            ["newValue"] = newValueJson,
+            ["reason"] = reason,
+            ["confirmToken"] = sealedToken,
+            ["__RequestVerificationToken"] = antiforgeryToken,
+        });
+
+        Assert.Equal(HttpStatusCode.Redirect, res.Status);
+        Assert.Contains("errorKind=denied", res.Location ?? "", StringComparison.Ordinal);
+
+        using var coreDbAfter = NewCoreDb();
+        var unchanged = await coreDbAfter.ConfigEntries.Where(e => e.Key == key).Select(e => e.ValueJson).SingleAsync();
+        Assert.Equal("8", unchanged); // byte-identical -- HandleConfirm's own recheck refused it, never committed.
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // S5-14 (LOW, Lens6) — FIXED (Round 2 pull-forward): UserSearch.razor.cs's OnInitializedAsync used to
+    // return BEFORE ever calling UserSearchExecutionService.Execute when Query was empty/whitespace or
+    // QueryClassRaw failed to parse -- so that GET request was neither audited (admin.user_search.executed)
+    // nor quota-consumed, deviating from SLICE_S5_CONTRACT.md §0's own "EVERY query (even empty) is
+    // audited ... and quota-consumed." Fixed: the empty/invalid-term decision moved INTO
+    // UserSearchExecutionService.Execute (a new raw-string overload) as a typed outcome, so the audited
+    // executor call — and the quota Consume inside its own work delegate — now runs regardless of query
+    // content; the page still renders honest-dark (zero fabricated rows) exactly as before.
+    // ------------------------------------------------------------------------------------------------
+    [Fact]
     public async Task Execute_EmptyTerm_StillAuditsAndConsumes()
     {
+        using (var coreDbSeed = NewCoreDb())
+        {
+            // This fixture never runs the v0-batch manifest loader -- seed the 10A cap QuotaService.Consume
+            // actually reads (the DERIVED "quota.<key>.cap" key, Svac.AdminHost.Domain.Search.AdminQuotaKeys'
+            // own doc comment), exactly like UserSearchExecutionServiceTests.SeedQuotaCap does. Without it,
+            // ConfigRegistry.GetValue throws inside the executor's work delegate, the WHOLE transaction (audit
+            // event included) rolls back, and this test would fail for an infra reason, not the S5-14 one.
+            await AdminTestSupport.SeedConfigEntry(coreDbSeed, $"quota.{Svac.AdminHost.Domain.Search.AdminQuotaKeys.UserSearchDaily}.cap", "ops", "int", "500", requiresReason: false);
+        }
+
         var client = await SignInAs("superadmin");
 
         using var adminDb = NewAdminDb();

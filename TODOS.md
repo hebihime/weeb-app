@@ -54,7 +54,11 @@
   before the first `events_heatmap_provenance` row.
 - **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
   before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
-- **NEXT:** S5 Phase 3 (security review) → Phase 4 (retro) → DONE. Then S6 (anime test) awaits greenlight.
+- **NEXT (PARALLEL fan-out, greenlit by Julien 2026-07-12):** finish S5 (Phase 3 round-2 pull-forwards running → Phase 4 retro → DONE), while:
+  - **S4 (notifications-spine): Phase 0 RUNNING** (workflow `wn9sngv80`, template) — design panel → `SLICE_S4_CONTRACT.md` for ratification. No contract existed; deps S1+S3 (done). Disjoint module `backend/modules/notifications`.
+  - **S6 (anime-engine): READY to build** — `SLICE_S6_CONTRACT.md` already RATIFIED (§13); OQ-2 (20 short-form ids) delegated to build (reversible), OQ-1 (archetype count/names/palettes) has the ported 9 as working v1, **Julien's final call due before S9 first-ship, NOT before S6**. Substrate (FieldEncryptionPurpose.AnimeAnswers) landed in Phase-2a. Fans out the moment S5 lands.
+  - **Lane hygiene:** parallel build lanes each run in their own git worktree with a port-isolated compose stack (§7 lane rule) so their live-E2E gates (fixed :8090/:8091) don't collide; unit tests use random-port Testcontainers (safe concurrent).
+  - After S4/S6 land, **G1 opens:** S8 (con-registry, needs S1+S5) → S9 (web-funnel, first `web/` lane, needs S6+S8).
 
 ## Least-privileged runtime DB role (pre-prod security hardening)
 - **What:** A dedicated runtime Postgres role with NO DELETE and NO DDL, used by every host at runtime;

@@ -16,17 +16,45 @@ same file."
 None. This pass required no founder escalation and ratified no open question — every finding resolved
 inside the fixNow/defer/documented-residual disposition without needing a ruling above the review itself.
 
-## FIX NOW — 5 findings, each with a now-green regression test
+## Round 2 (orchestrator pull-forward) — 2026-07-12
+
+SLICE_PLAYBOOK's disposition rule defers MEDIUM/LOW findings, but it does not license deferring a finding
+that is CHEAP to fix and is itself a trust/contract-compliance gap — SLICE_PLAYBOOK's own "never defer
+cheap trust/contract-compliance fixes" rule. Three of the nine originally-deferred findings are exactly
+that: each is a small, mechanical, already-scoped fix with an existing Skip-annotated proof test already
+describing the desired shape — not a design question, not blocked on infrastructure (unlike S5-02/S5-04's
+Julien-executed-action residuals), not a false-positive risk (unlike S5-06/S5-07/S5-08/S5-09/S5-10's
+arch-test/executor-internals findings, which stay genuinely deferred). Pulled forward, fixed, and moved to
+FIX NOW below:
+
+- **S5-11** (antiforgery never validated on staff mutation POSTs) — a one-line `ValidateRequestAsync` call
+  per handler behind one shared helper (`Svac.AdminHost.AntiforgeryGate`), zero design risk.
+- **S5-14** (empty/invalid user-search query skips audit+quota) — moving an existing early-return one call
+  frame deeper, into the already-audited service, as a typed outcome.
+- **S5-12, admin-host half only** (`HandleConfirm` never rechecked scope) — mirrors `HandlePropose`'s own
+  existing one-line guard verbatim. **S5-12's domain-core half (`ConfigRegistry.SetValue`'s own scope
+  assert) stays DEFERRED** — domain-core contracts are out of scope for this pass by explicit instruction
+  ("never edit domain-core contracts"); see its own DEFER row below.
+
+None of the three touched a domain-core contract, weakened an existing assertion, or introduced a new
+refusal shape — every fix reuses the handler's OWN existing denied-redirect pattern (or, for the DevSeams
+sign-in handler, its own existing no-audit `unknown_fixture`-style redirect), per "match the existing
+pattern, do not invent a new one."
+
+## FIX NOW — 8 findings, each with a now-green regression test
 
 | id | sev | finding | fix | test (file) |
 |---|---|---|---|---|
+| S5-11 | LOW, Lens5 F1 | Every config/staff mutation endpoint (2 config + 5 staff + 1 DevSeams sign-in) read its antiforgery token off `Request.Form` manually and never called `IAntiforgery.ValidateRequestAsync` — `app.UseAntiforgery()` alone never retroactively validates a hand-read form; mitigated ONLY by `SameSite=Lax` | new shared helper `AntiforgeryGate.IsValid` (`Svac.AdminHost/AntiforgeryGate.cs`); every one of the 8 handlers calls it as the FIRST thing it does (before any mutation/executor call) and returns its own existing denied-refusal shape on failure — `RedirectToConfigPage(..., errorKind: "denied", ...)` for the two config handlers, `RedirectToStaffPage("admin.staff_roles.notice.error", isError: true)` for the five staff handlers, `Results.Redirect("/signin?refused=csrf")` (matching the handler's own pre-existing, un-audited `unknown_fixture` redirect shape) for DevSeams sign-in | `DeferredFindingsHttpProofTests.ConfigEditorAntiforgery_TokenlessPost_Rejected` (a tokenless mutation POST is now denied — redirect with `errorKind=denied`, stored value byte-identical, never the silent 302-on-success it used to be) |
+| S5-12 (admin-host half) | LOW, Lens5 F2 | `HandleConfirm` never rechecked `entry.Scope` — the set-scope write-refusal rested entirely on `HandlePropose`'s single line, reachable only because `HandlePropose` itself mints the confirm token | `HandleConfirm` now re-reads the entry via `configRegistry.ListEntries` after the confirmToken verify and before `CommitEdit`, refusing (`RedirectToConfigPage` denied) if the entry is null or `Scope == "set"` — mirrors `HandlePropose`'s own existing guard verbatim. Domain-core's `ConfigRegistry.SetValue` scope assert (the other half) stays DEFERRED, see below | `DeferredFindingsHttpProofTests.ConfigConfirm_SetScopeKey_RefusedEvenWithAValidHandCraftedToken` (a hand-minted, otherwise-valid confirmToken for a set-scope key — the one path that bypasses `HandlePropose` entirely — is still refused; value byte-identical) |
+| S5-14 | LOW, Lens6 | `UserSearch.razor.cs`'s `OnInitializedAsync` returned BEFORE calling `UserSearchExecutionService.Execute` when `Query` was empty/whitespace or `QueryClassRaw` failed to parse — that request was neither audited (`admin.user_search.executed`) nor quota-consumed, deviating from §0's "EVERY query (even empty) is audited ... and quota-consumed" | the empty/invalid-term decision moved INTO `UserSearchExecutionService` as a new raw-string `Execute` overload (the typed-enum overload is unchanged, byte-identical behavior for every existing caller) — the SAME audited executor call (auth→4A→quota→audit) now runs for an empty term or an unparseable query class too, rendering the SAME honest-dark zero-rows shape `EmptyUserSearchSource` itself uses, never calling the real search source with a query that could never mean anything. `UserSearch.razor.cs` now only skips the call when NEITHER `query` nor `queryClass` was submitted at all (the true bare-landing case, unchanged) | `DeferredFindingsHttpProofTests.Execute_EmptyTerm_StillAuditsAndConsumes` (an explicitly empty query + an unparseable `queryClass` still appends exactly one `admin.user_search.executed` event) |
 | S5-01 | HIGH | Ungated `GET /config` leaked the FULL 9A registry to anonymous/any-staff requests — no `ActorKind.Staff` check, no policy row, no `_canView` guard | new `admin.config.read` policy row (`AdminPolicyTableSource.cs`, StaffRoles = {SuperAdmin, EconomyOps} — the union of every role that can commit at least one `core.config.set.*` action); `ConfigRegistry.razor.cs`'s `OnInitializedAsync` now gates via a direct `IPolicyEngine.Authorize` call (mirrors Dashboard.razor.cs's own pattern) before ever calling `ListEntries()`; `ConfigRegistry.razor` wraps the whole page body in `@if (_canView)`/`else` (access-denied card); `ConfigRegistryDeskModule.VisibleTo` narrowed from all six roles to {SuperAdmin, EconomyOps} so the nav link itself obeys the same allowlist | `ConfigRegistryReadGateHttpTests.cs` (4 live-HTTP tests: SafetyAgent and Anonymous see zero row/value testids and the raw value never appears in the response body; SuperAdmin and EconomyOps are unaffected) |
 | S5-02 | MEDIUM→trust | `EntraClaimTypes.HasMfaClaim` treated ANY non-empty `acr` claim as MFA-satisfied (`!IsNullOrWhiteSpace`) — a plain `pwd`/`acr:1` single-factor sign-in with an unrelated authentication-context claim would have passed | `HasMfaClaim` now takes the tenant's configured `acr` value set (`StaffAuthEntraConfig.AcrValues`, wired from `SVAC_ENTRA_MFA_ACR_VALUES`, comma-separated) and only counts an `acr` claim that MATCHES one of those values; an unconfigured (empty) set means `acr` contributes nothing — `amr`-contains-`mfa` alone still works, so this is strictly narrower than before, never a fail-open widening | `EntraClaimTypesTests.cs` (6 tests: the exact pre-fix "any acr" shape no longer satisfies MFA with no configured values; a matching configured value still does; amr-contains-mfa unaffected) |
 | S5-03 | CRITICAL→lockout | No last-active-SuperAdmin guard: a self-deactivate or self-revoke of `super_admin` could drop the active-SuperAdmin count to zero with no in-app recovery | new executor step 5b in `AdminActionExecutor.Execute`, between four-eyes and `work()`: `WouldZeroActiveSuperAdmins` runs a race-safe `SELECT ... FOR UPDATE` (no target-specific WHERE clause — always locks the FULL currently-active `super_admin` grant+account set) over `admin.staff_role_grants ⋈ admin.staff_accounts`, inside the SAME shared transaction; fires on `admin.staff.deactivate` (any target currently holding the grant) and `admin.staff.role_revoke` when the NEW `affectedRoleCode` parameter (threaded through `IAdminActionExecutor.Execute`/`StaffRolesEndpointExtensions.HandleRoleRevoke`, since the generic chokepoint otherwise never sees which role a revoke targets) is `super_admin`; returns `Denied("policy.denied.last_superadmin")`, audited exactly like every other `admin.action.refused` | `LastSuperAdminLockoutGuardTests.cs` (8 tests: self-deactivate/self-revoke of the lone SuperAdmin denied and untouched; a second active SuperAdmin makes it succeed; a target with no `super_admin` grant, or a revoke of a DIFFERENT role held by the lone SuperAdmin, is never blocked; two REAL concurrent Postgres transactions doing concurrent self-revoke / self-deactivate of the last two SuperAdmins — exactly one commits, one is denied BY THIS GUARD specifically, final count is always 1, never 0 or 2, neither call throws unhandled) |
 | S5-04 | HIGH/CRITICAL-in-prod | Staff DataProtection key ring persisted to `core.data_protection_keys` in PLAINTEXT unconditionally — a DB dump alone yields the raw cookie/antiforgery signing key material, enabling founder-cookie forgery | `AddStaffAuth` now branches on `devSeamsEnabled`: DevSeams (guaranteed Development-only by `ProdFieldKeyVaultGuard`) keeps the plaintext `CoreDbXmlRepository` path; every other boot chains `.ProtectKeysWithAzureKeyVault(keyIdentifier, new DefaultAzureCredential())` (new `Azure.Extensions.AspNetCore.DataProtection.Keys`/`Azure.Identity` packages) against a key identifier derived from the ALREADY-required `SVAC_KEYVAULT_ENDPOINT` (Program.cs); fails CLOSED (throws) if that identifier is null on a non-DevSeams boot — defensive, since `ProdFieldKeyVaultGuard.Enforce` already refuses boot first in that exact situation; new arch guard `DataProtectionKeyProtectionArchTests` asserts every file calling `.AddDataProtection(` also calls `.ProtectKeysWithAzureKeyVault(` in the same file, red/green-fixture proven, so a future refactor can never silently strip the chaining back out | `DataProtectionKeyVaultGuardTests.cs` (3 DI-composition tests: non-DevSeams + no key identifier throws with "S5-04" in the message; non-DevSeams + a key identifier does not throw; DevSeams unaffected) + `DataProtectionKeyProtectionArchTests.cs` (4 tests: the real repo scan is clean; red/green fixtures both directions) |
 | S5-05 | LOW→lockout | `StaffAccountsPurgeStoreExecutor` pseudonymized on `RetentionExpiry` with no status guard — an age-cutoff sweep could pseudonymize (destroying the `external_subject` Entra `oid` lookup key) and lock out an ACTIVE operator/founder, including the last SuperAdmin | no-op (`return 0`, row untouched) when `purgeClass == RetentionExpiry && row.Status != "deactivated"` — `StatutoryErasure` (a real DSR) is completely unaffected by this guard and still pseudonymizes an active row exactly as before, per its own registration | 3 new tests in `StaffPurgeTests.cs`: an active row on `RetentionExpiry` no-ops (byte-identical, `external_subject` survives); a deactivated row on `RetentionExpiry` still pseudonymizes (the guard never blocks its own intended case); an active row on `StatutoryErasure` still pseudonymizes (the guard is scoped to `RetentionExpiry` only, never a way to dodge a real erasure obligation) |
 
-## DEFER — 9 findings, Skip-annotated proof test, carried
+## DEFER — 6 findings, Skip-annotated proof test, carried
 
 | id | sev | finding | carried to |
 |---|---|---|---|
@@ -35,16 +63,15 @@ inside the fixNow/defer/documented-residual disposition without needing a ruling
 | S5-08 | MEDIUM, Lens2 | The four-eyes exemption (`AdminActionExecutor` step 5) keys off the COMPUTED least-privileged hat (`HatFor.SelectLeastPrivileged`), not "does this actor hold SuperAdmin at all" — a dual-role SuperAdmin+EconomyOps actor on `core.config.set.ops` computes hat=EconomyOps and is fail-closed over-refused when four-eyes is armed | the desk slice that next revisits `AdminActionExecutor`'s four-eyes step (test on `rolesHeld.Contains(SuperAdmin)`, not the computed hat) |
 | S5-09 | LOW-latent, Lens2 | `PolicyEngine`'s null-`StaffRoles` Role-axis skip composes with `AdminActionExecutor`'s null-hat four-eyes skip: a hypothetical FUTURE `RequiresReason` row with `StaffRoles=null` would let a zero-grant Staff actor reach `work()` completely ungated even with four-eyes armed. No shipped row hits it (every real `admin.*` row explicitly types `StaffRoles`; the one null-`StaffRoles` row, `admin.host.transport`, has `RequiresReason=false`) | the first future policy row that legitimately wants `StaffRoles=null` AND `RequiresReason=true` — guard the composition before that row ships |
 | S5-10 | LOW, Lens2 | `AdminActionExecutor.IsFourEyesArmed` swallows `KeyNotFoundException` → `false` — safe reasoning for an unseeded unit-test key, but a key DROPPED in prod (manifest edit, botched migration, manual delete) silently DISARMS the control instead of failing closed, unlike every other guard in this codebase | the ops-desk slice that next touches `admin.four_eyes_required` (fail closed on a missing key) |
-| S5-11 | LOW, Lens5 F1 | Every config/staff mutation endpoint reads its antiforgery token off `Request.Form` manually (never `[FromForm]`-bound) and never calls `IAntiforgery.ValidateRequestAsync` — `app.UseAntiforgery()` alone does not retroactively validate a hand-read form; mitigated ONLY by `SameSite=Lax` | the desk slice that next adds a mutation endpoint (call `ValidateRequestAsync` on every mutation POST, then backfill the existing five/two) |
-| S5-12 | LOW, Lens5 F2 | `ConfigRegistry.SetValue` (domain-core, the ONE place either write path touches the config table) has no scope check at all; `HandleConfirm` never rechecks scope either — the set-scope write-refusal rests entirely on a single `HandlePropose` line | the domain-core slice that next touches `ConfigRegistry.SetValue` (assert `entry.Scope != "set"` inside `SetValue` itself — out of THIS pass's scope per "never edit domain-core contracts") |
+| S5-12 (domain-core half only) | LOW, Lens5 F2 | `ConfigRegistry.SetValue` (domain-core, the ONE place either write path touches the config table) has no scope check at all — the admin-host half (`HandleConfirm` never rechecking scope) is FIXED as of Round 2, above; this is the remaining depth: `SetValue` itself still trusts every caller to have already checked scope | the domain-core slice that next touches `ConfigRegistry.SetValue` (assert `entry.Scope != "set"` inside `SetValue` itself — out of THIS pass's scope per "never edit domain-core contracts") |
 | S5-13 | LOW, Lens5 F3 | `PendingConsumerSliceLint.Validate` (labeled the "authoritative SPEC") has no `doneSlices` parameter at all, so it cannot catch a key pending on an ALREADY-DONE slice the way `dead-tunable-lint.mjs`'s node mirror does; that node mirror's own `parseDoneSlices` `\bDONE\b` match additionally has no negation handling ("NOT DONE yet" is misread as done) | the next config-manifest-touching slice (add the `doneSlices`/DONE check to the C# lint; harden the node token match) |
-| S5-14 | LOW, Lens6 | `UserSearch.razor.cs`'s `OnInitializedAsync` returns BEFORE calling `UserSearchExecutionService.Execute` when `Query` is empty/whitespace or `QueryClassRaw` fails to parse — that request is neither audited (`admin.user_search.executed`) nor quota-consumed, deviating from §0's "EVERY query (even empty) is audited ... and quota-consumed." Not an enumeration vector — a detection-completeness gap | the User Search desk's next revisit (move the empty-term decision into the service as a typed outcome) |
 
 Each id above has a `[Fact(Skip=...)]` (or node `test(..., { skip: ... })`) proof test already in the tree,
 described in its own doc comment, red the moment it is un-skipped:
 `AdminActionChokepointArchTests.cs` (S5-06, S5-07), `DeferredFindingsProofTests.cs` (S5-08, S5-09, S5-10,
-S5-12), `V0BatchManifestTests.cs` (S5-13, C# half), `dead-tunable-lint.test.mjs` (S5-13, node half),
-`DeferredFindingsHttpProofTests.cs` (S5-11, S5-14).
+S5-12 domain-core half), `V0BatchManifestTests.cs` (S5-13, C# half), `dead-tunable-lint.test.mjs` (S5-13,
+node half). S5-11, S5-14, and S5-12's admin-host half moved to FIX NOW in Round 2 — their proof tests in
+`DeferredFindingsHttpProofTests.cs` are real, green, un-Skipped regression tests now.
 
 ## DOCUMENTED — accepted residuals (no fix, honest note)
 
@@ -59,10 +86,12 @@ S5-12), `V0BatchManifestTests.cs` (S5-13, C# half), `dead-tunable-lint.test.mjs`
   "Entra servers cannot be exercised without the tenant" honesty note S5's own contract already records).
   Until then, `acr` contributes nothing to the MFA decision — `amr`-contains-`mfa` is the only live signal,
   which is a narrowing, not a weakening, of pre-fix behavior.
-- **S5-11's residual mitigation (SameSite=Lax) is real, not decorative.** A genuine cross-site POST never
-  carries the `.Svac.AdminAuth` cookie at all under `SameSite=Lax`, so the deferred gap is scoped to a
-  same-site vector (XSS elsewhere on the same origin, an open redirect, a misconfigured subdomain) — a real
-  but narrower residual than "no CSRF protection," which is why S5-11 is LOW, not HIGH.
+- **S5-11 is FIXED as of Round 2** (see the Round 2 note and FIX NOW table above) — retained here as
+  historical context for why it was scored LOW, not HIGH, while it was still deferred: its residual
+  mitigation (SameSite=Lax) was real, not decorative. A genuine cross-site POST never carried the
+  `.Svac.AdminAuth` cookie at all under `SameSite=Lax`, so the (now-closed) gap was scoped to a same-site
+  vector (XSS elsewhere on the same origin, an open redirect, a misconfigured subdomain) — a real but
+  narrower residual than "no CSRF protection at all."
 
 ## Verified sound (attacked, held)
 
@@ -131,6 +160,62 @@ tests 30, pass 28, fail 0, skipped 2 (pre-existing, unrelated)
 473 passed, 0 failed, 19 skipped, 492 total — 9 of the 19 skips are this pass's own S5 defer proofs
 (2 in Architecture: S5-06, S5-07; 7 in AdminHost: S5-08, S5-09, S5-10, S5-11, S5-12, S5-13, S5-14), the
 other 10 are pre-existing S1/S2/S3 defers unrelated to S5.
+
+## Round 2 gate result (actual — run by me, this session, 2026-07-12)
+
+```
+$ dotnet build backend/Svac.sln
+Build succeeded. 0 Warning(s). 0 Error(s).
+
+$ dotnet test backend/tests/Svac.Tests.Architecture --no-build
+Passed! - Failed: 0, Passed: 187, Skipped: 5, Total: 192, Duration: 2m 59s   (UNCHANGED from Pass 1)
+
+$ dotnet test backend/tests/Svac.Tests.AdminHost --no-build
+Passed! - Failed: 0, Passed: 100, Skipped: 5, Total: 105, Duration: 1m 31s
+  (+3 passed: the un-skipped S5-11/S5-14 tests + the new S5-12 admin-host-half test;
+   -2 skips: S5-11, S5-14 no longer deferred;
+   remaining 5 skips: S5-08, S5-09, S5-10, S5-12 (domain-core half), S5-13)
+
+$ dotnet test backend/tests/Svac.Tests.DomainCore --no-build
+Passed! - Failed: 0, Passed: 51, Skipped: 0, Total: 51   (UNCHANGED)
+
+$ dotnet test backend/tests/Svac.Tests.AimlRouter --no-build
+Passed! - Failed: 0, Passed: 51, Skipped: 2, Total: 53   (UNCHANGED)
+
+$ dotnet test backend/tests/Svac.Tests.Identity --no-build
+Passed! - Failed: 0, Passed: 87, Skipped: 5, Total: 92   (UNCHANGED)
+```
+
+Totals across all five .NET test projects: 476 passed, 0 failed, 17 skipped, 493 total — DomainCore/
+AimlRouter/Identity byte-identical to Pass 1 (51/0, 51/2, 87/5); Architecture unchanged (187/5, its own
+S5-06/S5-07 skips untouched — out of this Round 2's scope); AdminHost rose from 97/7/104 to 100/5/105.
+
+One transient `AdminActionExecutorTests` Testcontainers Postgres-connect timeout was observed on a single
+full-suite run (many concurrent Testcontainer Postgres instances contending for Docker resources) and did
+NOT reproduce on a clean re-run — infra flakiness unrelated to this pass's code, not a regression.
+
+```
+$ docker compose down -v --remove-orphans && docker compose up -d --build   (fresh boot #1)
+$ curl http://localhost:8091/health -> 200; curl http://localhost:8090/health -> 200
+$ ADMIN_HOST_E2E_TARGET=http://localhost:8091 node backend/e2e/admin-host.e2e.mjs
+admin-host e2e OK — 20/20 [ok], exit 0
+
+$ docker compose down -v --remove-orphans && docker compose up -d --build   (fresh boot #2, independent)
+$ curl http://localhost:8091/health -> 200; curl http://localhost:8090/health -> 200
+$ ADMIN_HOST_E2E_TARGET=http://localhost:8091 node backend/e2e/admin-host.e2e.mjs
+admin-host e2e OK — 20/20 [ok], exit 0
+
+$ docker compose logs admin-host | grep -iE "unhandled|exception|500 |disposed|second operation"
+zero real exceptions on either boot (the two "fail:"-level EF Core lines are the expected, benign
+__EFMigrationsHistory probe on a schema-less fresh database, logged at "fail" by EF Core's own convention
+before it creates the table and applies migrations — not an application exception)
+```
+
+Both independent fresh-boot E2E runs: 20/20 `[ok]`, exit 0, identical output. Zero real exceptions in
+either boot's admin-host logs. The one cross-jar POST (`stageRevokeThenDeniedMidSession`) stayed green on
+both runs — confirmed live, not assumed: the config value it drills stayed byte-identical whether the
+deny landed at the policy filter (grant re-read) or at the now-real antiforgery check (mismatched
+cookie/token pair across two different sessions' jars).
 
 ## Notable design decisions worth flagging explicitly
 

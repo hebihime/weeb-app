@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,7 @@ public static class StaffRolesEndpointExtensions
         HttpContext httpContext,
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
+        IAntiforgery antiforgery,
         AdminDbContext adminDb,
         CancellationToken ct)
     {
@@ -56,6 +58,13 @@ public static class StaffRolesEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        // SECURITY_REVIEW_S5.md S5-11 — every staff mutation POST validates its antiforgery token for
+        // real, before any mutation/executor call (AntiforgeryGate's own doc comment).
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToStaffPage("admin.staff_roles.notice.error", isError: true);
         }
 
         // Field names match backend/e2e/admin-host.e2e.mjs's own wire-contract comment verbatim
@@ -111,6 +120,7 @@ public static class StaffRolesEndpointExtensions
         HttpContext httpContext,
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
+        IAntiforgery antiforgery,
         AdminDbContext adminDb,
         CancellationToken ct)
     {
@@ -118,6 +128,11 @@ public static class StaffRolesEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToStaffPage("admin.staff_roles.notice.error", isError: true);
         }
 
         var reason = httpContext.Request.Form["reason"].ToString();
@@ -145,6 +160,7 @@ public static class StaffRolesEndpointExtensions
         HttpContext httpContext,
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
+        IAntiforgery antiforgery,
         AdminDbContext adminDb,
         CancellationToken ct)
     {
@@ -152,6 +168,11 @@ public static class StaffRolesEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToStaffPage("admin.staff_roles.notice.error", isError: true);
         }
 
         var reason = httpContext.Request.Form["reason"].ToString();
@@ -174,6 +195,7 @@ public static class StaffRolesEndpointExtensions
         HttpContext httpContext,
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
+        IAntiforgery antiforgery,
         AdminDbContext adminDb,
         CancellationToken ct)
     {
@@ -181,6 +203,11 @@ public static class StaffRolesEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToStaffPage("admin.staff_roles.notice.error", isError: true);
         }
 
         var form = httpContext.Request.Form;
@@ -227,6 +254,7 @@ public static class StaffRolesEndpointExtensions
         HttpContext httpContext,
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
+        IAntiforgery antiforgery,
         AdminDbContext adminDb,
         CancellationToken ct)
     {
@@ -234,6 +262,11 @@ public static class StaffRolesEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToStaffPage("admin.staff_roles.notice.error", isError: true);
         }
 
         // "role" arrives as a ROUTE segment (backend/e2e/admin-host.e2e.mjs: "POST /staff/<id>/revoke/

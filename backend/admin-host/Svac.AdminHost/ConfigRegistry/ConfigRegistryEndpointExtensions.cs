@@ -69,6 +69,14 @@ public static class ConfigRegistryEndpointExtensions
             return refusal;
         }
 
+        // SECURITY_REVIEW_S5.md S5-11: the FIRST thing any mutation POST does, before any executor/
+        // mutation call — a hand-read Request.Form field is decorative unless something actually calls
+        // ValidateRequestAsync (§ AntiforgeryGate's own doc comment).
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToConfigPage("admin.config.notice.error", errorKind: "denied", detail: null);
+        }
+
         var decodedKey = Uri.UnescapeDataString(key);
         var form = httpContext.Request.Form;
         var rawNewValue = form["newValue"].ToString();
@@ -138,6 +146,7 @@ public static class ConfigRegistryEndpointExtensions
         IAdminActionExecutor executor,
         IStaffContextProvider contextProvider,
         IConfigRegistry configRegistry,
+        IAntiforgery antiforgery,
         ConfigConfirmToken confirmToken,
         CancellationToken ct)
     {
@@ -145,6 +154,12 @@ public static class ConfigRegistryEndpointExtensions
         if (RequireStaffActor(callerCtx) is { } refusal)
         {
             return refusal;
+        }
+
+        // SECURITY_REVIEW_S5.md S5-11 — same gate as HandlePropose, before any mutation/executor call.
+        if (!await AntiforgeryGate.IsValid(antiforgery, httpContext))
+        {
+            return RedirectToConfigPage("admin.config.notice.error", errorKind: "denied", detail: null);
         }
 
         var decodedKey = Uri.UnescapeDataString(key);
@@ -157,6 +172,17 @@ public static class ConfigRegistryEndpointExtensions
         {
             // A tampered/expired/missing confirmToken never commits — fail closed, never trust the
             // resubmitted fields on their own (SLICE_S5_CONTRACT.md §4: "explicit re-confirm").
+            return RedirectToConfigPage("admin.config.notice.error", errorKind: "denied", detail: null);
+        }
+
+        // SECURITY_REVIEW_S5.md S5-12 (admin-host half): re-read the entry and refuse a set-scope key
+        // HERE too, so the write-refusal no longer rests on HandlePropose's single line alone — mirrors
+        // HandlePropose's own guard above, verbatim. The domain-core half (ConfigRegistry.SetValue's own
+        // scope assert) stays DEFERRED (never edit domain-core contracts in this pass).
+        var entries = await configRegistry.ListEntries(ct);
+        var entry = entries.FirstOrDefault(e => string.Equals(e.Key, decodedKey, StringComparison.Ordinal));
+        if (entry is null || entry.Scope == "set")
+        {
             return RedirectToConfigPage("admin.config.notice.error", errorKind: "denied", detail: null);
         }
 

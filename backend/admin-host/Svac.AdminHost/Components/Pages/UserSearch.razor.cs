@@ -59,12 +59,19 @@ public sealed partial class UserSearch
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(Query) || !Enum.TryParse<UserSearchQueryClass>(QueryClassRaw, ignoreCase: false, out var queryClass))
+        // SECURITY_REVIEW_S5.md S5-14 fix: landing on the BARE page (neither query param present at all)
+        // is still not itself a search attempt -- nothing was submitted, so there is nothing to audit yet
+        // (mirrors Dashboard.razor.cs's own reasoning, unchanged). But ANY submission -- including an
+        // explicitly EMPTY query term or an unparseable queryClass -- IS an attempt now: the empty/invalid
+        // decision moved INTO UserSearchExecutionService.Execute as a typed outcome, so §0's "EVERY query
+        // (even empty) is audited ... and quota-consumed" holds here too, never short-circuited before
+        // the audited service is reached.
+        if (Query is null && QueryClassRaw is null)
         {
-            return; // no (or malformed) query submitted -- render the form only, nothing to audit yet.
+            return;
         }
 
         _searchAttempted = true;
-        _outcome = await SearchService.Execute(ctx, queryClass, Query.Trim(), Cursor);
+        _outcome = await SearchService.Execute(ctx, QueryClassRaw, Query, Cursor);
     }
 }
