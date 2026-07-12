@@ -6,11 +6,13 @@
   branch **`wave/s3-identity`** (commits `b1fd788`→Phase-3), open as **PR #1**, NOT merged to master
   (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
   build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
-- **DECISION NEEDED — founder ruling: heatmap retention (SECURITY_REVIEW_S3 PII-4).** `account_deletion`
-  retains identifiable `events_heatmap_provenance` (S1 §1c "full-history retention") the user can't see
-  (Art.15) or erase (Art.17); no consumer-reachable StatutoryErasure path exists. Not exploitable at S3
-  (zero heatmap writers until S9/S14). Must be ruled on (Pseudonymize-on-deletion / region-conditional
-  erasure / flip export to `Withheld`) BEFORE S9/S14 writes the first row.
+- **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
+  Heatmap data is anonymized at write, so retention past account_deletion is lawful (GDPR Recital 26 —
+  anonymous data is out of scope; keep despite the originating user's erasure wish). `NotExportable` +
+  `NotApplicable`-on-deletion dispositions stay. **ACCEPTANCE BAR for S9/S14 Phase-0:** the write path
+  must produce *genuinely anonymous* cells (k-anonymity floor + NO reversible subject key surviving
+  deletion), not merely pseudonymized — pseudonymous data is still personal data and Art.17 still bites.
+  Verify irreversibility, not just "no plaintext id," before the first `events_heatmap_provenance` row.
 - **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
   before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
 - **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own

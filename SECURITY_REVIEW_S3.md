@@ -16,15 +16,18 @@ One HIGH (heatmap) is a founder escalation, not a code fix.
   not credentials. The HMAC-lookup upgrade path is real (already proven twice in-repo: `BanEvasionRefs`,
   `EmailQuotaActor`); one migration, exact-match login survives, S5 admin substring-search dies (recorded
   cost). **Conditions: PII-5 and PII-7 below must land** so plaintext email's blast radius stays confined.
-- **Heatmap retention posture (PII-4): NOT BLESSED — FOUNDER ESCALATION.** `account_deletion` retains
-  full-history location provenance (`NotApplicable`, per the S1-ratified profilemodel §1c ruling),
-  `export-registry` marks it `NotExportable`, and no consumer-reachable `StatutoryErasure` path exists —
-  so the product's only "delete my account" flow retains identifiable location history the user can
-  neither see (Art. 15) nor erase (Art. 17). **Not exploitable at S3 (zero heatmap writers until S9/S14),
-  so this is a design decision, not a live bug.** It contradicts the S3 §2 wording ("purge anchor") in
-  spirit. Recommendation for Julien: at account_deletion, Pseudonymize (heatmap needs cells, not
-  identities) OR region-conditional StatutoryErasure, and flip export to `Withheld(basisRef)`. **Must be
-  ruled on before S9/S14 writes the first heatmap-provenance row.** Carried to S9/S14 Phase-0.
+- **Heatmap retention posture (PII-4): RULED 2026-07-12 (founder) — ANONYMIZE-AT-WRITE.** The escalation
+  is resolved: heatmap data is anonymized at write, so retaining it past `account_deletion` is lawful
+  (GDPR Recital 26 — genuinely anonymous data falls outside the Regulation; retained despite the
+  originating user's erasure wish). The `NotApplicable`-on-deletion (§1c) and `export-registry`
+  `NotExportable` dispositions therefore stand as correct, not as a gap. **This discharges PII-4 IFF the
+  S9/S14 write path clears the anonymity bar — a build-time acceptance condition, not a live S3 bug (zero
+  heatmap writers until S9/S14):** cells must be *genuinely anonymous* — aggregated to a k-anonymity floor,
+  with NO reversible subject key surviving deletion anywhere (a held-elsewhere salt makes the data
+  *pseudonymous*, which is still personal data and Art.17 still applies). The stream name "provenance"
+  is the trap: provenance must not be subject-traceable post-deletion. **S9/S14 Phase-0 must verify
+  irreversibility (not merely "no plaintext id in the row") before the first provenance row is written.**
+  Carried to S9/S14 Phase-0 as a ruled constraint.
 
 ## FIX NOW — CRITICAL / HIGH (each with a now-green regression test)
 
