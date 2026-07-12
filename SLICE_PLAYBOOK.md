@@ -423,6 +423,19 @@ protection remains the only structural fix. Reviewed every commit; trusted none.
 (5) **Concurrency tests must isolate the mechanism under test.** The S5-03 lockout guard's first concurrency
 test used mutual revoke (A↔B), where the loser is denied by ordinary Authorize, not the guard — self-action
 isolates the guard. Caught by actually running the test (it failed) before claiming green.
+(6) **My "HARDENED GATE green" was wrong twice — the PR (#2) caught what I did not.** Opening the S5 PR
+surfaced two real failures my local gate missed. (a) A FLAKY test: `StaffPurgeTests.…TimestampsSurvive` read
+a grant back through its SEEDING context (EF identity-map → in-memory 100ns `DateTimeOffset`) and asserted
+equal to a post-purge read through a fresh context (Postgres `timestamptz` → µs). Equal only when the 7th
+fractional digit is 0; green locally twice by luck, red in CI. Fix: capture both sides from a fresh context;
+re-run a was-flaky test 5+ times, never once. (b) A CI-ONLY drift gate: Phase-2a's `AddEventsAuditReadIndexes`
+migration never regenerated the byte-diff-gated `InitialCore.sql` (`emit-ddl-script.sh` runs in CI, not the
+pre-commit hook). It was HIDDEN behind (a): the EF-migration job showed `skipping` (gated on the failed
+build/test job), and only surfaced once the flaky fix turned build/test green. Lessons: after ANY EF migration
+run `build/scripts/emit-ddl-script.sh` and commit the regenerated `Initial*.sql` in the same commit; treat
+every `skipping` CI job as unknown, not pass, and re-check after each upstream fix; a flaky test is green-until-
+it-isn't, so one pass is not proof. Fix owed: fold the DDL drift gate into the pre-commit hook alongside the
+arch-test split (see TODOS). (Fold to BUILD.md §8.)
 
 ### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
 

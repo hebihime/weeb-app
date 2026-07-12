@@ -72,7 +72,13 @@
   contention). The hook's own contract says "deterministic, never flaky, seconds not minutes."
 - **Fix:** split the DB-backed arch tests into the periodic/integration lane; leave the pre-commit hook a true
   fast deterministic gate (pure-code arch rules + secret-scan). Re-measure and record the runtime in the hook header.
-- **Why it matters:** a slow/flaky pre-commit invites `--no-verify` (banned) and slows every commit.
+- **Also fold in (same touch):** the EF DDL drift gate is CI-only. `build/scripts/emit-ddl-script.sh` (regen
+  `Initial*.sql` + byte-diff) and `tools/ddl-lint` run in CI but NOT in the pre-commit hook, so an EF migration
+  committed without its regenerated `.sql` passes locally and fails the 7A gate in CI (bit S5 PR #2 — the
+  `AddEventsAuditReadIndexes` migration left `InitialCore.sql` stale). Add a fast `emit-ddl-script.sh --check`
+  (regen to a tmp, diff, no rewrite) to the hook so the drift is caught at commit time, not in CI.
+- **Why it matters:** a slow/flaky pre-commit invites `--no-verify` (banned) and slows every commit; a CI-only
+  drift gate means a green local commit can still red the PR (and can hide behind a `skipping` upstream job).
 
 ## Least-privileged runtime DB role (pre-prod security hardening)
 - **What:** A dedicated runtime Postgres role with NO DELETE and NO DDL, used by every host at runtime;
