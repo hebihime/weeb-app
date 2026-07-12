@@ -4,9 +4,15 @@
 - **S3 identity: DONE 2026-07-12, MERGED to master (PR #1, `795209c`).** THE HARDENED GATE green
   (`signup→verified→delete` E2E live twice); Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM
   remediated, `SECURITY_REVIEW_S3.md`). The combined Phase-2a substrate (S3+S5+S6 deltas) landed with it.
-- **S5 admin desk: IN PROGRESS on branch `wave/s5-admin-desk` (off master).** Contract
-  `SLICE_S5_CONTRACT.md` RATIFIED (§13). Greenlit by Julien 2026-07-12. Phases 1→4 to THE HARDENED GATE,
-  stop at DONE for /compact.
+- **S5 admin desk: DONE 2026-07-12 on branch `wave/s5-admin-desk`** (commits `b9d1154`→`5892e9c`, pushed;
+  NOT yet merged to master — open for review, PR at Julien's call). All four phases through THE HARDENED
+  GATE, every gate re-verified by me (build 0/0; suite 473/0/19; live E2E 20/20 ×2 fresh boots; 0 restarts;
+  clean logs). Security: 1 CRITICAL + 3 HIGH + 1 LOW + 3 round-2 pull-forwards fixed, 6 deferred (Skip proofs).
+  Retro in SLICE_PLAYBOOK.md; DONE_WITH_CONCERNS notes below.
+  - **DONE_WITH_CONCERNS:** (a) S5-04 DataProtection prod key encryption is Azure-Key-Vault-specific
+    (`ProtectKeysWithAzureKeyVault`) — for Hetzner/Docker prod it needs a swap, same class as `IFieldKeyVault`;
+    Dev/compose (DevSeams) unaffected. (b) OPS-5 (config dual-key collapse) NOT addressed at S5, re-carried.
+    (c) pre-commit hook now ~4 min (see item below).
   - **Substrate:** the combined S3+S5+S6 Phase-2a already landed with S3 (11/14 §1d symbols on master); S5
     only owned the 3 gaps.
   - **Phase 1 (scaffold): DONE, committed `b9d1154`** — Blazor host skeleton, 2 admin tables + migration,
@@ -59,6 +65,14 @@
   - **S6 (anime-engine): READY to build** — `SLICE_S6_CONTRACT.md` already RATIFIED (§13); OQ-2 (20 short-form ids) delegated to build (reversible), OQ-1 (archetype count/names/palettes) has the ported 9 as working v1, **Julien's final call due before S9 first-ship, NOT before S6**. Substrate (FieldEncryptionPurpose.AnimeAnswers) landed in Phase-2a. Fans out the moment S5 lands.
   - **Lane hygiene:** parallel build lanes each run in their own git worktree with a port-isolated compose stack (§7 lane rule) so their live-E2E gates (fixed :8090/:8091) don't collide; unit tests use random-port Testcontainers (safe concurrent).
   - After S4/S6 land, **G1 opens:** S8 (con-registry, needs S1+S5) → S9 (web-funnel, first `web/` lane, needs S6+S8).
+
+## Pre-commit gate lane is ~4 min (violates the hook's "seconds not minutes" contract)
+- **What:** `Svac.Tests.Architecture` grew DB-backed Testcontainers tests over S3–S5, so `.githooks/pre-commit`
+  block #2 now runs a ~4-min DB suite (and flaked once on a Testcontainers connection timeout under container
+  contention). The hook's own contract says "deterministic, never flaky, seconds not minutes."
+- **Fix:** split the DB-backed arch tests into the periodic/integration lane; leave the pre-commit hook a true
+  fast deterministic gate (pure-code arch rules + secret-scan). Re-measure and record the runtime in the hook header.
+- **Why it matters:** a slow/flaky pre-commit invites `--no-verify` (banned) and slows every commit.
 
 ## Least-privileged runtime DB role (pre-prod security hardening)
 - **What:** A dedicated runtime Postgres role with NO DELETE and NO DDL, used by every host at runtime;
