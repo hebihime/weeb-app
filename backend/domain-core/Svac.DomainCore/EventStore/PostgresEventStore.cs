@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Svac.DomainCore.Contracts;
 using Svac.DomainCore.Contracts.Ids;
 using Svac.DomainCore.Contracts.Streams;
@@ -25,60 +26,108 @@ public sealed class PostgresEventStore(CoreDbContext db) : IEventStore
         ExpectedVersion expectedVersion,
         CancellationToken ct = default)
     {
-        var table = db.EventsFor(stream);
-        var currentMaxSeq = await table
-            .Where(e => e.StreamId == streamId)
-            .Select(e => (long?)e.Seq)
-            .MaxAsync(ct) ?? 0;
-
-        if (expectedVersion is ExpectedVersion.Exact exact && exact.Seq != currentMaxSeq)
-        {
-            throw new ConcurrencyConflictException(streamId, exact.Seq, currentMaxSeq);
-        }
-
-        var nextSeq = currentMaxSeq + 1;
-        var now = DateTimeOffset.UtcNow;
-        var eventId = MintEventId(now);
-
-        var region = ctx.Region.ToString();
-        var row = new EventRow
-        {
-            EventId = eventId,
-            StreamId = streamId,
-            Seq = nextSeq,
-            EventType = eventType,
-            PayloadJson = payloadJson,
-            ReversalOf = null,
-            Tombstone = false,
-            ActorRef = ctx.Actor.ToString(),
-            Region = region,
-            // PII-F2 (SECURITY_REVIEW_S1.md): the config VARIANT KEY selects which code table resolves the
-            // basis (§1b) — it is never itself a lawful basis. LawfulBasisResolver is the resolver.
-            LawfulBasis = LawfulBasisResolver.Resolve(ctx.LawfulBasisVariant.Key, stream.ToString(), eventType, region),
-            OccurredAt = now,
-            RecordedAt = now,
-        };
-        table.Add(row);
-
+        // CONC-3 (SECURITY_REVIEW_S3.md): an ExpectedVersion.AnyVersion append must never abort a caller's
+        // transaction just because a SECOND legitimate same-account append (e.g. an audit event racing a
+        // behavioral one, or the refresh-reuse family-revoke racing any other same-account write) landed
+        // on the same stream_id at the same instant — the optimistic MAX(seq)+1-then-insert below has a
+        // genuine TOCTOU window under concurrent same-stream writers. A Postgres advisory lock keyed on
+        // the stream id serializes ONLY concurrent Appends to THIS exact stream_id (never a table lock,
+        // never a row lock, never blocking a DIFFERENT stream's Append) around the read-then-insert
+        // critical section, so the seq race structurally cannot occur for AnyVersion — the caller never
+        // needs to catch-and-retry. ExpectedVersion.Exact is UNCHANGED: it is deliberately optimistic
+        // (the whole point of "Exact" is to detect that someone else moved the stream since the caller's
+        // last read), so it takes no lock and keeps throwing ConcurrencyConflictException on a mismatch.
+        var ownsLocalTransaction = expectedVersion is ExpectedVersion.Any && db.Database.CurrentTransaction is null;
+        IDbContextTransaction? localTx = ownsLocalTransaction ? await db.Database.BeginTransactionAsync(ct) : null;
         try
         {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // C# cannot await inside a catch filter, so the unique-violation check happens in the body:
-            // re-throw untouched if this was some other failure, only translate the (stream_id, seq)
-            // race into the typed ConcurrencyConflictException.
-            db.Entry(row).State = EntityState.Detached;
-            if (!await IsUniqueViolationOnSeq(table, streamId, nextSeq, ct))
+            if (expectedVersion is ExpectedVersion.Any)
             {
-                throw;
+                // hashtext() is a plain int4 hash — collisions across DIFFERENT stream ids are harmless
+                // here (they'd only ever over-serialize two unrelated streams' Appends, never under-
+                // serialize the SAME stream id), so no lock-key registry is needed.
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtext({streamId}))", ct);
             }
-            var actualSeq = await table.Where(e => e.StreamId == streamId).Select(e => (long?)e.Seq).MaxAsync(ct) ?? 0;
-            throw new ConcurrencyConflictException(streamId, nextSeq - 1, actualSeq);
-        }
 
-        return ToRecorded(row);
+            var table = db.EventsFor(stream);
+            var currentMaxSeq = await table
+                .Where(e => e.StreamId == streamId)
+                .Select(e => (long?)e.Seq)
+                .MaxAsync(ct) ?? 0;
+
+            if (expectedVersion is ExpectedVersion.Exact exact && exact.Seq != currentMaxSeq)
+            {
+                throw new ConcurrencyConflictException(streamId, exact.Seq, currentMaxSeq);
+            }
+
+            var nextSeq = currentMaxSeq + 1;
+            var now = DateTimeOffset.UtcNow;
+            var eventId = MintEventId(now);
+
+            var region = ctx.Region.ToString();
+            var row = new EventRow
+            {
+                EventId = eventId,
+                StreamId = streamId,
+                Seq = nextSeq,
+                EventType = eventType,
+                PayloadJson = payloadJson,
+                ReversalOf = null,
+                Tombstone = false,
+                ActorRef = ctx.Actor.ToString(),
+                Region = region,
+                // PII-F2 (SECURITY_REVIEW_S1.md): the config VARIANT KEY selects which code table resolves
+                // the basis (§1b) — it is never itself a lawful basis. LawfulBasisResolver is the resolver.
+                LawfulBasis = LawfulBasisResolver.Resolve(ctx.LawfulBasisVariant.Key, stream.ToString(), eventType, region),
+                OccurredAt = now,
+                RecordedAt = now,
+            };
+            table.Add(row);
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // Still reachable for ExpectedVersion.Exact (never lock-guarded, by design) and as a
+                // defense-in-depth backstop for AnyVersion should the advisory lock ever be bypassed (a
+                // caller sharing a connection that already holds a DIFFERENT ambient transaction which
+                // this method does not own — see ownsLocalTransaction above). C# cannot await inside a
+                // catch filter, so the unique-violation check happens in the body: re-throw untouched if
+                // this was some other failure, only translate the (stream_id, seq) race into the typed
+                // ConcurrencyConflictException.
+                db.Entry(row).State = EntityState.Detached;
+                if (!await IsUniqueViolationOnSeq(table, streamId, nextSeq, ct))
+                {
+                    throw;
+                }
+                var actualSeq = await table.Where(e => e.StreamId == streamId).Select(e => (long?)e.Seq).MaxAsync(ct) ?? 0;
+                throw new ConcurrencyConflictException(streamId, nextSeq - 1, actualSeq);
+            }
+
+            if (localTx is not null)
+            {
+                await localTx.CommitAsync(ct);
+            }
+
+            return ToRecorded(row);
+        }
+        catch
+        {
+            if (localTx is not null)
+            {
+                await localTx.RollbackAsync(ct);
+            }
+            throw;
+        }
+        finally
+        {
+            if (localTx is not null)
+            {
+                await localTx.DisposeAsync();
+            }
+        }
     }
 
     public async Task<RecordedEvent> Reverse(StreamType stream, string eventId, string reason, RequestContext ctx, CancellationToken ct = default)

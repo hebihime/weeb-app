@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Tests.Identity — SLICE_S3_CONTRACT.md §1a. The gate lane: deterministic, <2s. Phase 1
+    (SLICE_PLAYBOOK.md scaffold gate) ships one trivial DI-resolution test + the module-surface absence
+    proofs (mirrors backend/tests/Svac.Tests.AimlRouter's own ModuleSurfaceTests.cs); Testcontainers.
+    PostgreSql is referenced now (mirrors Svac.Tests.Architecture's own package shape) so Phase 2's real
+    DB-backed suite (IdentityDbContext migrations, purge-completeness, forced-race tests) can be added to
+    this project without a second csproj edit — no container test runs yet.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Tests.Identity</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Underscore-delimited Given_When_Then test names match the repo-wide xUnit convention (Svac.Tests.Architecture/Svac.Tests.AimlRouter precedent). -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- [/v1/me/* build] Needed to boot a REAL, in-process Kestrel host (IdentityHttpFixture) wired with
+         AddDomainCore + AddIdentityModule + MapIdentityEndpoints against the shared Testcontainer — the
+         HTTP-level IDOR/absence/category-8 proofs exercise the real policy chokepoint end to end, not a
+         DB-service-layer stand-in. Mirrors Svac.Tests.Architecture's own FrameworkReference. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <!--
+      Deliberately no EF Core package reference of any kind — not even in this comment's literal text.
+      ModuleSurfaceTests.cs's absence proof walks DbContext base-type names as STRINGS via reflection
+      instead (see its IsEfDbContextSubclass helper) — the same discipline
+      backend/tests/Svac.Tests.AimlRouter/Svac.Tests.AimlRouter.csproj's own comment documents. The gate
+      script that applies migrations discovers candidate startup projects with a plain-text grep over
+      every .csproj for that package's exact name; spelling it out even in prose here would make this
+      project a false-positive "startup project" candidate. Say "EF Core" in any note near this file.
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\modules\identity\Svac.Identity.Contracts\Svac.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\modules\identity\Svac.Identity\Svac.Identity.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\modules\identity\config\identity.config.json" Link="Config\identity.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

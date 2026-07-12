@@ -11,6 +11,10 @@ public static class HostingServiceCollectionExtensions
     {
         services.AddSingleton<AmbientRequestContextAccessor>();
         services.AddSingleton<IRequestContextAccessor>(sp => sp.GetRequiredService<AmbientRequestContextAccessor>());
+        // PHASE_2A_SUBSTRATE.md §4: default = anonymous-only, byte-identical to pre-Phase-2a S1/S2
+        // behavior. Identity (S3) / the admin host (S5) / partner (S29) each override with a real
+        // credential-backed resolver — one middleware, three credential systems, by design.
+        services.AddSingleton<IBearerAuthenticator, AnonymousBearerAuthenticator>();
         return services;
     }
 

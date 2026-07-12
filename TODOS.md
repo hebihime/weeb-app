@@ -1,5 +1,27 @@
 # TODOS — weeb-app
 
+## S3 build wave — DONE at S3; awaiting merge + founder decisions before S5/S6
+- **S3 identity: DONE 2026-07-12.** THE HARDENED GATE green (`signup→verified→delete` E2E live twice);
+  Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM remediated, `SECURITY_REVIEW_S3.md`). All on
+  branch **`wave/s3-identity`** (commits `b1fd788`→Phase-3), open as **PR #1**, NOT merged to master
+  (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
+  build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
+- **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
+  **Keep the analytics signal, sever the subject.** The cell/density/pattern (the actionable data) is
+  retained; only "whose signal is this" is dropped, so deleting an account keeps its contributions on the
+  map, just unattributed. Lawful under GDPR Recital 26 (anonymous data out of scope; kept despite the
+  originating user's erasure wish). `NotExportable` + `NotApplicable`-on-deletion dispositions stay.
+  **ACCEPTANCE BAR for S9/S14 Phase-0 — two-sided:** (1) *genuinely anonymous*, not pseudonymous — strip
+  the subject link either at write or by crypto-shredding it at deletion; a held-elsewhere salt keeps it
+  personal data and Art.17 still bites; (2) *no singling-out* — coarsen/bucket coordinate+time+rare-attr
+  so no retained cell re-identifies one person via the mosaic effect, while staying granular enough to
+  stay actionable. That coarsening tension is the design work. Verify irreversibility AND non-singling-out
+  before the first `events_heatmap_provenance` row.
+- **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
+  before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
+- **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own
+  slice (Phase 1→4, stop at DONE). Both rebase their domain-core needs onto the landed Phase-2a surgery.
+
 ## Azure SignalR self-host cost review
 - **What:** Re-evaluate managed Azure SignalR Service vs self-hosted SignalR + Redis backplane.
 - **Why:** Managed is right at launch scale; at multi-con scale self-hosting can be meaningfully cheaper. Switching is a connection-string/config change, not a rewrite.

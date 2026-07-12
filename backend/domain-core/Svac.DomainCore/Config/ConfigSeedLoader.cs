@@ -8,14 +8,24 @@ using Svac.DomainCore.Persistence;
 
 namespace Svac.DomainCore.Config;
 
-/// <summary>One manifest row, deserialized from a module's additive config manifest file (SLICE_S1_CONTRACT.md §4).</summary>
+/// <summary>
+/// One manifest row, deserialized from a module's additive config manifest file (SLICE_S1_CONTRACT.md §4).
+///
+/// <see cref="Bounds"/> (OPS-3, SECURITY_REVIEW_S3.md): optional, a JSON 2-element array
+/// <c>[min, max]</c> naming the key's declared numeric bounds — seeded verbatim into
+/// <c>ConfigEntryEntity.BoundsJson</c> so <c>ConfigBounds.ValidateAsync</c>'s generic bounds check
+/// (every key, not a hardcoded switch) has real data to read on the actual <c>ConfigRegistry.SetValue</c>
+/// write path. Absent for a key means "no bounds rule" — SetValue proceeds unchanged, same as before this
+/// fix.
+/// </summary>
 public sealed record ConfigManifestEntry(
     [property: JsonPropertyName("key")] string Key,
     [property: JsonPropertyName("scope")] string Scope,
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("value")] JsonElement Value,
     [property: JsonPropertyName("requiresReason")] bool RequiresReason,
-    [property: JsonPropertyName("consumer")] string Consumer);
+    [property: JsonPropertyName("consumer")] string Consumer,
+    [property: JsonPropertyName("bounds")] JsonElement? Bounds = null);
 
 /// <summary>Deserialization shape of a manifest file's top-level object.</summary>
 public sealed record ConfigManifestFile([property: JsonPropertyName("entries")] IReadOnlyList<ConfigManifestEntry> Entries);
@@ -58,7 +68,12 @@ public sealed class ConfigSeedLoader(CoreDbContext db, Svac.DomainCore.Contracts
                 ValueJson = entry.Value.GetRawText(),
                 Scope = entry.Scope,
                 Gate = null,
-                BoundsJson = null,
+                // OPS-3 (SECURITY_REVIEW_S3.md): seed the manifest's declared bounds verbatim (null when
+                // the manifest carries none for this key) — this is the data ConfigBounds.ValidateAsync's
+                // generic check reads on every real SetValue call, not just the 3 hardcoded AimlRouter keys.
+                BoundsJson = entry.Bounds.HasValue && entry.Bounds.Value.ValueKind != JsonValueKind.Undefined
+                    ? entry.Bounds.Value.GetRawText()
+                    : null,
                 RequiresReason = entry.RequiresReason,
                 UpdatedAt = now,
                 UpdatedBy = ctx.Actor.ToString(),

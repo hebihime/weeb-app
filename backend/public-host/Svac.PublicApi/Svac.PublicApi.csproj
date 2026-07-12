@@ -24,6 +24,9 @@
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
     <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+    <!-- SLICE_S3_CONTRACT.md §0, Phase 1: wires AddIdentityModule() (Program.cs) so the second
+         backend/modules/ occupant boots on the host — zero routes mapped yet. -->
+    <ProjectReference Include="..\..\modules\identity\Svac.Identity\Svac.Identity.csproj" />
   </ItemGroup>
 
   <!--

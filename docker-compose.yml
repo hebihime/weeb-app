@@ -93,10 +93,15 @@ services:
       ConnectionStrings__Core: "Host=postgres;Port=5432;Database=svac;Username=svac;Password=svac_dev_only"
       SVAC_DEVSEAMS_ENABLED: "true"
       ASPNETCORE_ENVIRONMENT: "Development"
+      # SLICE_S3_CONTRACT.md §1b: "localhost" inside this container is the container itself, never the
+      # mailpit sibling service — the compose network resolves services by their compose SERVICE NAME.
+      SVAC_SMTP_HOST: "mailpit"
     ports:
       - "8090:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]

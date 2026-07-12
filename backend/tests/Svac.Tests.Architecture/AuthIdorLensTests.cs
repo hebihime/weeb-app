@@ -71,16 +71,20 @@ public sealed class AuthIdorLensTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // FINDING 3 — IDOR is structurally unreachable through the 4A chokepoint.
+    // FINDING 3 — RETIRED at S3 (SLICE_S3_CONTRACT.md §3a, deferred finding Auth-F3). The original break:
+    // PolicyEnforcementFilter always called Authorize with TargetRef.ForAction(action) — a synthetic
+    // target whose ResourceId was ALWAYS null — so the route's real resource id never reached
+    // IPolicyEngine.Authorize and object-level ownership could never be checked at the chokepoint.
     //
-    // PolicyEnforcementFilter.cs:23 always calls Authorize with TargetRef.ForAction(action) — a synthetic
-    // target whose ResourceId is ALWAYS null (ActorRef.cs:29). The route's real resource id (e.g. the {id}
-    // of /profiles/{id}) never reaches IPolicyEngine.Authorize, whose signature takes a TargetRef exactly
-    // so it can enforce "actor owns THIS object". Result: any endpoint mounting RequirePolicyAction gets
-    // action-level authorization only, never object-level — the textbook IDOR gap, baked into the one
-    // chokepoint every future mutation is required to use.
+    // PHASE_2A_SUBSTRATE.md §1/§4 (landed ahead of S3's own build, per the ratified BUILD-ORDERING)
+    // shipped the fix as a general mechanism: PolicyTargetBinding.FromRoute conveys a REAL resource id
+    // read out of the endpoint's own matched route into TargetRef.ResourceId, and RequirePolicyAction's
+    // new overload wires both the binding and the boot-refusal metadata that makes a resource-scoped
+    // action with no target conveyance structurally unshippable (PolicyTargetBindingBootRefusalTests.cs).
+    // This test now proves the fixed mechanism, non-vacuously, using S3's own real exemplar action name
+    // (identity.session.revoke, §3b) — the SAME shape DELETE /v1/me/sessions/{sessionId} maps with.
     // ---------------------------------------------------------------------------------------------
-    [Fact(Skip = "deferred: SECURITY_REVIEW_S1.md Auth-F3 — chokepoint target-binding API lands with the first consumer resource endpoint (S2); S1 ships zero consumer resource endpoints so nothing is exploitable today.")]
+    [Fact]
     public async Task PolicyChokepoint_MustConveyTheRealTargetResourceId()
     {
         var spy = new CapturingPolicyEngine();
@@ -90,16 +94,23 @@ public sealed class AuthIdorLensTests
         var provider = services.BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext { RequestServices = provider };
-        // Simulate a route like /profiles/{id} bound to victim's id "usr_..." — the value an IDOR attacker varies.
-        var routeResourceId = "usr_01HZZZZZZZZZZZZZZZZZZZZZZZ";
-        var filterContext = EndpointFilterInvocationContext.Create(httpContext, routeResourceId);
+        // Simulate a route like DELETE /v1/me/sessions/{sessionId} bound to victim's id — the value an
+        // IDOR attacker varies. FromRoute reads it out of HttpContext.Request.RouteValues, never out of
+        // the filter-invocation ARGUMENTS array (that array holds handler parameters, not route values).
+        var routeResourceId = "ses_01HZZZZZZZZZZZZZZZZZZZZZZZ";
+        httpContext.Request.RouteValues = new Microsoft.AspNetCore.Routing.RouteValueDictionary
+        {
+            ["sessionId"] = routeResourceId,
+        };
+        var filterContext = EndpointFilterInvocationContext.Create(httpContext);
 
-        var filter = new PolicyEnforcementFilter("core.profile.update");
+        var filter = new PolicyEnforcementFilter("identity.session.revoke", PolicyTargetBinding.FromRoute("sessionId", "session"));
         await filter.InvokeAsync(filterContext, _ => ValueTask.FromResult<object?>(Results.Ok()));
 
         Assert.NotNull(spy.LastTarget);
-        // The break: the chokepoint discards the resource id, so ownership can never be checked here.
+        // The fix: the chokepoint now conveys the real route resource id — ownership CAN be checked here.
         Assert.Equal(routeResourceId, spy.LastTarget!.Value.ResourceId);
+        Assert.Equal("session", spy.LastTarget!.Value.ResourceType);
     }
 
     // --- helpers -------------------------------------------------------------------------------
@@ -107,6 +118,11 @@ public sealed class AuthIdorLensTests
     private static WebApplication BuildMinimalApp()
     {
         var builder = WebApplication.CreateBuilder();
+        // PHASE_2A_SUBSTRATE.md §1: IPolicyTable now resolves as the union of registered
+        // IPolicyTableSource(s) — register the real core rows so this DI-constructed PolicyTable is
+        // byte-identical to the pre-Phase-2a table (CatchAllMapMutationEndpoint_MustNotBypassBootRefusal
+        // below relies on the real core.ledger.append row existing).
+        builder.Services.AddSingleton<IPolicyTableSource, CorePolicyTableSource>();
         builder.Services.AddSingleton<IPolicyTable, PolicyTable>();
         return builder.Build();
     }
@@ -133,10 +149,10 @@ public sealed class AuthIdorLensTests
     {
         public TargetRef? LastTarget { get; private set; }
 
-        public PolicyDecision Authorize(ActorRef actor, string action, TargetRef target)
+        public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default)
         {
             LastTarget = target;
-            return PolicyDecision.Allowed;
+            return Task.FromResult(PolicyDecision.Allowed);
         }
     }
 }

@@ -88,8 +88,11 @@ jobs:
         # model, which needs obj/project.assets.json + the built assembly. This job runs on a fresh runner
         # (needs: build-test does NOT share build output across jobs), so without this step dotnet ef hits
         # NETSDK1004 "assets file not found" and exits non-zero — which ef-gate.sh's loop then misreports
-        # as "model drift". Build the DbContext project (pulls its project references) before the gate.
-        run: dotnet build backend/domain-core/Svac.DomainCore -c Debug
+        # as "model drift". Build the WHOLE SOLUTION (not just one context project) — ef-gate + the
+        # emit-ddl-script drift gate loop over EVERY DbContext project (domain-core AND each module, e.g.
+        # Svac.Identity from S3), so a single-project build leaves later contexts un-restored → NETSDK1004
+        # on the new context only. Building the sln covers every current + future module context.
+        run: dotnet build backend/Svac.sln -c Debug
       - name: run ef-gate
         run: bash build/scripts/ef-gate.sh backend
       - name: emit-ddl-script drift gate (regenerate + diff, guarded on a migration existing)

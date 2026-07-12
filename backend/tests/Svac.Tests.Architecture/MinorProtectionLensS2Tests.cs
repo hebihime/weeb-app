@@ -220,6 +220,9 @@ file sealed class LensConfigRegistry : IConfigRegistry
 
     public Task SetValue<T>(string key, T value, string reason, ActorRef actor, RequestContext ctx, CancellationToken ct = default) =>
         throw new NotSupportedException("read-only lens fake");
+
+    public Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ConfigEntryView>>(Array.Empty<ConfigEntryView>());
 }
 
 /// <summary>Always-allow quota fake — the budget breaker is out of scope for this lens's finding.</summary>

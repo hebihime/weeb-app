@@ -1,0 +1,18 @@
+{
+  "$comment": "PHASE_2A_SUBSTRATE.md §3, SLICE_S3_CONTRACT.md §1g/§12 item 7 — AgeMath golden vectors. Shared verbatim with iOS/Android/web test suites once a client age-test exists (the file-to-file lint is DEFERRED, noted not built). Dates are ISO-8601 (YYYY-MM-DD). The 18/13 floors are CODE CONSTANTS, never a config key.",
+  "adultFloorYears": 18,
+  "coppaFloorYears": 13,
+  "vectors": [
+    { "name": "turns_18_today_passes", "birthdate": "2008-07-11", "asOf": "2026-07-11", "expectedAgeYears": 18, "isAdult": true },
+    { "name": "turns_18_tomorrow_fails", "birthdate": "2008-07-12", "asOf": "2026-07-11", "expectedAgeYears": 17, "isAdult": false },
+    { "name": "feb29_birthdate_nonleap_asOf_observes_mar1", "birthdate": "2008-02-29", "asOf": "2026-03-01", "expectedAgeYears": 18, "isAdult": true },
+    { "name": "feb29_birthdate_nonleap_asOf_feb28_not_yet_birthday", "birthdate": "2008-02-29", "asOf": "2026-02-28", "expectedAgeYears": 17, "isAdult": false },
+    { "name": "feb29_birthdate_leap_asOf_observes_feb29_itself", "birthdate": "2008-02-29", "asOf": "2028-02-29", "expectedAgeYears": 20, "isAdult": true },
+    { "name": "under_coppa_floor", "birthdate": "2015-01-01", "asOf": "2026-07-11", "expectedAgeYears": 11, "isAdult": false, "isCoppa": false },
+    { "name": "exactly_coppa_floor_on_birthday", "birthdate": "2013-07-11", "asOf": "2026-07-11", "expectedAgeYears": 13, "isCoppa": true },
+    { "name": "same_day_birth_and_asof_is_zero", "birthdate": "2026-07-11", "asOf": "2026-07-11", "expectedAgeYears": 0, "isAdult": false }
+  ],
+  "invalidInputs": [
+    { "name": "future_birthdate_relative_to_asOf_throws", "birthdate": "2027-01-01", "asOf": "2026-07-11" }
+  ]
+}

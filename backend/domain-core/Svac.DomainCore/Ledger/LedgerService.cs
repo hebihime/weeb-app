@@ -22,7 +22,7 @@ public sealed class LedgerService(CoreDbContext db, Svac.DomainCore.Contracts.St
 {
     public async Task<string> Append(LedgerEntry entry, ActorRef actor, RequestContext ctx, CancellationToken ct = default)
     {
-        Authorize("core.ledger.append", actor);
+        await Authorize("core.ledger.append", actor, ct);
 
         var isSinkPurchase = entry.EventType == "sink_purchase";
         var movement = new LedgerMovement(entry.Points, entry.Xp, entry.Svac, isSinkPurchase);
@@ -64,7 +64,7 @@ public sealed class LedgerService(CoreDbContext db, Svac.DomainCore.Contracts.St
 
     public async Task<string> Reverse(string entryId, ActorRef actor, string reason, RequestContext ctx, CancellationToken ct = default)
     {
-        Authorize("core.ledger.reverse", actor);
+        await Authorize("core.ledger.reverse", actor, ct);
 
         var original = await db.LedgerEntries.SingleOrDefaultAsync(e => e.Id == entryId, ct)
             ?? throw new InvalidOperationException($"ledger entry \"{entryId}\" not found — reversal is the ONLY correction verb, so it must reference a real prior entry.");
@@ -124,9 +124,9 @@ public sealed class LedgerService(CoreDbContext db, Svac.DomainCore.Contracts.St
             : new LedgerBalance(balance.Points, balance.Xp, balance.Svac);
     }
 
-    private void Authorize(string action, ActorRef actor)
+    private async Task Authorize(string action, ActorRef actor, CancellationToken ct)
     {
-        var decision = policyEngine.Authorize(actor, action, TargetRef.ForAction(action));
+        var decision = await policyEngine.Authorize(actor, action, TargetRef.ForAction(action), ct);
         if (!decision.IsAllowed)
         {
             throw new UnauthorizedAccessException($"4A denied \"{action}\" for actor {actor} — {decision.GetType().Name}.");

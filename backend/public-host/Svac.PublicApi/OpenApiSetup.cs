@@ -35,14 +35,22 @@ public static class OpenApiSetup
             await RegisterSchema<CursorPage<string>>(document, context, ct);
             await RegisterOpaqueIdSchema(document, context, ct);
 
-            // securitySchemes.bearer declared placeholder (§1c); S3 fills semantics. No trust-shaped
-            // property exists in any request schema (contract-lint rule 1 goes from vacuous to live).
+            // securitySchemes.bearer real semantics (SLICE_S3_CONTRACT.md §1b/§1c, filled at S3): an
+            // opaque, 256-bit random access token prefixed `sst_` (greppable in logs/dumps), presented
+            // ONLY via the `Authorization: Bearer sst_…` header — never a cookie or query param at S3.
+            // No trust-shaped property exists in any request schema (contract-lint rule 1 goes from
+            // vacuous to live).
             document.Components.SecuritySchemes ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>();
             document.Components.SecuritySchemes["bearer"] = new Microsoft.OpenApi.OpenApiSecurityScheme
             {
                 Type = Microsoft.OpenApi.SecuritySchemeType.Http,
                 Scheme = "bearer",
-                Description = "Placeholder declared at S1; S3 (identity) fills real semantics.",
+                BearerFormat = "sst_<256-bit-random>",
+                Description = "Opaque, server-side, revocable session access token (SLICE_S3_CONTRACT.md §1b). " +
+                    "Prefix \"sst_\", minted by /v1/signup/complete, /v1/auth/session, and /v1/auth/refresh. " +
+                    "Header only: `Authorization: Bearer sst_...` — never a cookie or query parameter at S3. " +
+                    "Carries zero decodable claims (never a JWT); revoked/expired/unknown tokens resolve to " +
+                    "the anonymous actor server-side, never a distinct 401 oracle.",
             };
         });
     }

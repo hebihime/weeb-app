@@ -1,11 +1,19 @@
 {
-  "_comment": "SLICE_S0_CONTRACT.md §2, L21 residency lint. A table name matching any pattern here must carry region + lawful_basis columns unless explicitly allowlisted with a stated reason. First real consumer is S1; seeded now so the gate predates the first feature store (B2 logic). age_attestation/birthdate/minor patterns added per SECURITY_REVIEW_S0.md minor F5 — age/birthdate/minor-purge tables are the central minor-protection datum and must not escape L21 residency by naming. *events_* and *ledger* added per SLICE_S1_CONTRACT.md §2: region+lawful_basis go on all six event streams + ledger_entries uniformly; a uniform invariant is testable where a selective one erodes.",
-  "patterns": ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*", "*events_*", "*ledger*"],
+  "_comment": "SLICE_S0_CONTRACT.md §2, L21 residency lint. A table name matching any pattern here must carry region + lawful_basis columns unless explicitly allowlisted with a stated reason. First real consumer is S1; seeded now so the gate predates the first feature store (B2 logic). age_attestation/birthdate/minor patterns added per SECURITY_REVIEW_S0.md minor F5 — age/birthdate/minor-purge tables are the central minor-protection datum and must not escape L21 residency by naming. *events_* and *ledger* added per SLICE_S1_CONTRACT.md §2: region+lawful_basis go on all six event streams + ledger_entries uniformly; a uniform invariant is testable where a selective one erodes. `identity.*` added per SLICE_S3_CONTRACT.md item 1 — a SCHEMA-ANCHORED glob (matched against ddl-lint.mjs's schema-qualified `qualifiedName`, never the bare table name), so every table EF Core emits under schema `identity` is covered by construction, not by guessing which English words its table names happen to contain. This is stricter and more complete than the older keyword patterns (*consent*/*identity*/*location*/...): a future identity table named anything at all is caught automatically, with zero pii-patterns.json edit required, the same uniform-by-schema posture *events_*/*ledger* already established for schema `core`.",
+  "patterns": ["*consent*", "*profile*", "*identity*", "*location*", "*verification*", "*age_attestation*", "*birthdate*", "*minor*", "*events_*", "*ledger*", "identity.*"],
   "required_columns": ["region", "lawful_basis"],
   "allowlist": [
     {
       "table": "ledger_balances",
       "reason": "SLICE_S1_CONTRACT.md §2: a rebuildable summation PROJECTION over events_ledger + ledger_entries (both of which DO carry region/lawful_basis on every row); the balance row itself is a derived aggregate, not an independently-personal-data-bearing row, so it is registered here with a reason rather than silently exempt."
+    },
+    {
+      "table": "identity.reserved_handles",
+      "reason": "SLICE_S3_CONTRACT.md §2/§6a: zero personal data (a seeded, desk-editable brand/staff/impersonation-term denylist, e.g. \"weeb\", \"admin\"), registered NotApplicable in the purge registry with the same reason — never silently exempt."
+    },
+    {
+      "table": "identity.retired_handles",
+      "reason": "SLICE_S3_CONTRACT.md §2/§6a: subject-SEVERED at write (no account reference column exists at all) — pseudonymous by construction, so there is no personal datum region/lawful_basis could attach to. Registered NotApplicable in the purge registry with the same reason."
     }
   ]
 }

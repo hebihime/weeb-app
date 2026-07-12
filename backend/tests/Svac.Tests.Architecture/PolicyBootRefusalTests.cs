@@ -61,6 +61,10 @@ public sealed class PolicyBootRefusalTests
     private static WebApplication BuildMinimalApp()
     {
         var builder = WebApplication.CreateBuilder();
+        // PHASE_2A_SUBSTRATE.md §1: IPolicyTable now resolves as the union of registered
+        // IPolicyTableSource(s) — register the real core rows so MappedMutationEndpoint_BootsCleanly's
+        // "core.ledger.append" lookup below still finds a real row, byte-identical to the pre-Phase-2a table.
+        builder.Services.AddSingleton<IPolicyTableSource, CorePolicyTableSource>();
         builder.Services.AddSingleton<IPolicyTable, PolicyTable>();
         return builder.Build();
     }

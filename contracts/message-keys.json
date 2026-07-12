@@ -12,6 +12,86 @@
     {
       "key": "error.could_not_send",
       "consumer": "Problem.message_key — reserved substrate key per SLICE_S1_CONTRACT.md §1c"
+    },
+    {
+      "key": "signup.refused_age_floor",
+      "consumer": "Problem.message_key — POST /v1/signup/complete, ONE wire shape for BOTH the 18-and-13 minor floors (SLICE_S3_CONTRACT.md §1c/§1g/§12 item 7)"
+    },
+    {
+      "key": "handle.taken",
+      "consumer": "Problem.message_key — POST /v1/signup/complete, reserved/retired/taken handle collision (SLICE_S3_CONTRACT.md §1c)"
+    },
+    {
+      "key": "handle.invalid",
+      "consumer": "Problem.message_key — POST /v1/signup/complete, HandleRules validation failure (SLICE_S3_CONTRACT.md §1c; the granular HandleRules reason — invalid_length/invalid_charset/confusable_rejected — stays an internal detail, never on the wire)"
+    },
+    {
+      "key": "auth.code_invalid",
+      "consumer": "Problem.message_key — POST /v1/signup/email-verification/confirm, POST /v1/signup/complete (invalid verifiedToken), POST /v1/auth/session — reused across the whole challenge/verifiedToken credential surface (SLICE_S3_CONTRACT.md §1c)"
+    },
+    {
+      "key": "email.verify_code.subject",
+      "consumer": "IEmailSender template — signup email-verification code (SLICE_S3_CONTRACT.md §1d)"
+    },
+    {
+      "key": "email.verify_code.body",
+      "consumer": "IEmailSender template — signup email-verification code (SLICE_S3_CONTRACT.md §1d)"
+    },
+    {
+      "key": "email.login_code.subject",
+      "consumer": "IEmailSender template — POST /v1/auth/email-code sign-in code (SLICE_S3_CONTRACT.md §1d)"
+    },
+    {
+      "key": "email.login_code.body",
+      "consumer": "IEmailSender template — POST /v1/auth/email-code sign-in code (SLICE_S3_CONTRACT.md §1d)"
+    },
+    {
+      "key": "email.already_registered.subject",
+      "consumer": "IEmailSender template — anti-enumeration mail sent instead of a code when a signup email already owns an account (SLICE_S3_CONTRACT.md §1c/§1d)"
+    },
+    {
+      "key": "email.already_registered.body",
+      "consumer": "IEmailSender template — anti-enumeration mail sent instead of a code when a signup email already owns an account (SLICE_S3_CONTRACT.md §1c/§1d)"
+    },
+    {
+      "key": "email.sessions_revoked.subject",
+      "consumer": "IEmailSender template — category-8 security notice on refresh-token reuse detection (SLICE_S3_CONTRACT.md §1b/§1d/§7)"
+    },
+    {
+      "key": "email.sessions_revoked.body",
+      "consumer": "IEmailSender template — category-8 security notice on refresh-token reuse detection (SLICE_S3_CONTRACT.md §1b/§1d/§7)"
+    },
+    {
+      "key": "email.email_changed_notice.subject",
+      "consumer": "IEmailSender template — POST /v1/me/email/confirm, sent to the OLD address (the account-takeover tripwire in passwordless auth, SLICE_S3_CONTRACT.md §1c/§1d/§7)"
+    },
+    {
+      "key": "email.email_changed_notice.body",
+      "consumer": "IEmailSender template — POST /v1/me/email/confirm, sent to the OLD address (the account-takeover tripwire in passwordless auth, SLICE_S3_CONTRACT.md §1c/§1d/§7)"
+    },
+    {
+      "key": "email.export_ready.subject",
+      "consumer": "IEmailSender template — the data-export-ready notification (SLICE_S3_CONTRACT.md §1d/§6b/§7), sent by Svac.Identity.Export.ExportWorker when a requested export reaches state=ready"
+    },
+    {
+      "key": "email.export_ready.body",
+      "consumer": "IEmailSender template — the data-export-ready notification (SLICE_S3_CONTRACT.md §1d/§6b/§7), sent by Svac.Identity.Export.ExportWorker when a requested export reaches state=ready"
+    },
+    {
+      "key": "email.deletion_scheduled.subject",
+      "consumer": "IEmailSender template — POST /v1/me/deletion (SLICE_S3_CONTRACT.md §2/§7): grace end date, cancel path, export offer; sent at request time"
+    },
+    {
+      "key": "email.deletion_scheduled.body",
+      "consumer": "IEmailSender template — POST /v1/me/deletion (SLICE_S3_CONTRACT.md §2/§7): grace end date, cancel path, export offer; sent at request time"
+    },
+    {
+      "key": "email.deletion_completed.subject",
+      "consumer": "IEmailSender template — the Phase P deletion worker (SLICE_S3_CONTRACT.md §2/§7): the LAST outbound act before the crypto-shred"
+    },
+    {
+      "key": "email.deletion_completed.body",
+      "consumer": "IEmailSender template — the Phase P deletion worker (SLICE_S3_CONTRACT.md §2/§7): the LAST outbound act before the crypto-shred"
     }
   ]
 }

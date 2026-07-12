@@ -35,10 +35,12 @@ public sealed class ConfigRegistry(CoreDbContext db, Svac.DomainCore.Contracts.S
         }
 
         var valueJson = JsonSerializer.Serialize(value);
-        // PII-S2-F1/TRUST-BREAK-1 (SECURITY_REVIEW_S2.md): set-time bounds validation — throws BEFORE the
-        // tracked row is mutated, so a rejected Set leaves the stored value (and the audit stream) byte-
-        // for-byte untouched. Every OTHER 9A key has no bounds rule registered and passes through unchanged.
-        await ConfigBounds.ValidateAsync(key, valueJson, db, ct);
+        // PII-S2-F1/TRUST-BREAK-1 (SECURITY_REVIEW_S2.md) + OPS-3 (SECURITY_REVIEW_S3.md): set-time bounds
+        // validation — throws BEFORE the tracked row is mutated, so a rejected Set leaves the stored value
+        // (and the audit stream) byte-for-byte untouched. row.BoundsJson carries every OTHER key's generic
+        // [min,max] rule (seeded from its manifest's "bounds" field); a key with neither the hardcoded
+        // switch nor a BoundsJson row passes through unchanged, exactly as before.
+        await ConfigBounds.ValidateAsync(key, valueJson, row.BoundsJson, db, ct);
 
         row.ValueJson = valueJson;
         row.UpdatedAt = DateTimeOffset.UtcNow;
@@ -51,4 +53,10 @@ public sealed class ConfigRegistry(CoreDbContext db, Svac.DomainCore.Contracts.S
         // same tx"). Do not call SaveChangesAsync a second time here — that would split the tx in two.
         await eventStore.Append(StreamType.Audit, streamId: key, eventType: "config.set", payloadJson: payload, ctx, ExpectedVersion.AnyVersion, ct);
     }
+
+    /// <summary>[S5, PHASE_2A_SUBSTRATE.md §2] The admin config editor's read source — every registered row, unfiltered. No S1/S2 caller exists yet.</summary>
+    public async Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+        await db.ConfigEntries
+            .Select(e => new ConfigEntryView(e.Key, e.Type, e.Scope, e.ValueJson, e.BoundsJson, e.RequiresReason, e.UpdatedAt, e.UpdatedBy))
+            .ToListAsync(ct);
 }

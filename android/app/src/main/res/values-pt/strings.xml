@@ -55,4 +55,24 @@
     <string name="signup_submit_cta">Concluir</string>
     <string name="signup_could_not_send_title">Não conseguimos enviar isso</string>
     <string name="signup_could_not_send_body">Nada foi criado. Por favor, tente novamente mais tarde.</string>
+    <string name="signup_refused_age_floor">Não conseguimos criar uma conta com a data de nascimento informada.</string>
+    <string name="handle_taken">Esse nome de usuário já está em uso.</string>
+    <string name="handle_invalid">Esse nome de usuário não é válido. Use de 3 a 20 letras, números ou sublinhados.</string>
+    <string name="auth_code_invalid">Esse código não é válido ou expirou.</string>
+    <string name="email_verify_code_subject">Seu código de verificação do Weeb</string>
+    <string name="email_verify_code_body">Seu código é {{code}}. Ele expira em {{ttlMinutes}} minutos.</string>
+    <string name="email_login_code_subject">Seu código de login do Weeb</string>
+    <string name="email_login_code_body">Seu código de login é {{code}}. Ele expira em {{ttlMinutes}} minutos.</string>
+    <string name="email_already_registered_subject">Você já tem uma conta Weeb</string>
+    <string name="email_already_registered_body">Este e-mail já está registrado. Se não foi você, nenhuma ação é necessária.</string>
+    <string name="email_sessions_revoked_subject">Aviso de segurança: suas sessões do Weeb foram revogadas</string>
+    <string name="email_sessions_revoked_body">Detectamos a reutilização de um token de login já emitido e revogamos todas as sessões ativas da sua conta para sua proteção.</string>
+    <string name="email_email_changed_notice_subject">O e-mail da sua conta Weeb foi alterado</string>
+    <string name="email_email_changed_notice_body">O e-mail da sua conta foi alterado. Se não foi você, revogue suas sessões imediatamente.</string>
+    <string name="email_export_ready_subject">Sua exportação de dados do Weeb está pronta</string>
+    <string name="email_export_ready_body">A exportação de dados que você solicitou já está pronta para download.</string>
+    <string name="email_deletion_scheduled_subject">A exclusão da sua conta Weeb está agendada</string>
+    <string name="email_deletion_scheduled_body">Sua conta está agendada para exclusão em {{scheduledFor}}. Você pode cancelar em qualquer momento antes disso.</string>
+    <string name="email_deletion_completed_subject">Sua conta Weeb foi excluída</string>
+    <string name="email_deletion_completed_body">Sua conta e seus dados foram excluídos, conforme solicitado.</string>
 </resources>

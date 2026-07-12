@@ -35,6 +35,9 @@ internal sealed class FakeConfigRegistry : IConfigRegistry
         _values[key] = value!;
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ConfigEntryView>>(Array.Empty<ConfigEntryView>());
 }
 
 internal sealed class FakeQuotaService : IQuotaService

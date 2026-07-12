@@ -41,6 +41,14 @@
          prove Contracts stays SDK-free and Svac.AimlRouter is the one real, non-vacuous allowlist member. -->
     <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter.Contracts\Svac.AimlRouter.Contracts.csproj" />
     <ProjectReference Include="..\..\modules\AimlRouter\Svac.AimlRouter\Svac.AimlRouter.csproj" />
+    <!-- ExportPurgeCrossGateTests.cs (SLICE_S3_CONTRACT.md §6b): the export⋈purge cross-gate needs BOTH
+         registries in the same union — Svac.DomainCore.Export.CoreExportRegistrySource (already
+         reachable via the Svac.DomainCore reference above) AND Svac.Identity.Export.
+         IdentityExportRegistrySource, which lives in identity's internal assembly. Explicit direct
+         references (not relied upon transitively via Svac.PublicApi above) so this project's own
+         compile-time dependency surface states plainly what it needs. -->
+    <ProjectReference Include="..\..\modules\identity\Svac.Identity.Contracts\Svac.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\modules\identity\Svac.Identity\Svac.Identity.csproj" />
   </ItemGroup>
 
 </Project>

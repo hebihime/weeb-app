@@ -55,4 +55,24 @@
     <string name="signup_submit_cta">Finish</string>
     <string name="signup_could_not_send_title">We couldn\'t send that</string>
     <string name="signup_could_not_send_body">Nothing was created. Please try again later.</string>
+    <string name="signup_refused_age_floor">We couldn\'t create an account with the birthdate you entered.</string>
+    <string name="handle_taken">That handle is already taken.</string>
+    <string name="handle_invalid">That handle isn\'t valid. Use 3-20 letters, numbers, or underscores.</string>
+    <string name="auth_code_invalid">That code isn\'t valid or has expired.</string>
+    <string name="email_verify_code_subject">Your Weeb verification code</string>
+    <string name="email_verify_code_body">Your code is {{code}}. It expires in {{ttlMinutes}} minutes.</string>
+    <string name="email_login_code_subject">Your Weeb sign-in code</string>
+    <string name="email_login_code_body">Your sign-in code is {{code}}. It expires in {{ttlMinutes}} minutes.</string>
+    <string name="email_already_registered_subject">You already have a Weeb account</string>
+    <string name="email_already_registered_body">This email is already registered. If this wasn\'t you, no action is needed.</string>
+    <string name="email_sessions_revoked_subject">Security notice: your Weeb sessions were revoked</string>
+    <string name="email_sessions_revoked_body">We detected reuse of a previously-issued sign-in token and revoked every active session on your account for your protection.</string>
+    <string name="email_email_changed_notice_subject">Your Weeb account email changed</string>
+    <string name="email_email_changed_notice_body">Your account email was changed. If this wasn\'t you, revoke your sessions immediately.</string>
+    <string name="email_export_ready_subject">Your Weeb data export is ready</string>
+    <string name="email_export_ready_body">Your requested data export is ready to download.</string>
+    <string name="email_deletion_scheduled_subject">Your Weeb account deletion is scheduled</string>
+    <string name="email_deletion_scheduled_body">Your account is scheduled for deletion on {{scheduledFor}}. You can cancel any time before then.</string>
+    <string name="email_deletion_completed_subject">Your Weeb account has been deleted</string>
+    <string name="email_deletion_completed_body">Your account and its data have been deleted, as requested.</string>
 </resources>

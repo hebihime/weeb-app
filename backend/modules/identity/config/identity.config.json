@@ -1,0 +1,194 @@
+{
+  "_comment": "SLICE_S3_CONTRACT.md §4/§5 — additive manifest, union-merge-friendly with backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json. Signup/auth/me keys from the earlier passes (session.*, email_code.*, email.send_daily_cap, handle.cooldown_days, signup.verified_token_ttl_minutes, email_challenge.retention_hours, handle_history.retention_months, device.register_daily_cap) PLUS the export pass's three keys (export.link_ttl_hours, export.statutory_deadline_days, export.daily_cap) — every key here has a live consumer named in its own `consumer` field (the dead-tunable lint, §4). deletion.* keys (grace_days, retirement_days, deletion.*) remain Pass 2b's, deliberately absent — the deletion pipeline/worker is explicitly out of THIS pass's scope. The quota.*.cap rows beyond the literal §4 table are the QuotaService.Consume fixed naming convention (`quota.<quotaKey>.cap`, Svac.DomainCore/Quota/QuotaService.cs:24) — §5's quota keys (identity.email.send.daily, identity.device.register.daily, identity.export.request.daily) cannot resolve a cap without a row under exactly that name; identity.email.send_daily_cap/identity.device.register_daily_cap/identity.export.daily_cap are the contract's own literal key names, kept as the human-facing/desk-facing entries (the quota.*.cap pair is what QuotaService actually reads).",
+  "entries": [
+    {
+      "key": "identity.session.access_ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 60,
+      "bounds": [5, 1440],
+      "requiresReason": false,
+      "consumer": "Svac.Identity session issuance (signup/complete, auth/session, auth/refresh) — access token TTL"
+    },
+    {
+      "key": "identity.session.refresh_ttl_days",
+      "scope": "ops",
+      "type": "int",
+      "value": 90,
+      "bounds": [7, 365],
+      "requiresReason": false,
+      "consumer": "Svac.Identity refresh-token minting — refresh token TTL"
+    },
+    {
+      "key": "identity.session.max_active_per_account",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "bounds": [1, 50],
+      "requiresReason": false,
+      "consumer": "Svac.Identity session issuance — active-session cap (oldest revoked past cap, reason cap_evicted)"
+    },
+    {
+      "key": "identity.email_code.ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 15,
+      "bounds": [5, 60],
+      "requiresReason": false,
+      "consumer": "Svac.Identity email-challenge issuance/validation — code TTL"
+    },
+    {
+      "key": "identity.email_code.max_attempts",
+      "scope": "ops",
+      "type": "int",
+      "value": 5,
+      "bounds": [3, 10],
+      "requiresReason": false,
+      "consumer": "Svac.Identity email-challenge confirm — brute-force lockout per row"
+    },
+    {
+      "key": "identity.signup.verified_token_ttl_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "bounds": [10, 120],
+      "requiresReason": false,
+      "consumer": "Svac.Identity signup/complete — confirm-to-complete verifiedToken window"
+    },
+    {
+      "key": "identity.email.send_daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "bounds": [3, 50],
+      "requiresReason": false,
+      "consumer": "identity.email.send.daily quota cap (desk-facing mirror of quota.identity.email.send.daily.cap below)"
+    },
+    {
+      "key": "identity.handle.cooldown_days",
+      "scope": "ops",
+      "type": "int",
+      "value": 30,
+      "bounds": [1, 365],
+      "requiresReason": false,
+      "consumer": "Svac.Identity handle-change — cooldown check (identity-local, NOT a 10A key, §5)"
+    },
+    {
+      "key": "identity.email_challenge.retention_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 24,
+      "bounds": [1, 72],
+      "requiresReason": false,
+      "consumer": "13A retention_expiry sweep of identity.email_challenges (sweep worker; Pass 1 ships the config + registered retention rule, the sweep loop lands with the first 13A worker)"
+    },
+    {
+      "key": "identity.handle_history.retention_months",
+      "scope": "founder",
+      "type": "int",
+      "value": 12,
+      "bounds": [6, 84],
+      "requiresReason": true,
+      "consumer": "post-deletion identity.handle_history sweep (impersonation-defense window; Pass 2's deletion worker)"
+    },
+    {
+      "key": "identity.device.register_daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 20,
+      "bounds": [5, 100],
+      "requiresReason": false,
+      "consumer": "identity.device.register.daily quota cap (desk-facing mirror of quota.identity.device.register.daily.cap below)"
+    },
+    {
+      "key": "quota.identity.email.send.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 10,
+      "bounds": [3, 50],
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.email.send.daily\") — the fixed quota.<key>.cap convention; mirrors identity.email.send_daily_cap"
+    },
+    {
+      "key": "quota.identity.device.register.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 20,
+      "bounds": [5, 100],
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.device.register.daily\") — the fixed quota.<key>.cap convention; mirrors identity.device.register_daily_cap"
+    },
+    {
+      "key": "identity.export.link_ttl_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 72,
+      "bounds": [24, 168],
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Export.ExportWorker.MarkReadyAsync — export download-link TTL + sweep window"
+    },
+    {
+      "key": "identity.export.statutory_deadline_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 30,
+      "bounds": [1, 30],
+      "requiresReason": true,
+      "consumer": "Svac.Identity.Export.ExportWorker — the Art. 12(3) statutory clock, written onto every export's manifest.json as statutoryDeadlineAt (the S5 desk's future render target)"
+    },
+    {
+      "key": "identity.export.daily_cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 2,
+      "bounds": [1, 10],
+      "requiresReason": false,
+      "consumer": "identity.export.request.daily quota cap (desk-facing mirror of quota.identity.export.request.daily.cap below); floor 1 — no ops edit can zero a legal right (OPS-3, SECURITY_REVIEW_S3.md: now enforced generically by ConfigRegistry.SetValue, not just declared)"
+    },
+    {
+      "key": "quota.identity.export.request.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 2,
+      "bounds": [1, 10],
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume(\"identity.export.request.daily\") — the fixed quota.<key>.cap convention; mirrors identity.export.daily_cap"
+    },
+    {
+      "key": "identity.deletion.grace_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 14,
+      "bounds": [0, 30],
+      "requiresReason": true,
+      "consumer": "Svac.Identity deletion request (POST /v1/me/deletion) — deletion_effective_at = now + grace_days; bounds [0,30], 0 is bounds-legal so the E2E's worker executes live (OPS-3, SECURITY_REVIEW_S3.md: now enforced generically by ConfigRegistry.SetValue, not just the DevSeams endpoint's own local check)"
+    },
+    {
+      "key": "identity.deletion.sweep_minutes",
+      "scope": "ops",
+      "type": "int",
+      "value": 15,
+      "bounds": [1, 60],
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Deletion deletion/expiry worker interval (Pass 2b) — DevSeams-only diagnostic trigger runs the sweep on demand in the shipped build; the value is the documented real interval a future scheduled host would poll at"
+    },
+    {
+      "key": "identity.export.pre_deletion_wait_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 72,
+      "bounds": [0, 168],
+      "requiresReason": false,
+      "consumer": "Svac.Identity.Deletion Phase P worker — caps how long the physical purge waits for a pending export job to finish before proceeding"
+    },
+    {
+      "key": "identity.handle.retirement_days",
+      "scope": "founder",
+      "type": "int",
+      "value": 365,
+      "bounds": [30, 36500],
+      "requiresReason": true,
+      "consumer": "Svac.Identity handle-availability + signup/complete's reserved/retired check (OQ-2) — a retired handle past this quarantine window is treated as available again (lazy expiry, no background sweep needed)"
+    }
+  ]
+}

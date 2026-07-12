@@ -372,5 +372,8 @@ public sealed class PurgeCompletenessTests : IAsyncLifetime
 
         public Task SetValue<T>(string key, T value, string reason, ActorRef actor, RequestContext ctx, CancellationToken ct = default) =>
             throw new NotSupportedException("fixture adapter: not exercised in this suite.");
+
+        public Task<IReadOnlyList<Svac.DomainCore.Contracts.Config.ConfigEntryView>> ListEntries(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Svac.DomainCore.Contracts.Config.ConfigEntryView>>(Array.Empty<Svac.DomainCore.Contracts.Config.ConfigEntryView>());
     }
 }

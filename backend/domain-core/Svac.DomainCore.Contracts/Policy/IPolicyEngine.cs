@@ -6,10 +6,15 @@ namespace Svac.DomainCore.Contracts.Policy;
 /// The 4A mutation chokepoint (SLICE_S1_CONTRACT.md §1b). Authorize is the ONE place a mutation is
 /// allowed or denied; middleware refuses any mutation endpoint with no policy entry, fail-closed, twice
 /// (startup boot-refusal AND request-time refusal).
+///
+/// ASYNC as of PHASE_2A_SUBSTRATE.md §1: <see cref="IResourceOwnershipResolver.OwnerOf"/> and <see
+/// cref="IStaffRoleResolver.GrantsOf"/> are async DB reads, so the chokepoint itself must be. Every
+/// existing DECISION stays byte-identical for S1/S2 rows (none set TargetRule/AllowedAccountStates/
+/// StaffRoles) — callers just <c>await</c> where they used to call synchronously.
 /// </summary>
 public interface IPolicyEngine
 {
-    public PolicyDecision Authorize(ActorRef actor, string action, TargetRef target);
+    public Task<PolicyDecision> Authorize(ActorRef actor, string action, TargetRef target, CancellationToken ct = default);
 }
 
 /// <summary>

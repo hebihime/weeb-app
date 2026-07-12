@@ -154,6 +154,7 @@ public sealed class TrustBoundaryLensS2Tests
     {
         public Task<T> GetValue<T>(string key, CancellationToken ct = default) => throw new NotSupportedException("never invoked at composition time");
         public Task SetValue<T>(string key, T value, string reason, ActorRef actor, RequestContext ctx, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ConfigEntryView>> ListEntries(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class StubQuotaService : IQuotaService

@@ -78,6 +78,8 @@ public sealed class AesFieldEncryptor(IFieldKeyVault keyVault) : IFieldEncryptor
         FieldEncryptionPurpose.Birthdate => "field-enc-birthdate-v1",
         FieldEncryptionPurpose.VerificationAudit => "field-enc-verification-audit-v1",
         FieldEncryptionPurpose.IdentityExclusionFilters => "field-enc-identity-exclusion-filters-v1",
+        FieldEncryptionPurpose.AnimeAnswers => "field-enc-anime-answers-v1",
+        FieldEncryptionPurpose.ExportArtifact => "field-enc-export-artifact-v1",
         _ => throw new ArgumentOutOfRangeException(nameof(purpose), purpose, null),
     };
 }

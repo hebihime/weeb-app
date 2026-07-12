@@ -12,6 +12,9 @@ public enum PolicyAxis
     Reputation = 4,
     Mode = 8,
     Verification = 16,
+
+    /// <summary>The account-state axis (PHASE_2A_SUBSTRATE.md §1, SLICE_S3_CONTRACT.md §3a) for the CI action×axis matrix generator. Real evaluation reads <see cref="PolicyTableEntry.AllowedAccountStates"/>.</summary>
+    AccountState = 32,
 }
 
 /// <summary>The declarative deny mode a table row carries, closed to match PolicyDecision's union (SLICE_S1_CONTRACT.md §1b, §3).</summary>
@@ -44,7 +47,16 @@ public sealed record PolicyTableEntry(
     // deny-by-omission guard the moment a future slice adds a real read-path row, rather than firing
     // noisily against today's System/Staff-only mutation rows (which the 4A engine's own consumer-denial
     // coercion, PolicyEngine.cs, already renders as absence for any consumer regardless of this flag).
-    bool IsReadPath = false)
+    bool IsReadPath = false,
+    // --- Phase-2a additive (PHASE_2A_SUBSTRATE.md §1) — every S1/S2 row leaves all three at their
+    // default, so every existing decision stays byte-identical; these three axes are ANDed onto the
+    // existing actor-kind check inside PolicyEngine.Authorize. ---
+    /// <summary>What the row DEMANDS of its target (SLICE_S3_CONTRACT.md §3a). Default ActionScoped = today's S1/S2 behavior (no target-ownership check).</summary>
+    TargetRule? TargetRule = null,
+    /// <summary>Null = "any account state" (S1/S2 default). Non-null restricts a User actor to these account states, resolved server-side, never client input.</summary>
+    IReadOnlySet<string>? AllowedAccountStates = null,
+    /// <summary>Null = "no role restriction". Non-null requires a Staff actor's grants (IStaffRoleResolver) to intersect this set.</summary>
+    IReadOnlySet<StaffRole>? StaffRoles = null)
 {
     /// <summary>
     /// DenyAsLimit rows must carry either a fixed quota key OR be marked DynamicQuotaKey (the row is the

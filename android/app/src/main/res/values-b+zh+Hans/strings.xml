@@ -55,4 +55,24 @@
     <string name="signup_submit_cta">完成</string>
     <string name="signup_could_not_send_title">我们无法发送</string>
     <string name="signup_could_not_send_body">未创建任何内容。请稍后再试。</string>
+    <string name="signup_refused_age_floor">我们无法用你输入的出生日期创建账户。</string>
+    <string name="handle_taken">该用户名已被使用。</string>
+    <string name="handle_invalid">该用户名无效。请使用3-20个字母、数字或下划线。</string>
+    <string name="auth_code_invalid">该验证码无效或已过期。</string>
+    <string name="email_verify_code_subject">你的 Weeb 验证码</string>
+    <string name="email_verify_code_body">你的验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。</string>
+    <string name="email_login_code_subject">你的 Weeb 登录验证码</string>
+    <string name="email_login_code_body">你的登录验证码是 {{code}}。将在 {{ttlMinutes}} 分钟后过期。</string>
+    <string name="email_already_registered_subject">你已经拥有一个 Weeb 账户</string>
+    <string name="email_already_registered_body">此邮箱已被注册。如果不是你本人操作,无需任何操作。</string>
+    <string name="email_sessions_revoked_subject">安全提示:你的 Weeb 会话已被撤销</string>
+    <string name="email_sessions_revoked_body">我们检测到一个此前签发的登录令牌被重复使用,为保护你的账户安全,已撤销账户上的所有活跃会话。</string>
+    <string name="email_email_changed_notice_subject">你的 Weeb 账户邮箱已更改</string>
+    <string name="email_email_changed_notice_body">你的账户邮箱已更改。如果不是你本人操作,请立即撤销你的会话。</string>
+    <string name="email_export_ready_subject">你的 Weeb 数据导出已完成</string>
+    <string name="email_export_ready_body">你请求的数据导出已准备好,可以下载了。</string>
+    <string name="email_deletion_scheduled_subject">你的 Weeb 账户删除已安排</string>
+    <string name="email_deletion_scheduled_body">你的账户将于 {{scheduledFor}} 被删除。你可以在此之前随时取消。</string>
+    <string name="email_deletion_completed_subject">你的 Weeb 账户已被删除</string>
+    <string name="email_deletion_completed_body">根据你的请求，你的账户及其数据已被删除。</string>
 </resources>

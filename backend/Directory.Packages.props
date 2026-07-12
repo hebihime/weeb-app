@@ -46,5 +46,18 @@
       module's AnthropicApiTransport is written against.
     -->
     <PackageVersion Include="Anthropic.SDK" Version="5.10.0" />
+
+    <!--
+      Identity (SLICE_S3_CONTRACT.md §1b, §8/§9: "IEmailSender ... a REAL SMTP transport over compose
+      Mailpit"). MailKit chosen over the legacy, Microsoft-deprecated System.Net.Mail.SmtpClient
+      (search-before-building, CLAUDE.md): 245M+ NuGet downloads, actively maintained (jstedfast),
+      first-class STARTTLS/auth support prod SMTP relays require (Mailpit needs neither, but the SAME
+      impl "points at any prod relay by config" per §1b — SmtpClient's IETF-flagged deprecation and its
+      well-known thread-safety/async footguns make it unfit for that prod path). MimeKit is MailKit's
+      own message-building dependency (same author/repo), pinned explicitly for the same
+      transitive-version-drift reason every other CPM entry here exists.
+    -->
+    <PackageVersion Include="MailKit" Version="4.17.0" />
+    <PackageVersion Include="MimeKit" Version="4.17.0" />
   </ItemGroup>
 </Project>

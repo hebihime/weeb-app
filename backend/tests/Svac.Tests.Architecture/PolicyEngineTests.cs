@@ -14,15 +14,15 @@ public sealed class PolicyEngineTests
     private readonly PolicyEngine _engine = new(new PolicyTable());
 
     [Fact]
-    public void SystemActor_LedgerAppend_IsAllowed()
+    public async Task SystemActor_LedgerAppend_IsAllowed()
     {
         var systemActor = new ActorRef(OpaqueId.New(IdPrefixes.System, DateTimeOffset.UtcNow, Random.Shared), ActorKind.System);
-        var decision = _engine.Authorize(systemActor, "core.ledger.append", TargetRef.ForAction("core.ledger.append"));
+        var decision = await _engine.Authorize(systemActor, "core.ledger.append", TargetRef.ForAction("core.ledger.append"));
         Assert.True(decision.IsAllowed);
     }
 
     [Fact]
-    public void UserActor_LedgerAppend_IsDeniedAsAbsence_NeverAnObservableDenyStandard()
+    public async Task UserActor_LedgerAppend_IsDeniedAsAbsence_NeverAnObservableDenyStandard()
     {
         // SilentRej-L1/L2 (SECURITY_REVIEW_S1.md): a CONSUMER actor (User/Anonymous) denied by
         // omission from a row's ActorKinds must always render as absence, never the row's own declared
@@ -30,25 +30,25 @@ public sealed class PolicyEngineTests
         // to enshrine the leaky behavior (hence its old name, "...IsDeniedStandard"); PolicyEngine's
         // consumer-denial coercion is what SilentRejectionLeakLensTests proves fixes it.
         var userActor = new ActorRef(OpaqueId.New(IdPrefixes.User, DateTimeOffset.UtcNow, Random.Shared), ActorKind.User);
-        var decision = _engine.Authorize(userActor, "core.ledger.append", TargetRef.ForAction("core.ledger.append"));
+        var decision = await _engine.Authorize(userActor, "core.ledger.append", TargetRef.ForAction("core.ledger.append"));
         Assert.IsType<PolicyDecision.DenyAsAbsence>(decision);
     }
 
     [Fact]
-    public void AnonymousActor_QuotaConsume_IsAllowed_AxisEvaluationHappensInsideIQuotaService()
+    public async Task AnonymousActor_QuotaConsume_IsAllowed_AxisEvaluationHappensInsideIQuotaService()
     {
         // The policy row for core.quota.consume allows every actor kind (§3: "internal chokepoint") —
         // the actual cap/window deny decision is IQuotaService.Consume's job, not the 4A row's.
         var anon = new ActorRef(OpaqueId.New(IdPrefixes.Anonymous, DateTimeOffset.UtcNow, Random.Shared), ActorKind.Anonymous);
-        var decision = _engine.Authorize(anon, "core.quota.consume", TargetRef.ForAction("core.quota.consume"));
+        var decision = await _engine.Authorize(anon, "core.quota.consume", TargetRef.ForAction("core.quota.consume"));
         Assert.True(decision.IsAllowed);
     }
 
     [Fact]
-    public void UnmappedAction_FailsClosed_NeverAllows()
+    public async Task UnmappedAction_FailsClosed_NeverAllows()
     {
         var systemActor = new ActorRef(OpaqueId.New(IdPrefixes.System, DateTimeOffset.UtcNow, Random.Shared), ActorKind.System);
-        var decision = _engine.Authorize(systemActor, "core.totally.unregistered.action", TargetRef.ForAction("x"));
+        var decision = await _engine.Authorize(systemActor, "core.totally.unregistered.action", TargetRef.ForAction("x"));
         var deny = Assert.IsType<PolicyDecision.DenyStandard>(decision);
         Assert.Equal("policy.denied.unmapped_action", deny.ReasonKey);
     }
