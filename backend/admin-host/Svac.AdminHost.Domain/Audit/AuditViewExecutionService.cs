@@ -54,7 +54,7 @@ public sealed class AuditViewExecutionService(
                 hat,
             });
             await eventStore.Append(StreamType.Audit, target.ResourceId!, "admin.audit.viewed", payload, workCtx, ExpectedVersion.AnyVersion, ct);
-        }, ct);
+        }, ct: ct);
 
         if (result is not AdminActionResult.Success)
         {

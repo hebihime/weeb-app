@@ -71,6 +71,22 @@ test("parseDoneSlices: against the REAL SLICE_PLAYBOOK.md, S0/S1/S2/S3 are DONE"
   }
 });
 
+// SECURITY_REVIEW_S5.md S5-13 (LOW, Lens5 F3, DEFERRED): parseDoneSlices' own doc comment calls its
+// /\bDONE\b/ match "deliberately loose (substring, not a fixed template)" -- loose enough that it never
+// handles NEGATION. A retro header phrased "... NOT DONE yet ..." (or "not yet DONE") contains the whole
+// word "DONE" and is misread as a completed slice, exactly the opposite of what the header says.
+test(
+  "parseDoneSlices: RED FIXTURE (deferred SECURITY_REVIEW_S5.md S5-13) -- 'NOT DONE yet' in a header's own text is misread as DONE",
+  { skip: "deferred: SECURITY_REVIEW_S5.md S5-13 (parseDoneSlices' \\bDONE\\b substring match has no negation handling -- 'NOT DONE yet' / 'not yet DONE' in a retro header is misread as a completed slice) -> harden the token match" },
+  () => {
+    const doc = "### S41 retro (blocked -- NOT DONE yet, missing OQ)\n\nsome body text\n";
+    const done = parseDoneSlices(doc);
+    // Desired: a header saying the slice is NOT done must never be treated as done. Today this returns
+    // ["S41"] -- the bare \bDONE\b match has no idea "NOT " precedes it.
+    assert.deepEqual([...done], []);
+  }
+);
+
 // ---------- checkManifestEntries: honest both directions ----------
 
 const LEDGER = { knownSlices: new Set(["S12", "S18"]), doneSlices: new Set(["S12"]) };

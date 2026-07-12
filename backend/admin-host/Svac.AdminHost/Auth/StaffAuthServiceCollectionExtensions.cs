@@ -1,4 +1,6 @@
 using System.Globalization;
+using Azure.Extensions.AspNetCore.DataProtection.Keys;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -41,7 +43,8 @@ public static class StaffAuthServiceCollectionExtensions
         this IServiceCollection services,
         string postgresConnectionString,
         bool devSeamsEnabled,
-        StaffAuthEntraConfig entraConfig)
+        StaffAuthEntraConfig entraConfig,
+        Uri? dataProtectionKeyVaultKeyIdentifier = null)
     {
         services.AddSingleton(new DevSeamsEnabledFlag(devSeamsEnabled));
 
@@ -72,9 +75,41 @@ public static class StaffAuthServiceCollectionExtensions
         // deliverable: fix the scaffold's "not persisted" warning) so cookies/antiforgery survive
         // restart + multiple instances. A hand-rolled IXmlRepository, never the EF-Core-package's own
         // entity (CoreDbXmlRepository's own doc comment explains why) — zero new package dependency.
-        services.AddDataProtection()
+        //
+        // SECURITY_REVIEW_S5.md S5-04: that XML payload carries the RAW signing/encryption key material
+        // for every staff cookie + antiforgery token — persisted to core.data_protection_keys in
+        // PLAINTEXT before this fix, readable from any DB access (a backup, a replica, a compromised
+        // read-only credential) with zero further exploitation needed to forge a founder cookie. The
+        // plaintext XmlRepository stays wired ONLY behind DevSeams (guaranteed Development-only —
+        // ProdFieldKeyVaultGuard.Enforce already throws at boot if devSeamsEnabled is true anywhere else,
+        // called earlier in Program.cs than this method ever runs); every other boot chains
+        // .ProtectKeysWithAzureKeyVault so the stored XML is encrypted-at-rest under a real Key Vault RSA
+        // key — a DB dump alone no longer yields a usable key. Fail-closed, not fail-open: a prod/staging
+        // boot with no Key Vault key identifier configured throws HERE rather than silently falling back
+        // to plaintext (mirrors ProdFieldKeyVaultGuard/ProdStaffAuthGuard's own allowlist-Development
+        // shape) — defensive, since ProdFieldKeyVaultGuard.Enforce (called earlier in Program.cs) already
+        // refuses boot in this exact situation via SVAC_KEYVAULT_ENDPOINT.
+        var dataProtectionBuilder = services.AddDataProtection()
             .SetApplicationName("svac-admin-host")
             .AddKeyManagementOptions(o => o.XmlRepository = new CoreDbXmlRepository(postgresConnectionString));
+
+        if (!devSeamsEnabled)
+        {
+            if (dataProtectionKeyVaultKeyIdentifier is null)
+            {
+                throw new InvalidOperationException(
+                    "AddStaffAuth: DevSeams is disabled (a non-Development boot) but no Azure Key Vault " +
+                    "key identifier was supplied for DataProtection key-ring encryption (SECURITY_REVIEW_S5.md " +
+                    "S5-04) — the plaintext core.data_protection_keys path is DevSeams-only. Configure " +
+                    "SVAC_KEYVAULT_ENDPOINT before deploying to any environment other than Development.");
+            }
+
+            // Azure.Identity pinned to 1.21.0 (Directory.Packages.props' own comment): below that
+            // version, Azure.Core >= 1.53's own DefaultAzureCredential export collides with Azure.
+            // Identity's now-duplicate copy (CS0433) — 1.21.0 is the version that drops Identity's copy
+            // in favor of Core's, so this plain, unqualified reference resolves to exactly one type.
+            dataProtectionBuilder.ProtectKeysWithAzureKeyVault(dataProtectionKeyVaultKeyIdentifier, new DefaultAzureCredential());
+        }
 
         var authBuilder = services.AddAuthentication(CookieScheme);
 
@@ -115,7 +150,7 @@ public static class StaffAuthServiceCollectionExtensions
 
                     var claims = new StaffExternalClaims(
                         ExternalSubject: externalSubject,
-                        HasMfaClaim: EntraClaimTypes.HasMfaClaim(principal!.Claims),
+                        HasMfaClaim: EntraClaimTypes.HasMfaClaim(principal!.Claims, entraConfig.AcrValues),
                         Email: principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? externalSubject,
                         DisplayName: principal.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? externalSubject);
 

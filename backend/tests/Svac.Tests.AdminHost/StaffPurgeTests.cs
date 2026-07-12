@@ -161,4 +161,84 @@ public sealed class StaffPurgeTests : IAsyncLifetime
         Assert.Equal(originalGrantedAt, purgedGrant.GrantedAt);
         Assert.Equal(staffId, purgedGrant.StaffId); // the grant still resolves to the SAME (pseudonymized) staff row
     }
+
+    // ------------------------------------------------------------------------------------------------
+    // SECURITY_REVIEW_S5.md S5-05 (fixNow): AdminPurgeRegistrySource's OWN registration comment for
+    // RetentionExpiry says "admin.staff_pii_retention_years post-DEACTIVATION" — an age-cutoff sweep was
+    // never meant to touch a still-ACTIVE operator/founder. Before this fix, StaffAccountsPurgeStoreExecutor
+    // enforced no such guard: a misconfigured/mistimed RetentionExpiry sweep (age computed off CreatedAt,
+    // say) could pseudonymize (destroying the external_subject Entra oid lookup key) an active row with no
+    // in-app recovery — including the last SuperAdmin, compounding S5-03's own lockout concern. These
+    // tests exercise the executor DIRECTLY (never through the full pipeline) since the guard lives entirely
+    // inside it.
+    // ------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task RetentionExpiry_OnAnActiveStaffAccount_NoOps_NeverPseudonymizes()
+    {
+        using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var (staffId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "retention-active-target");
+        var row = await adminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        var originalEmail = row.Email;
+        var originalSubject = row.ExternalSubject;
+        var originalDisplayName = row.DisplayName;
+
+        var executor = new StaffAccountsPurgeStoreExecutor(adminDb);
+        var rowsAffected = await executor.ExecuteAsync(
+            PurgeVerb.Pseudonymize, PurgeClass.RetentionExpiry, new SubjectRef("staff_account", staffId), pseudonymizeHmacKey: new byte[32]);
+
+        Assert.Equal(0, rowsAffected); // no-op -- an active row is never in scope for a mere age-cutoff sweep
+
+        using var freshAdminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var unchanged = await freshAdminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        Assert.Equal("active", unchanged.Status);
+        Assert.Equal(originalEmail, unchanged.Email); // byte-identical -- never touched
+        Assert.Equal(originalSubject, unchanged.ExternalSubject); // the Entra oid lookup key survives -- no lockout
+        Assert.Equal(originalDisplayName, unchanged.DisplayName);
+    }
+
+    [Fact]
+    public async Task RetentionExpiry_OnADeactivatedStaffAccount_StillPseudonymizes_TheLegitimateCaseIsUnaffected()
+    {
+        using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var (staffId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "retention-deactivated-target");
+        var row = await adminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        row.Status = "deactivated";
+        row.DeactivatedAt = DateTimeOffset.UtcNow;
+        await adminDb.SaveChangesAsync();
+        var originalEmail = row.Email;
+
+        var executor = new StaffAccountsPurgeStoreExecutor(adminDb);
+        var rowsAffected = await executor.ExecuteAsync(
+            PurgeVerb.Pseudonymize, PurgeClass.RetentionExpiry, new SubjectRef("staff_account", staffId), pseudonymizeHmacKey: new byte[32]);
+
+        Assert.Equal(1, rowsAffected); // the guard never blocks the case it was actually written for
+
+        using var freshAdminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var purged = await freshAdminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        Assert.Equal("deactivated", purged.Status);
+        Assert.NotEqual(originalEmail, purged.Email);
+    }
+
+    [Fact]
+    public async Task StatutoryErasure_OnAnActiveStaffAccount_StillPseudonymizes_ARealDsrIsNeverBlockedByThisGuard()
+    {
+        using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var (staffId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "statutory-active-target");
+        var row = await adminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        var originalEmail = row.Email;
+
+        var executor = new StaffAccountsPurgeStoreExecutor(adminDb);
+        var rowsAffected = await executor.ExecuteAsync(
+            PurgeVerb.Pseudonymize, PurgeClass.StatutoryErasure, new SubjectRef("staff_account", staffId), pseudonymizeHmacKey: new byte[32]);
+
+        // S5-05's guard is scoped to RetentionExpiry ONLY -- a real DSR (StatutoryErasure) must still
+        // reach an ACTIVE row exactly as it always did; this guard must never become a way to dodge a
+        // legitimate erasure obligation just by staying active.
+        Assert.Equal(1, rowsAffected);
+        using var freshAdminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        var purged = await freshAdminDb.StaffAccounts.SingleAsync(s => s.Id == staffId);
+        Assert.Equal("active", purged.Status); // status itself is never touched by the erasure -- only PII fields are
+        Assert.NotEqual(originalEmail, purged.Email);
+    }
 }

@@ -8,6 +8,15 @@ namespace Svac.AdminHost.Auth;
 /// </summary>
 public sealed record StaffAuthEntraConfig(string? Authority, string? ClientId, string? ClientSecret)
 {
+    /// <summary>
+    /// SECURITY_REVIEW_S5.md S5-02: the exact <c>acr</c> value(s) the staff group's Conditional Access
+    /// MFA policy actually emits (SVAC_ENTRA_MFA_ACR_VALUES, comma-separated) — see
+    /// <see cref="EntraClaimTypes.HasMfaClaim"/>'s own doc comment. Defaults to empty, meaning the
+    /// unconfigured <c>acr</c> signal contributes nothing to the MFA decision (relies on <c>amr</c>
+    /// alone) rather than the old fail-open "any non-empty acr" behavior.
+    /// </summary>
+    public IReadOnlySet<string> AcrValues { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
     public bool AuthorityConfigured => !string.IsNullOrWhiteSpace(Authority);
     public bool ClientIdConfigured => !string.IsNullOrWhiteSpace(ClientId);
     public bool ClientSecretConfigured => !string.IsNullOrWhiteSpace(ClientSecret);

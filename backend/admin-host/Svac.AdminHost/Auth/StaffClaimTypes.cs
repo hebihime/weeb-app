@@ -39,11 +39,24 @@ public static class EntraClaimTypes
     /// <summary>Authentication Context Class Reference (Entra Conditional Access) — an alternate MFA signal some tenants emit instead of/alongside amr.</summary>
     public const string Acr = "acr";
 
-    public static bool HasMfaClaim(IEnumerable<System.Security.Claims.Claim> claims)
+    /// <summary>
+    /// SECURITY_REVIEW_S5.md S5-02: <paramref name="configuredAcrValues"/> is the exact set of
+    /// authentication-context-class-reference values the Conditional Access MFA policy for the staff
+    /// group actually emits (SVAC_ENTRA_MFA_ACR_VALUES, wired by <c>StaffAuthEntraConfig</c> —
+    /// <c>Julien-executed action</c> per SLICE_S5_CONTRACT.md §11: created alongside the Entra tenant/app
+    /// registration/CA policy itself, since the values live in the SAME Entra admin center screen). Before
+    /// this fix, ANY non-empty <c>acr</c> claim satisfied MFA — a plain <c>pwd</c>/<c>acr:1</c> single-
+    /// factor sign-in that merely happens to carry an authentication-context claim (many do, unrelated to
+    /// MFA) would have passed. Matching against the configured value(s) means an unconfigured (empty) set
+    /// contributes NOTHING — <c>acr</c> alone can never satisfy MFA until Julien's tenant-specific value(s)
+    /// are set, so this is strictly narrower than before, never a fail-open widening.
+    /// </summary>
+    public static bool HasMfaClaim(IEnumerable<System.Security.Claims.Claim> claims, IReadOnlySet<string> configuredAcrValues)
     {
         var list = claims as IList<System.Security.Claims.Claim> ?? claims.ToList();
         var hasAmrMfa = list.Any(c => c.Type == Amr && c.Value.Contains("mfa", StringComparison.OrdinalIgnoreCase));
-        var hasAcr = list.Any(c => c.Type == Acr && !string.IsNullOrWhiteSpace(c.Value));
-        return hasAmrMfa || hasAcr;
+        var hasConfiguredAcr = configuredAcrValues.Count > 0
+            && list.Any(c => c.Type == Acr && configuredAcrValues.Contains(c.Value));
+        return hasAmrMfa || hasConfiguredAcr;
     }
 }

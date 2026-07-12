@@ -29,13 +29,24 @@ public interface IAdminActionExecutor
     /// <see cref="Svac.DomainCore.Contracts.Config.IConfigRegistry.SetValue{T}"/> itself, called from
     /// <paramref name="work"/>), never at this generic, per-ACTION layer.</param>
     /// <param name="work">The domain mutation. Invoked ONLY after every gate (staff-active, reason,
-    /// Authorize, four-eyes) passes, inside the SAME database transaction this executor's own audit-event
-    /// append commits or rolls back with.</param>
+    /// Authorize, four-eyes, the last-active-SuperAdmin lockout guard) passes, inside the SAME database
+    /// transaction this executor's own audit-event append commits or rolls back with.</param>
+    /// <param name="affectedRoleCode">
+    /// SECURITY_REVIEW_S5.md S5-03: meaningful ONLY for <c>admin.staff.role_revoke</c> — the exact
+    /// snake_case role code (<see cref="Svac.AdminHost.Domain.Policy.StaffRoleCodes.ToCode"/>) being
+    /// revoked from <paramref name="target"/>. The generic chokepoint has no other way to see which role a
+    /// revoke targets (the route/form only threads it into the caller's own <paramref name="work"/>
+    /// closure) — but the last-active-SuperAdmin lockout guard needs exactly that to tell "revoking this
+    /// staffer's <c>super_admin</c> grant" apart from "revoking some OTHER role from a staffer who happens
+    /// to also hold <c>super_admin</c>" (the latter must never be blocked by this guard). Ignored by every
+    /// other action.
+    /// </param>
     public Task<AdminActionResult> Execute(
         RequestContext callerCtx,
         string action,
         TargetRef target,
         string? reason,
         Func<RequestContext, Task> work,
+        string? affectedRoleCode = null,
         CancellationToken ct = default);
 }

@@ -70,6 +70,7 @@
     "admin.staff_roles.notice.error": "The action could not be completed.",
     "admin.nav.config_registry": "Config Registry",
     "admin.config.title": "Config Registry",
+    "admin.config.access_denied": "You do not have access to view the config registry.",
     "admin.config.body": "Every 9A config entry, typed and desk-editable. Founder-scope edits walk a confirm-with-reason interstitial; ops-scope edits take an inline reason; set-scope entries are display-only.",
     "admin.config.table.key": "Key",
     "admin.config.table.scope": "Scope",

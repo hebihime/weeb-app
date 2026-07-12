@@ -253,4 +253,30 @@ public sealed class V0BatchManifestTests
 
         Assert.Empty(Svac.AdminHost.Domain.Config.PendingConsumerSliceLint.Validate(entries, RealLedgerSlices));
     }
+
+    // ------------------------------------------------------------------------------------------------
+    // SECURITY_REVIEW_S5.md S5-13 (LOW, Lens5 F3, DEFERRED): this type's own doc comment calls itself
+    // "the authoritative SPEC of what 'a key passes' means" — but tools/dead-tunable-lint/dead-tunable-
+    // lint.mjs's checkManifestEntries (the node mirror this C# function is meant to be authoritative
+    // OVER) ALSO enforces a DONE-without-claiming check ("a pending slice that is real but ALREADY DONE
+    // fails distinctly from an invented one") that THIS function has no parameter to even express —
+    // Validate takes no doneSlices set at all. A key naming an already-shipped, already-DONE slice as its
+    // pending_consumer_slice (never given a real consumer once that slice landed) passes here today.
+    // ------------------------------------------------------------------------------------------------
+    [Fact(Skip = "deferred: SECURITY_REVIEW_S5.md S5-13 (PendingConsumerSliceLint.Validate has no doneSlices parameter -- a key pending on an ALREADY-DONE slice with no real consumer passes here, unlike the node lint it claims to be authoritative over) -> add the doneSlices/DONE check to the C# lint")]
+    public void PendingConsumerSliceLint_DoneSliceKey_Flagged()
+    {
+        // S3 is REALLY done (SLICE_PLAYBOOK.md's own "### S3 retro ... DONE" header, mirrored by
+        // dead-tunable-lint.test.mjs's "against the REAL SLICE_PLAYBOOK.md, S0/S1/S2/S3 are DONE" test) --
+        // a key still naming it as pending with no real consumer is exactly the dead tunable the node
+        // lint's doneSlices check exists to catch.
+        var entries = new[] { new Svac.AdminHost.Domain.Config.PendingConsumerSliceLint.Entry("test.s5_13.stale_pending_key", "", "S3") };
+        var knownLedgerSlicesIncludingS3 = new HashSet<string>(RealLedgerSlices) { "S3" };
+
+        var violations = Svac.AdminHost.Domain.Config.PendingConsumerSliceLint.Validate(entries, knownLedgerSlicesIncludingS3);
+
+        // Desired: flagged, exactly like dead-tunable-lint.mjs's own "ALREADY MARKED DONE" red fixture.
+        // Today this is empty -- S3's own "done" status is entirely invisible to this function.
+        Assert.NotEmpty(violations);
+    }
 }

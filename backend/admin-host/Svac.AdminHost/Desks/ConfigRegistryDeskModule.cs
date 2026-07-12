@@ -5,21 +5,28 @@ namespace Svac.AdminHost.Desks;
 /// <summary>
 /// The Config Registry desk (SLICE_S5_CONTRACT.md §0/§4/§8 seam 1, Pass C) — THE LEDGER HEADLINE's own
 /// nav registration, proving the seam composes a third time (zero edits to DashboardDeskModule/
-/// StaffRolesDeskModule/AdminLayout). No <c>admin.config.read</c> policy row exists (§3's table: config
-/// edits ride the EXISTING <c>core.config.set.founder</c>/<c>core.config.set.ops</c> rows, zero new rows)
-/// — reading the registry's own values carries no more restriction than any other page reachable behind
-/// <c>admin.host.transport</c>, so every staff role sees this nav entry, exactly like <see
-/// cref="DashboardDeskModule"/>. WHO may actually SUBMIT an edit is gated later, per-key, by the Role
-/// axis on those two existing rows (SuperAdmin for founder-scope; SuperAdmin/EconomyOps for ops-scope) —
-/// evaluated inside <see cref="Svac.AdminHost.Domain.Execution.AdminActionExecutor"/>, never by this nav
-/// registration.
+/// StaffRolesDeskModule/AdminLayout).
+///
+/// SECURITY_REVIEW_S5.md S5-01: nav visibility now mirrors the real <c>admin.config.read</c> policy row's
+/// own Role allowlist (SuperAdmin, EconomyOps — the union of every role that can commit at least one
+/// core.config.set.* action) exactly, the SAME "nav-absence law" <see cref="UserSearchDeskModule"/> and
+/// <see cref="DashboardDeskModule"/> already follow — a role that cannot view the registry never even
+/// sees the link. Before this fix, no <c>admin.config.read</c> row existed at all and this desk
+/// (wrongly) showed the link to all six roles unconditionally; <see cref="Components.Pages.ConfigRegistry"/>'s
+/// own defensive re-check on a direct URL navigation guards the same way StaffRoles.razor.cs's pattern
+/// does. WHO may actually SUBMIT an edit is gated separately, per-key, by the Role axis on
+/// <c>core.config.set.founder</c>/<c>core.config.set.ops</c> — evaluated inside
+/// <see cref="Svac.AdminHost.Domain.Execution.AdminActionExecutor"/>, never by this nav registration.
 /// </summary>
 public sealed class ConfigRegistryDeskModule : IDeskModule
 {
     public string DeskId => "config_registry";
     public string TitleKey => "admin.nav.config_registry";
     public int NavOrder => 1;
-    public IReadOnlySet<StaffRole> VisibleTo { get; } = new HashSet<StaffRole>(Enum.GetValues<StaffRole>());
+    public IReadOnlySet<StaffRole> VisibleTo { get; } = new HashSet<StaffRole>
+    {
+        StaffRole.SuperAdmin, StaffRole.EconomyOps,
+    };
     public Type RootComponent => typeof(Svac.AdminHost.Components.Pages.ConfigRegistry);
     public string RouteHref => "/config";
 }

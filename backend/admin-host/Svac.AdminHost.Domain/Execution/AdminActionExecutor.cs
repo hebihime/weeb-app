@@ -32,6 +32,15 @@ namespace Svac.AdminHost.Domain.Execution;
 ///      admin.action.refused, work() never invoked.
 ///   5. four-eyes (9A admin.four_eyes_required) — fail-closed refusal when armed AND the acting hat isn't
 ///      SuperAdmin AND the row RequiresReason. work() never invoked.
+///   5b. SECURITY_REVIEW_S5.md S5-03 — the last-active-SuperAdmin lockout guard. Fires on
+///      admin.staff.deactivate of a staff row currently holding an active super_admin grant, and on
+///      admin.staff.role_revoke when <paramref name="affectedRoleCode"/> (below) is "super_admin";
+///      refuses (Denied("policy.denied.last_superadmin"), audited exactly like step 4/5's own refusals,
+///      work() never invoked) iff the target IS the LAST active SuperAdmin. Race-safe: SELECT ... FOR
+///      UPDATE over every currently-active super_admin grant (see WouldZeroActiveSuperAdmins below) inside
+///      this SAME shared transaction — two concurrent Executes that would each remove a DIFFERENT
+///      superadmin's grant serialize on this lock rather than both observing a stale "someone else is
+///      still there" count.
 ///   6. work(ctx) — the domain mutation. Exceptions propagate to the caller UNCHANGED (never converted to
 ///      a typed result) after this method rolls back the shared transaction.
 ///   7. EXACTLY ONE audit event per action: core.config.set.* actions are SELF-LOGGING (work's own
@@ -62,6 +71,7 @@ public sealed class AdminActionExecutor(
 {
     private const string AdminActionRefused = "admin.action.refused";
     private const string AdminActionExecuted = "admin.action.executed";
+    private const string SuperAdminRoleCode = "super_admin"; // StaffRoleCodes.ToCode(StaffRole.SuperAdmin), verbatim (§2's CHECK constraint literal)
 
     private static readonly IReadOnlySet<StaffRole> EmptyRoles = new HashSet<StaffRole>();
     private static readonly IReadOnlySet<int> AllRoleRanks = new HashSet<int>(Enum.GetValues<StaffRole>().Select(r => (int)r));
@@ -72,6 +82,7 @@ public sealed class AdminActionExecutor(
         TargetRef target,
         string? reason,
         Func<RequestContext, Task> work,
+        string? affectedRoleCode = null,
         CancellationToken ct = default)
     {
         if (callerCtx.Actor.Kind is not (ActorKind.Staff or ActorKind.System))
@@ -203,6 +214,16 @@ public sealed class AdminActionExecutor(
                 return new AdminActionResult.FourEyesRequired();
             }
 
+            // --- 5b. last-active-SuperAdmin lockout guard (SECURITY_REVIEW_S5.md S5-03). See
+            // WouldZeroActiveSuperAdmins's own doc comment for the race-safety argument. ---
+            if (await WouldZeroActiveSuperAdmins(action, target.ResourceId!, affectedRoleCode, sharedConnection, transaction, ct))
+            {
+                var lockoutDenied = new AdminActionResult.Denied("policy.denied.last_superadmin");
+                await AppendAuditEvent(ctx, AdminActionRefused, action, target, reason, hat, rolesHeld, ct);
+                await transaction.CommitAsync(ct);
+                return lockoutDenied;
+            }
+
             // --- 6. work(ctx) — the domain mutation. Exceptions propagate UNCHANGED to the caller (the
             // catch block below rolls back first) — ConfigEditorBoundsTests.cs's bounds-rejection
             // ArgumentException and AdminActionExecutorTests.cs's simulated post-flush failure both
@@ -292,6 +313,67 @@ public sealed class AdminActionExecutor(
             // false is exactly what v0 declares.
             return false;
         }
+    }
+
+    /// <summary>
+    /// SECURITY_REVIEW_S5.md S5-03: true iff <paramref name="action"/> would drop the count of ACTIVE
+    /// staff holding an active <c>super_admin</c> grant to zero. Applies to exactly two actions —
+    /// <c>admin.staff.deactivate</c> (any target that currently holds the grant) and
+    /// <c>admin.staff.role_revoke</c> when <paramref name="affectedRoleCode"/> IS <c>super_admin</c> —
+    /// every other action short-circuits to <c>false</c> before touching the database at all.
+    ///
+    /// Race safety: the query below carries NO target-specific WHERE clause — it always locks the FULL
+    /// currently-active super_admin set (every admin.staff_role_grants row with role='super_admin' AND
+    /// revoked_at IS NULL, joined to its admin.staff_accounts row, filtered to status='active'),
+    /// <c>FOR UPDATE</c>, inside the SAME shared connection/transaction Execute already opened. Two
+    /// concurrent Execute() calls that would each remove a DIFFERENT superadmin's grant/status therefore
+    /// contend for the SAME row locks: the second call's SELECT blocks until the first COMMITS (releasing
+    /// the locks), and — because Npgsql's default READ COMMITTED isolation takes a fresh snapshot per
+    /// statement — the second call's SELECT then observes the FIRST call's already-committed removal, not
+    /// a stale pre-commit count. This is exactly what makes "count excluding the target" safe under
+    /// concurrency; an unlocked COUNT(*) here would let two concurrent removals both observe "2 active,
+    /// safe to proceed" and both commit, the exact TOCTOU S5-03 flags.
+    /// </summary>
+    private static async Task<bool> WouldZeroActiveSuperAdmins(
+        string action, string targetStaffId, string? affectedRoleCode,
+        NpgsqlConnection sharedConnection, NpgsqlTransaction transaction, CancellationToken ct)
+    {
+        var guardsDeactivate = action == "admin.staff.deactivate";
+        var guardsSuperAdminRevoke = action == "admin.staff.role_revoke"
+            && string.Equals(affectedRoleCode, SuperAdminRoleCode, StringComparison.Ordinal);
+        if (!guardsDeactivate && !guardsSuperAdminRevoke)
+        {
+            return false;
+        }
+
+        const string Sql = """
+            SELECT sa.id
+            FROM admin.staff_role_grants g
+            JOIN admin.staff_accounts sa ON sa.id = g.staff_id
+            WHERE g.role = 'super_admin' AND g.revoked_at IS NULL AND sa.status = 'active'
+            FOR UPDATE
+            """;
+
+        var activeSuperAdminStaffIds = new List<string>();
+        await using (var command = new NpgsqlCommand(Sql, sharedConnection, transaction))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                activeSuperAdminStaffIds.Add(reader.GetString(0));
+            }
+        }
+
+        if (!activeSuperAdminStaffIds.Contains(targetStaffId))
+        {
+            // The target does not currently hold an active super_admin grant — for a deactivate, they
+            // never held one; for a role_revoke, this specific grant is already gone (or never existed —
+            // StaffRolesEndpointExtensions.HandleRoleRevoke's own idempotent no-op leg). Either way this
+            // action cannot possibly reduce the active-SuperAdmin headcount, so there is nothing to guard.
+            return false;
+        }
+
+        return activeSuperAdminStaffIds.Count == 1; // the target IS the only one left.
     }
 
     private async Task AppendAuditEvent(

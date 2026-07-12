@@ -114,7 +114,7 @@ public static class ConfigRegistryEndpointExtensions
         AdminActionResult dryRun;
         try
         {
-            dryRun = await executor.Execute(callerCtx, FounderAction, target, reason, _ => Task.CompletedTask, ct);
+            dryRun = await executor.Execute(callerCtx, FounderAction, target, reason, _ => Task.CompletedTask, ct: ct);
         }
         catch (ArgumentException ex)
         {
@@ -177,7 +177,7 @@ public static class ConfigRegistryEndpointExtensions
             {
                 var value = JsonSerializer.Deserialize<JsonElement>(newValueJson);
                 return configRegistry.SetValue(key, value, reason, ctx.Actor, ctx);
-            }, ct);
+            }, ct: ct);
 
             return result switch
             {

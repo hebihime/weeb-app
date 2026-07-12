@@ -86,7 +86,7 @@ public sealed class UserSearchExecutionService(
             var hat = workCtx.Staff?.ActingHat.ToString();
             var payload = JsonSerializer.Serialize(new { query_class = queryClass.ToString(), query_term = term, hat });
             await eventStore.Append(StreamType.Audit, target.ResourceId!, "admin.user_search.executed", payload, workCtx, ExpectedVersion.AnyVersion, ct);
-        }, ct);
+        }, ct: ct);
 
         return result switch
         {

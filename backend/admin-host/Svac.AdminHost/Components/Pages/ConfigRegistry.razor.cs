@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Components;
 using Svac.AdminHost.ConfigRegistry;
+using Svac.DomainCore.Contracts;
 using Svac.DomainCore.Contracts.Config;
+using Svac.DomainCore.Contracts.Ids;
+using Svac.DomainCore.Contracts.Policy;
 
 namespace Svac.AdminHost.Components.Pages;
 
@@ -14,10 +17,19 @@ namespace Svac.AdminHost.Components.Pages;
 /// backed by <c>CoreDbContext</c>, not <c>AdminDbContext</c> — <see cref="Layout.AdminLayout"/>'s own
 /// <c>OnInitializedAsync</c> only ever touches <c>AdminDbContext</c> (via <c>IStaffRoleResolver</c>), so
 /// there is no shared, not-thread-safe <c>DbContext</c> for this page's own read to race with.
+///
+/// SECURITY_REVIEW_S5.md S5-01: gated by a DIRECT <see cref="IPolicyEngine.Authorize"/> call on
+/// <c>admin.config.read</c> — mirrors Dashboard.razor.cs's own reasoning verbatim (a registry VIEW is not
+/// itself an audited staff action; every EDIT still rides the executor on the existing
+/// core.config.set.founder/ops rows, untouched by this gate). Before this fix, <see cref="OnInitializedAsync"/>
+/// called <c>Registry.ListEntries()</c> unconditionally — the FULL 9A registry leaked to anonymous/
+/// consumer/any-staff requests alike.
 /// </summary>
 public sealed partial class ConfigRegistry
 {
     [Inject] private IConfigRegistry Registry { get; set; } = null!;
+    [Inject] private IPolicyEngine PolicyEngine { get; set; } = null!;
+    [Inject] private IRequestContextAccessor RequestContextAccessor { get; set; } = null!;
 
     [SupplyParameterFromQuery(Name = "notice")]
     private string? Notice { get; set; }
@@ -28,6 +40,7 @@ public sealed partial class ConfigRegistry
     [SupplyParameterFromQuery(Name = "detail")]
     private string? Detail { get; set; }
 
+    private bool _canView;
     private IReadOnlyList<ConfigEntryView> _rows = Array.Empty<ConfigEntryView>();
     private IReadOnlyDictionary<string, string> _pending = new Dictionary<string, string>();
 
@@ -45,6 +58,22 @@ public sealed partial class ConfigRegistry
 
     protected override async Task OnInitializedAsync()
     {
+        var ctx = RequestContextAccessor.Current;
+        if (ctx.Actor.Kind != ActorKind.Staff)
+        {
+            _canView = false;
+            return;
+        }
+
+        var decision = await PolicyEngine.Authorize(ctx.Actor, "admin.config.read", TargetRef.ForAction("admin.config.read"));
+        if (!decision.IsAllowed)
+        {
+            _canView = false;
+            return;
+        }
+
+        _canView = true;
+
         var entries = await Registry.ListEntries();
         _rows = entries.OrderBy(e => e.Key, StringComparer.Ordinal).ToList();
         _pending = ConfigManifestPendingSliceIndex.Load();

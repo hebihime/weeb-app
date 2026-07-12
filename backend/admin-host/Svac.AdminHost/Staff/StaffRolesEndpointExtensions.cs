@@ -94,7 +94,7 @@ public static class StaffRolesEndpointExtensions
                     UpdatedAt = now,
                 });
                 await adminDb.SaveChangesAsync(ct);
-            }, ct);
+            }, ct: ct);
 
             return ResultToRedirect(result, "admin.staff_roles.notice.provisioned");
         }
@@ -135,7 +135,7 @@ public static class StaffRolesEndpointExtensions
             row.SecurityStamp = Guid.NewGuid().ToString("N");
             row.UpdatedAt = DateTimeOffset.UtcNow;
             await adminDb.SaveChangesAsync(ct);
-        }, ct);
+        }, ct: ct);
 
         return ResultToRedirect(result, "admin.staff_roles.notice.deactivated");
     }
@@ -164,7 +164,7 @@ public static class StaffRolesEndpointExtensions
             row.DeactivatedAt = null;
             row.UpdatedAt = DateTimeOffset.UtcNow;
             await adminDb.SaveChangesAsync(ct);
-        }, ct);
+        }, ct: ct);
 
         return ResultToRedirect(result, "admin.staff_roles.notice.reactivated");
     }
@@ -216,7 +216,7 @@ public static class StaffRolesEndpointExtensions
             staffRow.SecurityStamp = Guid.NewGuid().ToString("N");
             staffRow.UpdatedAt = DateTimeOffset.UtcNow;
             await adminDb.SaveChangesAsync(ct);
-        }, ct);
+        }, ct: ct);
 
         return ResultToRedirect(result, "admin.staff_roles.notice.granted");
     }
@@ -269,7 +269,7 @@ public static class StaffRolesEndpointExtensions
             staffRow.SecurityStamp = Guid.NewGuid().ToString("N"); // §2: bumped on revoke
             staffRow.UpdatedAt = DateTimeOffset.UtcNow;
             await adminDb.SaveChangesAsync(ct);
-        }, ct);
+        }, affectedRoleCode: roleCode, ct: ct); // SECURITY_REVIEW_S5.md S5-03: the last-active-SuperAdmin lockout guard needs the SPECIFIC role being revoked, not just the target staff id.
 
         return ResultToRedirect(result, "admin.staff_roles.notice.revoked");
     }

@@ -35,6 +35,21 @@ public sealed class StaffAccountsPurgeStoreExecutor(AdminDbContext adminDb) : IP
             return 0;
         }
 
+        // SECURITY_REVIEW_S5.md S5-05: AdminPurgeRegistrySource's OWN registration reason for this row
+        // ("admin.staff_pii_retention_years post-deactivation") already names the intent — a RetentionExpiry
+        // sweep is an AGE-CUTOFF policy, never a per-subject DSR (that's StatutoryErasure, which this guard
+        // never touches), and it was never meant to reach an operator/founder who is still active. Before
+        // this fix nothing enforced that: a misconfigured/mistimed retention sweep could pseudonymize (and
+        // therefore lock out — the stf_ external_subject Entra oid lookup key is destroyed) a currently
+        // ACTIVE staff row, including the last SuperAdmin, with no in-app recovery. No-op, never touching
+        // the row, whenever the class is RetentionExpiry and the row is not already deactivated;
+        // StatutoryErasure (a real DSR) is UNAFFECTED by this guard and still pseudonymizes regardless of
+        // status, exactly per its own row above.
+        if (purgeClass == PurgeClass.RetentionExpiry && row.Status != "deactivated")
+        {
+            return 0;
+        }
+
         // Each field re-keys against its OWN original value, so the three pseudonyms differ from one
         // another (distinct HMAC messages) — never a single shared token that would collapse three
         // distinct PII columns onto one value.

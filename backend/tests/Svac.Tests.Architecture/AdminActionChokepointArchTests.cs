@@ -223,6 +223,72 @@ public sealed class AdminActionChokepointArchTests
         return i;
     }
 
+    // ------------------------------------------------------------------------------------------------
+    // SECURITY_REVIEW_S5.md S5-06 (MEDIUM, Lens2, DEFERRED): StripExecuteCallArguments blanks the
+    // argument list of ANY ".Execute(" call it finds, regardless of the receiver's TYPE — it keys purely
+    // off the literal substring. A decoy type that also happens to expose a method named "Execute" (never
+    // IAdminActionExecutor) shields a real bypass from this scan just by being named the same thing.
+    // ------------------------------------------------------------------------------------------------
+    [Fact(Skip = "deferred: SECURITY_REVIEW_S5.md S5-06 (StripExecuteCallArguments blanks ANY .Execute( call regardless of receiver type -- a decoy .Execute( method hides a real chokepoint bypass from the scan) -> assert the callee is IAdminActionExecutor")]
+    public void RedFixture_DecoyExecuteReceiver_IsFlagged()
+    {
+        const string fixtureSource = """
+            namespace Fixture;
+
+            public sealed class DecoyExecutor
+            {
+                public void Execute(System.Action work) => work();
+            }
+
+            public sealed class RogueCaller(AdminDbContext adminDb, DecoyExecutor decoy)
+            {
+                public void Handle()
+                {
+                    decoy.Execute(() => adminDb.StaffAccounts.Add(new StaffAccountEntity()));
+                }
+            }
+            """;
+
+        var violations = FindViolationsInSource(fixtureSource);
+
+        // Desired: a mutating call hidden inside a NON-IAdminActionExecutor's own ".Execute(" method must
+        // still be flagged. Today it is NOT (StripExecuteCallArguments blanks the argument list of
+        // `decoy.Execute(...)` exactly as if it were the real chokepoint), so this currently returns empty.
+        Assert.NotEmpty(violations);
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // SECURITY_REVIEW_S5.md S5-07 (MEDIUM, Lens2, DEFERRED): ScanForViolations' directory allowlist uses
+    // Contains("/Auth/") (and "/Execution/", "/Bootstrap/") — matching ANY path with that segment
+    // ANYWHERE, not just the real Pass-A auth subsystem's own top-level Auth/ directories. A decoy nested
+    // "Auth" segment under an unrelated directory (e.g. Desks/Auth/Rogue.cs) is skipped by this rule even
+    // though it is not one of the two documented pre-existing exceptions this allowlist exists for.
+    // ------------------------------------------------------------------------------------------------
+    [Fact(Skip = "deferred: SECURITY_REVIEW_S5.md S5-07 (dir allowlist matches ANY nested /Auth//Execution//Bootstrap/ segment -- a bare mutating call in Desks/Auth/Rogue.cs would pass unscanned) -> anchor the allowlist to the exact Pass-A paths")]
+    public void RedFixture_NestedAuthDir_StillScanned()
+    {
+        // NOT a real Pass-A auth file -- a decoy nested "Auth" segment under an unrelated Desks/ directory.
+        var decoyPath = string.Join(Path.DirectorySeparatorChar, DecoyPathSegments);
+
+        // Desired: only the REAL Pass-A auth directories are allowlisted, anchored to their exact paths --
+        // this decoy nested segment must still be considered SCANNED (not skipped) so a mutating call
+        // hidden inside it would be caught. Today's rule (reproduced verbatim below) incorrectly skips it.
+        Assert.False(MatchesCurrentUnanchoredAllowlist(decoyPath));
+    }
+
+    private static readonly string[] DecoyPathSegments = { "backend", "admin-host", "Svac.AdminHost", "Desks", "Auth", "Rogue.cs" };
+
+    /// <summary>Verbatim reproduction of ScanForViolations' CURRENT (unfixed) directory-skip condition —
+    /// kept as its own named method so the red-fixture proof above documents the EXACT rule being
+    /// challenged, never a paraphrase that could silently drift from the real one.</summary>
+    private static bool MatchesCurrentUnanchoredAllowlist(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        return normalized.Contains("/Execution/", StringComparison.Ordinal)
+            || normalized.Contains("/Bootstrap/", StringComparison.Ordinal)
+            || normalized.Contains("/Auth/", StringComparison.Ordinal);
+    }
+
     private static IEnumerable<string> EnumerateRealCsFiles(string dir) =>
         Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)

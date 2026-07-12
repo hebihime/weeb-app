@@ -42,16 +42,37 @@ ProdFieldKeyVaultGuard.Enforce(
     devSeamsEnabled: devSeamsEnabled,
     keyVaultEndpointConfigured: !string.IsNullOrWhiteSpace(builder.Configuration["SVAC_KEYVAULT_ENDPOINT"]));
 
+// SECURITY_REVIEW_S5.md S5-04: the DataProtection key ring's own Key Vault key identifier — a fixed key
+// NAME under the SAME vault SVAC_KEYVAULT_ENDPOINT already names (ProdFieldKeyVaultGuard.Enforce just
+// above already fails boot closed if that endpoint is unset outside Development), so this is additive
+// metadata on an already-required setting, never a second secret. Null when unset (Development, or any
+// boot ProdFieldKeyVaultGuard already refused) — AddStaffAuth's own guard below refuses a null identifier
+// on any non-DevSeams boot regardless.
+var dataProtectionKeyVaultKeyIdentifier = string.IsNullOrWhiteSpace(builder.Configuration["SVAC_KEYVAULT_ENDPOINT"])
+    ? null
+    : new Uri(new Uri(builder.Configuration["SVAC_KEYVAULT_ENDPOINT"]!.TrimEnd('/') + "/"), "keys/svac-admin-dataprotection");
+
 // SLICE_S5_CONTRACT.md §1b: "Authority/client-id from config; client credential from Key Vault via the
 // S0-reserved path — no staff-auth secret in the repo (2A)." The S0-reserved names this slice mints
 // (no admin-auth secret name existed before S5): SVAC_ENTRA_AUTHORITY / SVAC_ENTRA_CLIENT_ID /
 // SVAC_ENTRA_CLIENT_SECRET — in prod the LAST one is routed from Key Vault into this exact config key by
 // the deployment (Azure App Service Key Vault references / Bicep, per the module README checklist),
 // never hardcoded here, exactly like SVAC_KEYVAULT_ENDPOINT above.
+// SECURITY_REVIEW_S5.md S5-02: SVAC_ENTRA_MFA_ACR_VALUES (comma-separated) names the EXACT acr value(s)
+// the staff group's Conditional Access MFA policy emits — a Julien-executed action alongside the CA
+// policy itself (§11: same Entra admin center screen mints both). Empty/unset means the acr signal
+// contributes nothing to EntraClaimTypes.HasMfaClaim (amr alone still works) — never a fail-open "any acr".
+var entraMfaAcrValues = (builder.Configuration["SVAC_ENTRA_MFA_ACR_VALUES"] ?? string.Empty)
+    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+    .ToHashSet(StringComparer.Ordinal);
+
 var entraConfig = new StaffAuthEntraConfig(
     Authority: builder.Configuration["SVAC_ENTRA_AUTHORITY"],
     ClientId: builder.Configuration["SVAC_ENTRA_CLIENT_ID"],
-    ClientSecret: builder.Configuration["SVAC_ENTRA_CLIENT_SECRET"]);
+    ClientSecret: builder.Configuration["SVAC_ENTRA_CLIENT_SECRET"])
+{
+    AcrValues = entraMfaAcrValues,
+};
 
 // ProdStaffAuthGuard: any non-Development boot without complete Entra config throws at startup (§1b) —
 // the ProdFieldKeyVaultGuard family, called directly here (never from inside a DI factory lambda, the S2
@@ -74,7 +95,7 @@ builder.Services.AddAdminHostModule(connectionString);
 // Pass A's own seam: staff sign-in transports (dev + prod), the grant-table role resolver, DataProtection
 // persistence, StaffContextProvider — called AFTER AddDomainCore/AddAdminHostModule, exactly like
 // AddIdentityModule's own bearer-authenticator override on Svac.PublicApi.
-builder.Services.AddStaffAuth(connectionString, devSeamsEnabled, entraConfig);
+builder.Services.AddStaffAuth(connectionString, devSeamsEnabled, entraConfig, dataProtectionKeyVaultKeyIdentifier);
 
 // SLICE_S5_CONTRACT.md §8 seam 1: the desk-registration seam's first live registrant. Every later desk
 // slice adds itself with one more line here — zero edits to AdminLayout/AdminNav.

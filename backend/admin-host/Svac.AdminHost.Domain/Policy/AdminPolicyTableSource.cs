@@ -26,6 +26,16 @@ public sealed class AdminPolicyTableSource : IPolicyTableSource
         StaffRole.SuperAdmin, StaffRole.SafetyAgent, StaffRole.ContentModerator,
     };
     private static readonly IReadOnlySet<StaffRole> AllSixRoles = new HashSet<StaffRole>(Enum.GetValues<StaffRole>());
+    // SECURITY_REVIEW_S5.md S5-01: the union of everyone who can commit AT LEAST ONE config.set action
+    // (core.config.set.ops's own allowlist, {SuperAdmin, EconomyOps} — core.config.set.founder's
+    // {SuperAdmin} is already a subset) — an EconomyOps hat needs to SEE the desk's current values to use
+    // its own ops-scope edit form at all, so read access can never be narrower than write access for the
+    // roles that actually edit here. Least-privilege beyond that (matching admin.audit.read's own
+    // SuperAdmin-v0 posture) would strand EconomyOps with edit rights but no page to use them from.
+    private static readonly IReadOnlySet<StaffRole> ConfigReadRoles = new HashSet<StaffRole>
+    {
+        StaffRole.SuperAdmin, StaffRole.EconomyOps,
+    };
 
     public IReadOnlyList<PolicyTableEntry> Entries { get; } = BuildEntries();
 
@@ -113,6 +123,26 @@ public sealed class AdminPolicyTableSource : IPolicyTableSource
             StaffRoleAllowlistNote: "staff: all six roles — Analyst's whole scope",
             IsReadPath: true,
             StaffRoles: AllSixRoles).Validate(),
+
+        // SECURITY_REVIEW_S5.md S5-01 (fixNow): the Config Registry desk's READ surface had NO policy row
+        // at all — ConfigRegistry.razor.cs's OnInitializedAsync called IConfigRegistry.ListEntries()
+        // unconditionally, leaking the FULL 9A registry (every founder/ops/set-scope value, including
+        // verification.age_gate_challenge_threshold and every other business-sensitive tunable) to any
+        // request that reached the page, staff or not. This row + the page's own new Authorize gate close
+        // that — mirrors Dashboard.razor.cs/UserSearch.razor.cs's identical "a VIEW is gated by a direct
+        // IPolicyEngine.Authorize check, never routed through the executor" pattern (a config-registry
+        // VIEW carries no per-view audit requirement, unlike a config EDIT, which already rides
+        // core.config.set.founder/ops through the executor untouched by this row).
+        new PolicyTableEntry(
+            Action: "admin.config.read",
+            ActorKinds: StaffOnly,
+            Axes: PolicyAxis.Role,
+            DenyMode: PolicyDenyMode.DenyStandard,
+            RequiresReason: false,
+            ReasonKey: "policy.denied.admin_config_read",
+            StaffRoleAllowlistNote: "staff: SuperAdmin, EconomyOps — the union of every role that can commit at least one core.config.set.* action (§S5-01); Analyst/SafetyAgent/ContentModerator/VenueConOps have no config.set row at all",
+            IsReadPath: true,
+            StaffRoles: ConfigReadRoles).Validate(),
 
         new PolicyTableEntry(
             // Maps Blazor infrastructure endpoints (pre-auth sign-in page, component dispatch) honestly
