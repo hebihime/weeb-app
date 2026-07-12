@@ -14,40 +14,21 @@
     byte-identical substrate; fresh-boot healthy).
   - **Phase 2a (domain-core): DONE, committed `086baf1`** — config.set {hat,roles_held} enrichment
     (byte-identical when Staff null) + two events_audit read indexes. Byte-identical proof + ef-gate green.
-  - **Phase 2b (host build): RUNNING** (workflow `w8b9uwd9g`) — E2E-first + 5 sequential passes.
-  - **Pass B (audited-action chokepoint + Staff & Roles desk): DONE.** `Svac.AdminHost.Domain.Execution.
-    AdminActionExecutor` — the §1c 7-step sequence in ONE Postgres transaction spanning AdminDbContext +
-    CoreDbContext (two independently-scoped EF contexts genuinely share one physical transaction via
-    `SetDbConnection` re-pointing, verified against a real Postgres before being relied on — plain
-    `UseTransaction` cannot span two separately-opened connections). Staff & Roles desk (provision/
-    deactivate/reactivate/grant/revoke, all five as real SSR form posts through the executor, real
-    TargetRefs, mandatory reason) — routes/data-testids/field names aligned to
-    backend/e2e/admin-host.e2e.mjs's own wire contract (camelCase provision fields, revoke's role as a
-    route segment not a form field, `action-denied`). `RequireAdminActionsCovered` confirmed real (was
-    already wired at scaffold; re-verified, doc comment de-staled). Arch rules added (both red-fixture
-    both directions): no type outside Execution/ invokes a mutating domain-contract member from a
-    non-`.Execute(`-wrapped call site (`AdminActionChokepointArchTests.cs`); no `Remove`/`ExecuteDelete`
-    on either staff entity anywhere in admin-host (`StaffLifecycleNeverDeletesArchTests.cs`, closes the
-    ruling below). Also seeded the real v0-batch + admin-host-tunables config manifests (41 keys,
-    THE LEDGER HEADLINE — was a Phase-1 empty skeleton) since `ConfigSeedLoader` cannot legally seed an
-    empty-consumer row and Pass C's `pending_consumer_slice` CI wiring doesn't exist yet; also built the
-    two `IPurgeStoreExecutor`s for `admin.staff_accounts`/`admin.staff_role_grants` (StaffPurgeTests.cs's
-    own sketch: "Pass B/D's deliverable"). Found + fixed a real EF Core concurrency bug live (AdminLayout's
-    own `IStaffRoleResolver.GrantsOf` and a child desk page's own DB read racing on one shared scoped
-    `AdminDbContext` under Blazor's static-SSR renderer — `AddDbContextFactory<AdminDbContext>` added
-    alongside the existing `AddDbContext` registration; `StaffRoles.razor.cs` uses the factory, never
-    `IStaffRoleResolver`, for its own read). Gate: `dotnet build backend/Svac.sln` green EXCEPT
-    `V0BatchManifestTests.cs`'s 5 `PendingConsumerSliceLint` facts (10 CS0234s) — that file's own doc
-    comment names it "Pass C's own deliverable," confirmed out of Pass B's scope (parallel-session
-    collision risk); every other test in Svac.Tests.AdminHost (49/49) and the new arch tests pass, plus a
-    new live-HTTP round-trip suite (`StaffRolesHttpTests.cs`) against the real host. **Known gap,
-    recorded, not Pass B's to fix:** `backend/e2e/admin-host.e2e.mjs`'s sign-in routes/testids
-    (`/internal/devseams/staff-signin`, `devseams-fixture-<key>`) do not match Pass A's actually-shipped
-    sign-in surface (`/devseams/signin/{fixtureKey}`, no data-testid on SignIn.razor, fixture keys
-    PascalCase not "superadmin"/"no-mfa"/"not-provisioned") — pre-existing since Pass A landed, confirmed
-    via `git log --follow`; the e2e script would fail before ever reaching the Staff & Roles stages it
-    exercises. Needs a Pass-A/Finisher reconciliation pass.
-  - **Carried into 2b/Phase 3:** (3) DataProtection key ring persist to core DataProtectionKeys store (Pass A).
+  - **Phase 2b (host build): DONE, committed `a17a165`→`6cfb587` (5 pass commits + finisher), pushed.**
+    Auth shell (DevSeams + OIDC/Entra transports, MFA-in-our-claims, ProdStaffAuthGuard, cookie auth with
+    DataProtection keys persisted to the core DataProtectionKeys store, security_stamp revalidation,
+    bootstrap); AdminActionExecutor §1c chokepoint (7-step, ONE tx spanning AdminDbContext+CoreDbContext
+    via shared connection); Staff & Roles / Config Registry (full 41-key v0 batch = THE LEDGER HEADLINE) /
+    Dashboard tiles / User Search / Audit Trail; arch rules (chokepoint, no-DELETE-lifecycle); the
+    pending_consumer_slice dead-tunable lint. Finisher found+fixed 7 real cross-pass bugs (Development-only
+    ValidateOnBuild boot crash from double DbContext registration; Blazor static-SSR scoped-DbContext race
+    → DbContextFactory; sign-in wire mismatch; cookie name; bootstrap env vars).
+  - **HARDENED GATE for 2b: verified by me (never on agent word).** build Debug+Release 0/0; full suite
+    455 pass / 0 fail / 10 skip (DomainCore 51/0, AimlRouter 51/2, Identity 87/5 byte-identical; AdminHost
+    73/0; Architecture 183/3); live `admin-host.e2e.mjs` GREEN 20/20 on TWO independent fresh boots
+    (down -v → up --build), exit 0 each, incl. the ledger outcome observed live; all containers healthy,
+    0 restarts; log sweep clean (only benign migration probe + expected refusal-notice URLs +
+    pre-login no-principal + one DataProtection first-key-gen warn; zero real exceptions/500s/context races).
   - **RULED 2026-07-12 (founder) — staff-row deletion / least-privileged DB role.** The accountability threat
     (audit chain must always resolve stf_/srg_ ids) is closed in S5 at the APP LAYER: lifecycle is
     state-transition only (deactivated_at/revoked_at), no DELETE code path, arch test asserts no
@@ -55,11 +36,11 @@
     Correct the contract's "(S1 pattern)" phantom.
     The Postgres REVOKE is theater with one owner role, so NOT built for S5. See the platform-security
     pre-prod item below.
-  - **NOTED, not built (out of Pass B's scope, no contract line names it):** no guard against a SuperAdmin
-    revoking their OWN last SuperAdmin grant (self-lockout). SLICE_S5_CONTRACT.md is silent on this; flag
-    for the Finisher/founder to rule on before Phase 3 sign-off — either a structural guard (deny revoking
-    the requesting actor's own SuperAdmin grant) or an accepted operational risk (recoverable via direct
-    DB access / a fresh bootstrap-style path), never silently assumed either way.
+  - **OPEN → Phase 3 remediation: last-SuperAdmin lockout guard.** No guard yet against
+    revoke/deactivate dropping the active-SuperAdmin count to 0 (contract silent). Plan: build the
+    invariant "refuse any revoke/deactivate that would leave zero active SuperAdmins" in the executor +
+    a regression test, as part of Phase 3 (a security lens flags availability/lockout anyway). Obvious
+    safety default; reversible. Flagged to Julien.
 - **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
   **Keep the analytics signal, sever the subject.** The cell/density/pattern (the actionable data) is
   retained; only "whose signal is this" is dropped, so deleting an account keeps its contributions on the
@@ -73,8 +54,7 @@
   before the first `events_heatmap_provenance` row.
 - **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
   before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
-- **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own
-  slice (Phase 1→4, stop at DONE). Both rebase their domain-core needs onto the landed Phase-2a surgery.
+- **NEXT:** S5 Phase 3 (security review) → Phase 4 (retro) → DONE. Then S6 (anime test) awaits greenlight.
 
 ## Least-privileged runtime DB role (pre-prod security hardening)
 - **What:** A dedicated runtime Postgres role with NO DELETE and NO DDL, used by every host at runtime;
