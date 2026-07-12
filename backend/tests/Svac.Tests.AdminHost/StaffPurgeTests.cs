@@ -140,10 +140,23 @@ public sealed class StaffPurgeTests : IAsyncLifetime
         using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         var (staffId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "purge-grant-target");
-        var grant = await adminDb.StaffRoleGrants.SingleAsync(g => g.StaffId == staffId);
-        var originalReason = grant.GrantReason;
-        var originalRole = grant.Role;
-        var originalGrantedAt = grant.GrantedAt;
+
+        // Capture the pre-purge grant from a FRESH context. Reading it back through `adminDb` (the
+        // seeding context) returns the identity-map-tracked in-memory entity, whose GrantedAt still
+        // carries the full 100ns DateTimeOffset ticks that Postgres timestamptz truncates to microseconds
+        // on write. Comparing that against the post-purge DB read (below) made the survival assertion
+        // flaky -- it passed only when the seeded timestamp's 7th fractional digit happened to be 0
+        // (green locally, red in CI). A persisted-value vs persisted-value comparison is what "the
+        // timestamp survives the purge" actually means.
+        string originalReason, originalRole;
+        DateTimeOffset originalGrantedAt;
+        using (var preReadDb = AdminTestSupport.NewAdminDb(ConnectionString))
+        {
+            var seededGrant = await preReadDb.StaffRoleGrants.SingleAsync(g => g.StaffId == staffId);
+            originalReason = seededGrant.GrantReason;
+            originalRole = seededGrant.Role;
+            originalGrantedAt = seededGrant.GrantedAt;
+        }
 
         var fieldEncryptor = new AesFieldEncryptor(new DevKeyringFieldKeyVault());
         var pipeline = BuildPipeline(coreDb, adminDb, fieldEncryptor);
