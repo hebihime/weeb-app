@@ -69,6 +69,19 @@ public sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : DbC
                 // (added post-generation) gives the same DB-level integrity without the ambiguity.
                 b.HasIndex(e => e.ReversalOf);
                 b.HasIndex(e => e.GlobalSeq); // Concurrency-F1: Replay's cross-stream watermark filter/order key.
+
+                // [S5, SLICE_S5_CONTRACT.md §1d / PHASE_2A_SUBSTRATE.md §99] The IAuditReader read model
+                // filters events_audit by event_type prefix or actor_ref, newest-first. Two additive covering
+                // indexes so the admin Audit Trail desk + tiles never table-scan. events_audit ONLY — the
+                // other five streams have no staff-facing read surface. Additive, index-only migration; the
+                // migration chain up to InitialCore/AddGlobalSeq is untouched.
+                if (tableName == "events_audit")
+                {
+                    b.HasIndex(e => new { e.EventType, e.RecordedAt })
+                        .HasDatabaseName("IX_events_audit_event_type_recorded_at").IsDescending(false, true);
+                    b.HasIndex(e => new { e.ActorRef, e.RecordedAt })
+                        .HasDatabaseName("IX_events_audit_actor_ref_recorded_at").IsDescending(false, true);
+                }
             });
         }
 
