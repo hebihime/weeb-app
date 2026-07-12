@@ -127,6 +127,15 @@ services:
       ConnectionStrings__Core: "Host=postgres;Port=5432;Database=svac;Username=svac;Password=svac_dev_only"
       SVAC_DEVSEAMS_ENABLED: "true"
       ASPNETCORE_ENVIRONMENT: "Development"
+      # SLICE_S5_CONTRACT.md §1b bootstrap + backend/e2e/admin-host.e2e.mjs's own stated precondition:
+      # the FIRST boot against an empty admin.staff_accounts table provisions this exact subject as
+      # SuperAdmin (one-shot — a no-op on every boot after). The literal string "devseams:superadmin"
+      # is load-bearing: it must equal DevSeamsStaffFixtures' "superadmin" fixture's ExternalSubject so
+      # the e2e's "superadmin" sign-in fixture resolves to the bootstrapped row.
+      SVAC_ADMIN_BOOTSTRAP_SUBJECT: "devseams:superadmin"
+      SVAC_ADMIN_BOOTSTRAP_EMAIL: "superadmin@devseams.svac.internal"
+      SVAC_ADMIN_BOOTSTRAP_DISPLAY_NAME: "SuperAdmin (bootstrap)"
+      SVAC_ADMIN_BOOTSTRAP_REGION: "US"
     ports:
       - "8091:8080"
     depends_on:

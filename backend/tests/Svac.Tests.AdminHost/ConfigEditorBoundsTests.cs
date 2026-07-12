@@ -36,12 +36,12 @@ public sealed class ConfigEditorBoundsTests : IAsyncLifetime
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
 
     private static Svac.AdminHost.Domain.Execution.AdminActionExecutor NewExecutor(
-        Svac.AdminHost.Domain.Persistence.AdminDbContext adminDb, Svac.DomainCore.Persistence.CoreDbContext coreDb)
+        Svac.AdminHost.Domain.Persistence.AdminDbContext adminDb, Svac.DomainCore.Persistence.CoreDbContext coreDb, string connectionString)
     {
         var table = new PolicyTable(new IPolicyTableSource[] { new CorePolicyTableSource(), new Svac.AdminHost.Domain.Policy.AdminPolicyTableSource() });
         var eventStore = new PostgresEventStore(coreDb);
         var configRegistry = new ConfigRegistry(coreDb, eventStore);
-        var policyEngine = new PolicyEngine(table, staffRoleResolver: new Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver(adminDb));
+        var policyEngine = new PolicyEngine(table, staffRoleResolver: new Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver(AdminTestSupport.NewAdminDbFactory(connectionString)));
         return new Svac.AdminHost.Domain.Execution.AdminActionExecutor(adminDb, coreDb, eventStore, policyEngine, table, configRegistry);
     }
 
@@ -53,7 +53,7 @@ public sealed class ConfigEditorBoundsTests : IAsyncLifetime
         const string key = "admin.session_lifetime_hours"; // real v0-batch key: bounds [1,24] (SLICE_S5_CONTRACT.md §4)
         await AdminTestSupport.SeedConfigEntry(coreDb, key, "ops", "int", "8", requiresReason: false, boundsJson: "[1,24]");
         var (_, economyOps, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "economy_ops" }, "bounds-actor");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var configRegistry = new ConfigRegistry(coreDb, new PostgresEventStore(coreDb));
         var callerCtx = new RequestContext(economyOps, RegionCode.Unknown, RegionSource.System, LawfulBasisVariant.ConservativeGlobalV0, "en", "bounds-1");
 

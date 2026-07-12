@@ -29,6 +29,17 @@ internal static class AdminTestSupport
     public static AdminDbContext NewAdminDb(string connectionString) =>
         new(new DbContextOptionsBuilder<AdminDbContext>().UseNpgsql(connectionString).Options);
 
+    /// <summary>Minimal <see cref="IDbContextFactory{AdminDbContext}"/> for tests that construct
+    /// <see cref="Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver"/> directly (never through DI) —
+    /// mirrors the real <c>AddDbContextFactory</c> registration's shape (a fresh context per call).</summary>
+    public static IDbContextFactory<AdminDbContext> NewAdminDbFactory(string connectionString) =>
+        new SimpleAdminDbContextFactory(connectionString);
+
+    private sealed class SimpleAdminDbContextFactory(string connectionString) : IDbContextFactory<AdminDbContext>
+    {
+        public AdminDbContext CreateDbContext() => NewAdminDb(connectionString);
+    }
+
     public static ActorRef SystemActor() =>
         new(OpaqueId.New(IdPrefixes.System, DateTimeOffset.UtcNow, Random.Shared), ActorKind.System);
 

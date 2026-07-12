@@ -30,6 +30,13 @@ public static class StaffAuthServiceCollectionExtensions
     public const string CookieScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     public const string OidcScheme = "EntraOidc";
 
+    /// <summary>SLICE_S5_CONTRACT.md §1b / backend/e2e/admin-host.e2e.mjs's wire contract: the staff auth
+    /// cookie's EXACT name — a shared constant so no second copy of this literal can drift from the
+    /// <see cref="CookieAuthenticationOptions.Cookie"/> configuration below (<see
+    /// cref="Svac.AdminHost.Components.Layout.AdminLayout"/> reads it to distinguish a REJECTED cookie
+    /// from a request that never carried one at all).</summary>
+    public const string CookieName = ".Svac.AdminAuth";
+
     public static IServiceCollection AddStaffAuth(
         this IServiceCollection services,
         string postgresConnectionString,
@@ -142,7 +149,10 @@ public static class StaffAuthServiceCollectionExtensions
         // whichever branch above registered the scheme, so it applies identically either way.
         services.AddOptions<CookieAuthenticationOptions>(CookieScheme).Configure(options =>
         {
-            options.Cookie.Name = "svac_admin";
+            // SLICE_S5_CONTRACT.md §1b / backend/e2e/admin-host.e2e.mjs's wire contract: the staff auth
+            // cookie is named EXACTLY ".Svac.AdminAuth" — the e2e asserts its presence/absence BY NAME
+            // throughout (sign-in, refusal, revocation, deactivation legs).
+            options.Cookie.Name = CookieName;
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
             options.SlidingExpiration = false;

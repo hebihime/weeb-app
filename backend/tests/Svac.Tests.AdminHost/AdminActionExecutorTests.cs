@@ -141,15 +141,15 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
             new Svac.AdminHost.Domain.Policy.AdminPolicyTableSource(),
         });
 
-    private static PolicyEngine RealPolicyEngine(IPolicyTable table, AdminDbContext adminDb) =>
-        new PolicyEngine(table, staffRoleResolver: new Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver(adminDb));
+    private static PolicyEngine RealPolicyEngine(IPolicyTable table, string connectionString) =>
+        new PolicyEngine(table, staffRoleResolver: new Svac.AdminHost.Domain.Policy.GrantTableStaffRoleResolver(AdminTestSupport.NewAdminDbFactory(connectionString)));
 
-    private static Svac.AdminHost.Domain.Execution.AdminActionExecutor NewExecutor(AdminDbContext adminDb, CoreDbContext coreDb)
+    private static Svac.AdminHost.Domain.Execution.AdminActionExecutor NewExecutor(AdminDbContext adminDb, CoreDbContext coreDb, string connectionString)
     {
         var table = RealPolicyTable();
         var eventStore = new PostgresEventStore(coreDb);
         var configRegistry = new ConfigRegistry(coreDb, eventStore);
-        var policyEngine = RealPolicyEngine(table, adminDb);
+        var policyEngine = RealPolicyEngine(table, connectionString);
         return new Svac.AdminHost.Domain.Execution.AdminActionExecutor(adminDb, coreDb, eventStore, policyEngine, table, configRegistry);
     }
 
@@ -166,7 +166,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         var (targetId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "atomicity-target");
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "atomicity-actor");
 
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var target = new TargetRef("staff_account", targetId);
 
         // "kill the tx after work()" (§10.2): work() mutates + FLUSHES (SaveChangesAsync, joining the
@@ -208,7 +208,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         var (targetId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "one-event-target");
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "one-event-actor");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var target = new TargetRef("staff_account", targetId);
 
         var result = await executor.Execute(
@@ -239,7 +239,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         const string key = "test.admin.one_event.ops_key";
         await AdminTestSupport.SeedConfigEntry(coreDb, key, "ops", "int", "30", requiresReason: true);
         var (_, economyOps, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "economy_ops" }, "config-actor");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var configRegistry = new ConfigRegistry(coreDb, new PostgresEventStore(coreDb));
 
         var result = await executor.Execute(
@@ -268,7 +268,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         var (targetId, _, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "reason-target");
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "reason-actor");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var workInvoked = false;
 
         var result = await executor.Execute(
@@ -296,7 +296,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         await AdminTestSupport.SeedConfigEntry(coreDb, key, "ops", "int", "30", requiresReason: true);
         await AdminTestSupport.SeedConfigEntry(coreDb, "admin.four_eyes_required", "founder", "bool", "true", requiresReason: true);
         var (_, economyOps, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "economy_ops" }, "four-eyes-actor");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var configRegistry = new ConfigRegistry(coreDb, new PostgresEventStore(coreDb));
         var workInvoked = false;
 
@@ -326,7 +326,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         await AdminTestSupport.SeedConfigEntry(coreDb, key, "ops", "int", "30", requiresReason: true);
         await AdminTestSupport.SeedConfigEntry(coreDb, "admin.four_eyes_required", "founder", "bool", "true", requiresReason: true);
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "four-eyes-super");
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var configRegistry = new ConfigRegistry(coreDb, new PostgresEventStore(coreDb));
 
         var result = await executor.Execute(
@@ -349,7 +349,7 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         var (staffId, staffActor, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "economy_ops" }, "revoke-victim");
         const string key = "test.admin.revoke.ops_key";
         await AdminTestSupport.SeedConfigEntry(coreDb, key, "ops", "int", "1", requiresReason: true);
-        var executor = NewExecutor(adminDb, coreDb);
+        var executor = NewExecutor(adminDb, coreDb, ConnectionString);
         var configRegistry = new ConfigRegistry(coreDb, new PostgresEventStore(coreDb));
 
         // The cookie-session's cached ActorRef is UNCHANGED (mirrors "the live session, mid-session") --
@@ -385,8 +385,8 @@ public sealed class AdminActionExecutorTests : IAsyncLifetime
         using var coreDbA = AdminTestSupport.NewCoreDb(ConnectionString);
         using var adminDbB = AdminTestSupport.NewAdminDb(ConnectionString);
         using var coreDbB = AdminTestSupport.NewCoreDb(ConnectionString);
-        var executorA = NewExecutor(adminDbA, coreDbA);
-        var executorB = NewExecutor(adminDbB, coreDbB);
+        var executorA = NewExecutor(adminDbA, coreDbA, ConnectionString);
+        var executorB = NewExecutor(adminDbB, coreDbB, ConnectionString);
         var target = new TargetRef("staff_account", targetId);
 
         Func<RequestContext, Task> Grant(AdminDbContext db) => async _ =>

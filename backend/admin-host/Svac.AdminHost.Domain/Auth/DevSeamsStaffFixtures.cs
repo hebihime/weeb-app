@@ -34,8 +34,12 @@ public static class DevSeamsStaffFixtures
             "founder", SubjectPrefix + "founder", "founder@devseams.svac.internal", "Founder (all 6 roles)",
             HasMfaClaim: true, ProvisionRow: true, Roles: allRoles);
 
+        // Key = role.ToString().ToLowerInvariant() (e.g. "superadmin") -- the exact fixture key
+        // backend/e2e/admin-host.e2e.mjs's wire contract drives (its "superadmin" fixture IS the
+        // SuperAdmin per-role fixture, and its ExternalSubject "devseams:superadmin" is the ONE literal
+        // string the e2e's SVAC_ADMIN_BOOTSTRAP_SUBJECT precondition also names, SLICE_S5_CONTRACT.md §1b).
         var perRole = allRoles.Select(role => new DevSeamsStaffFixture(
-            Key: role.ToString(),
+            Key: role.ToString().ToLowerInvariant(),
             ExternalSubject: SubjectPrefix + role.ToString().ToLowerInvariant(),
             Email: $"{role.ToString().ToLowerInvariant()}@devseams.svac.internal",
             DisplayName: $"{role} (one role)",
@@ -43,12 +47,18 @@ public static class DevSeamsStaffFixtures
             ProvisionRow: true,
             Roles: new[] { role }));
 
+        // Key "no-mfa" (hyphen, not underscore) -- backend/e2e/admin-host.e2e.mjs's literal fixture key.
         var noMfa = new DevSeamsStaffFixture(
-            "no_mfa", SubjectPrefix + "no-mfa", "no-mfa@devseams.svac.internal", "No MFA claim (provisioned, SafetyAgent)",
+            "no-mfa", SubjectPrefix + "no-mfa", "no-mfa@devseams.svac.internal", "No MFA claim (provisioned, SafetyAgent)",
             HasMfaClaim: false, ProvisionRow: true, Roles: new[] { StaffRole.SafetyAgent });
 
+        // Key "not-provisioned" (backend/e2e/admin-host.e2e.mjs's literal fixture key): never auto-
+        // provisioned by DevSeamsStaffTransport (ProvisionRow: false) so the FIRST sign-in attempt
+        // genuinely hits RefusedUnknownSubject; the e2e itself provisions "devseams:not-provisioned" mid-
+        // run via the Staff & Roles desk, then signs in as this SAME fixture again to prove the new row
+        // (and later, the granted hat) is live without a redeploy.
         var noStaffRow = new DevSeamsStaffFixture(
-            "no_staff_row", SubjectPrefix + "no-staff-row", "no-staff-row@devseams.svac.internal", "No staff row (never provisioned)",
+            "not-provisioned", SubjectPrefix + "not-provisioned", "not-provisioned@devseams.svac.internal", "Not provisioned (until granted mid-run)",
             HasMfaClaim: true, ProvisionRow: false, Roles: Array.Empty<StaffRole>());
 
         return new[] { founder }.Concat(perRole).Append(noMfa).Append(noStaffRow).ToArray();

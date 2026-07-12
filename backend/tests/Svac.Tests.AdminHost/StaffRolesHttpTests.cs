@@ -62,12 +62,13 @@ public sealed class StaffRolesHttpTests(AdminHostFixture fixture)
     {
         var client = NewClient();
         var signInPage = await Get(client, "/signin");
-        var action = ExtractFormAction(signInPage, $"devseams-fixture-{devSeamsFixtureKey}")
-            ?? $"/devseams/signin/{devSeamsFixtureKey}"; // SignIn.razor renders no data-testid (Pass A) — fall back to the known real route.
+        var action = ExtractFormAction(signInPage, $"devseams-fixture-{devSeamsFixtureKey}");
+        Assert.True(action is not null, $"no <form data-testid=\"devseams-fixture-{devSeamsFixtureKey}\"> on /signin");
         var token = ExtractAntiforgeryToken(signInPage);
 
-        var res = await PostForm(client, action, new Dictionary<string, string>
+        var res = await PostForm(client, action!, new Dictionary<string, string>
         {
+            ["fixture"] = devSeamsFixtureKey,
             ["__RequestVerificationToken"] = token,
         });
         Assert.Equal(HttpStatusCode.Redirect, res.Status);
@@ -78,7 +79,7 @@ public sealed class StaffRolesHttpTests(AdminHostFixture fixture)
     [Fact]
     public async Task SuperAdmin_ProvisionsGrantsRevokesDeactivates_FullRoundTrip_AllAuditedAndPersisted()
     {
-        var client = await SignInAs("SuperAdmin");
+        var client = await SignInAs("superadmin");
 
         var staffPage = await Get(client, "/staff");
         Assert.True(HasTestId(staffPage, "staff-provision-form"), "GET /staff must render data-testid=\"staff-provision-form\"");
@@ -169,7 +170,7 @@ public sealed class StaffRolesHttpTests(AdminHostFixture fixture)
         // first sign-in (Pass A, §1b), so the "row count unchanged" baseline must be measured AFTER that
         // self-provisioning settles, never before it, or a passing self-provision would look like a
         // (nonexistent) leak in the assertion below.
-        var client = await SignInAs("SafetyAgent");
+        var client = await SignInAs("safetyagent");
 
         using var beforeDb = NewAdminDb();
         var countBefore = await beforeDb.StaffAccounts.CountAsync();

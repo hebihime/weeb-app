@@ -3,11 +3,13 @@
    unregistered desk (Config Registry/User Search/Audit Trail/Staff & Roles today) is simply ABSENT from
    this list, never grayed or placeholder-dark (§0 nav-absence law). *@
 @inherits LayoutComponentBase
+@using Microsoft.Extensions.DependencyInjection
 @inject AdminStringCatalog Strings
 @inject IEnumerable<IDeskModule> Desks
 @inject IStaffRoleResolver StaffRoleResolver
 @inject IRequestContextAccessor RequestContextAccessor
-@inject Svac.DomainCore.Contracts.Behavioral.IBehavioralStream BehavioralStream
+@inject IServiceScopeFactory ScopeFactory
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Nav
 
 <div class="admin-shell">
@@ -40,6 +42,25 @@
     protected override async Task OnInitializedAsync()
     {
         var ctx = RequestContextAccessor.Current;
+
+        // [Finisher fix] SLICE_S5_CONTRACT.md §1b's second revocation leg ("a deactivated operator loses
+        // a LIVE session within the interval") must produce a REAL redirect to /signin, never a silent
+        // 200 "access denied" fragment — the wire contract (backend/e2e/admin-host.e2e.mjs) polls for
+        // 302/401/signin-refused specifically. Distinguish "this request CARRIED a staff cookie that
+        // StaffAuthServiceCollectionExtensions.RevalidateStaffSession just rejected" (ctx.Actor is
+        // Anonymous, but the cookie header is present) from "this request never carried one at all" (a
+        // genuinely anonymous first visit) — only the FORMER redirects; the latter keeps the Phase-1
+        // scaffold's existing inline-denial rendering each desk page's own gate already provides
+        // (BootHttpTests.cs's DashboardStubRoute_Renders200_WithTheKeyedDashboardStrings pins that an
+        // anonymous /dashboard visit still renders 200, unchanged).
+        var carriedNowRejectedCookie = ctx.Actor.Kind != Svac.DomainCore.Contracts.Ids.ActorKind.Staff
+            && (HttpContextAccessor.HttpContext?.Request.Cookies.ContainsKey(Svac.AdminHost.Auth.StaffAuthServiceCollectionExtensions.CookieName) ?? false);
+        if (carriedNowRejectedCookie)
+        {
+            Nav.NavigateTo("/signin?refused=session_revoked", forceLoad: true);
+            return;
+        }
+
         // Pass A ships the shell + nav seam; the REAL per-desk content gate is each desk's own
         // admin.*.read policy row (admin.dashboard.read today, enforced by the desk's Pass D content —
         // this scaffold stub carries none yet). An anonymous visitor sees an honest empty nav (GrantsOf
@@ -61,8 +82,24 @@
         // never one of AdminActionChokepointArchTests' three named mutating shapes — so this legitimately
         // sits outside any IAdminActionExecutor.Execute call, exactly like every other cross-cutting read
         // AdminLayout already performs (StaffRoleResolver.GrantsOf above).
+        //
+        // [Finisher fix] Resolves IBehavioralStream from a FRESH, independent DI scope — never the
+        // ambient one this layout shares with the page body it wraps. IBehavioralStream is backed by the
+        // ambient scoped CoreDbContext (AddDomainCore's AddDbContext<CoreDbContext>, Scoped), and every
+        // desk page whose OWN OnInitializedAsync also touches CoreDbContext (ConfigRegistry's
+        // IConfigRegistry.ListEntries, UserSearchExecutionService/AuditViewExecutionService's own
+        // AdminActionExecutor transaction, every IMetricsTileSource) races THIS call: Blazor's static-SSR
+        // renderer does not serialize a layout's OnInitializedAsync against its body's strongly enough to
+        // rule out two concurrent EF operations on ONE shared, not-thread-safe DbContext — verified live
+        // (EF's own "second operation started"/disposed-context/NpgsqlOperationInProgress errors on a
+        // real HTTP round trip, e.g. GET /user-search 500). A scope-isolated CoreDbContext (mirrors
+        // GrantTableStaffRoleResolver's own IDbContextFactory<AdminDbContext> fix for the identical
+        // hazard on the AdminDbContext side) sidesteps it entirely — never touches domain-core itself,
+        // admin-host's own composition root is sufficient.
         var path = new Uri(Nav.Uri).AbsolutePath;
-        await BehavioralStream.Emit("admin.page_view", System.Text.Json.JsonSerializer.Serialize(new { path }), ctx);
+        using var scope = ScopeFactory.CreateScope();
+        var behavioralStream = scope.ServiceProvider.GetRequiredService<Svac.DomainCore.Contracts.Behavioral.IBehavioralStream>();
+        await behavioralStream.Emit("admin.page_view", System.Text.Json.JsonSerializer.Serialize(new { path }), ctx);
     }
 
     private bool IsActive(string routeHref) =>

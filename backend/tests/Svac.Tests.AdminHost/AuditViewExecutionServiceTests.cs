@@ -42,12 +42,12 @@ public sealed class AuditViewExecutionServiceTests : IAsyncLifetime
     private static PolicyTable RealPolicyTable() =>
         new(new IPolicyTableSource[] { new CorePolicyTableSource(), new AdminPolicyTableSource() });
 
-    private static AuditViewExecutionService NewService(AdminDbContext adminDb, CoreDbContext coreDb)
+    private static AuditViewExecutionService NewService(AdminDbContext adminDb, CoreDbContext coreDb, string connectionString)
     {
         var table = RealPolicyTable();
         var eventStore = new PostgresEventStore(coreDb);
         var configRegistry = new ConfigRegistry(coreDb, eventStore);
-        var policyEngine = new PolicyEngine(table, staffRoleResolver: new GrantTableStaffRoleResolver(adminDb));
+        var policyEngine = new PolicyEngine(table, staffRoleResolver: new GrantTableStaffRoleResolver(AdminTestSupport.NewAdminDbFactory(connectionString)));
         var executor = new AdminActionExecutor(adminDb, coreDb, eventStore, policyEngine, table, configRegistry);
         var auditReader = new Svac.DomainCore.Audit.AuditReader(coreDb);
         return new AuditViewExecutionService(executor, auditReader, eventStore);
@@ -67,7 +67,7 @@ public sealed class AuditViewExecutionServiceTests : IAsyncLifetime
         var eventStore = new PostgresEventStore(coreDb);
         await eventStore.Append(StreamType.Audit, "subj_unrelated", "test.some.event", "{}", CallerCtx(superAdmin, "seed"), ExpectedVersion.AnyVersion);
 
-        var service = NewService(adminDb, coreDb);
+        var service = NewService(adminDb, coreDb, ConnectionString);
         var outcome = await service.View(CallerCtx(superAdmin, "audit-view-1"), new AuditFilter(), cursor: null);
 
         var rendered = Assert.IsType<AuditViewOutcome.Rendered>(outcome);
@@ -86,7 +86,7 @@ public sealed class AuditViewExecutionServiceTests : IAsyncLifetime
         using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "audit-view-filter-actor");
-        var service = NewService(adminDb, coreDb);
+        var service = NewService(adminDb, coreDb, ConnectionString);
 
         var filter = new AuditFilter(EventTypePrefix: "core.config.set.", ActorRef: "stf_someone");
         await service.View(CallerCtx(superAdmin, "audit-view-2"), filter, cursor: null);
@@ -103,7 +103,7 @@ public sealed class AuditViewExecutionServiceTests : IAsyncLifetime
         using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         var (_, safetyAgent, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "audit-view-denied-actor");
-        var service = NewService(adminDb, coreDb);
+        var service = NewService(adminDb, coreDb, ConnectionString);
 
         var outcome = await service.View(CallerCtx(safetyAgent, "audit-view-3"), new AuditFilter(), cursor: null);
 

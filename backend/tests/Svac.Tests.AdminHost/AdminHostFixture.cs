@@ -76,6 +76,11 @@ public sealed class AdminHostFixture : IAsyncLifetime
         builder.Services.AddSingleton<Svac.AdminHost.ConfigRegistry.ConfigConfirmToken>();
         builder.Services.AddRazorComponents();
         builder.Services.AddAntiforgery();
+        // [Finisher fix] kept in sync with Program.cs's own registration (this file's own doc comment):
+        // AdminLayout.razor now injects IHttpContextAccessor (the revoked-cookie-vs-never-had-one
+        // distinction, SLICE_S5_CONTRACT.md §1b) — omitting it here would 500 every Razor-Component
+        // request through this fixture, never exercising the REAL composition it promises to mirror.
+        builder.Services.AddHttpContextAccessor();
 
         _app = builder.Build();
         _app.UseAuthentication();

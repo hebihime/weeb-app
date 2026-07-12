@@ -21,7 +21,11 @@ public static class StaffAuthEndpointExtensions
     {
         if (devSeamsEnabled)
         {
-            app.MapPost("/devseams/signin/{fixtureKey}", HandleDevSeamsSignIn)
+            // Fixed route + hidden `fixture` form field (SLICE_S5_CONTRACT.md §1b/§10.3 wire contract,
+            // backend/e2e/admin-host.e2e.mjs's own header comment): "POST /internal/devseams/staff-signin
+            // (fields: fixture, __RequestVerificationToken)" — ONE action every fixture form posts to,
+            // never a per-fixture path segment.
+            app.MapPost("/internal/devseams/staff-signin", HandleDevSeamsSignIn)
                 .RequirePolicyAction("admin.host.transport");
         }
 
@@ -42,7 +46,6 @@ public static class StaffAuthEndpointExtensions
     }
 
     private static async Task<IResult> HandleDevSeamsSignIn(
-        string fixtureKey,
         DevSeamsStaffTransport transport,
         StaffSignInPipeline pipeline,
         IStaffContextProvider contextProvider,
@@ -50,10 +53,11 @@ public static class StaffAuthEndpointExtensions
         HttpContext httpContext,
         CancellationToken ct)
     {
+        var fixtureKey = httpContext.Request.Form["fixture"].ToString();
         var claims = await transport.ResolveClaims(fixtureKey, ct);
         if (claims is null)
         {
-            return Results.Redirect("/?refused=unknown_fixture");
+            return Results.Redirect("/signin?refused=unknown_fixture");
         }
 
         var result = await pipeline.SignIn(claims, contextProvider.ForStaffOperation(), ct);
@@ -66,7 +70,7 @@ public static class StaffAuthEndpointExtensions
                 StaffSignInResult.RefusedInactiveAccount => "inactive_account",
                 _ => "unknown",
             };
-            return Results.Redirect($"/?refused={reason}");
+            return Results.Redirect($"/signin?refused={reason}");
         }
 
         var principal = await StaffSignInFlow.BuildCookiePrincipal(allowed, adminDb, StaffAuthServiceCollectionExtensions.CookieScheme, ct);

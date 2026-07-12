@@ -34,20 +34,22 @@ public static class AdminHostServiceCollectionExtensions
 {
     public static IServiceCollection AddAdminHostModule(this IServiceCollection services, string postgresConnectionString)
     {
-        services.AddDbContext<AdminDbContext>(options => options.UseNpgsql(postgresConnectionString));
-        // Pass B: ALSO register the factory form. EF Core's DbContext is not safe for concurrent use, and
-        // Blazor's static-SSR renderer does not guarantee AdminLayout's own OnInitializedAsync (which
-        // reads IStaffRoleResolver -> the SAME request-scoped AdminDbContext, for nav filtering) finishes
-        // before a CHILD page's OnInitializedAsync starts touching that same scoped instance — Dashboard.
-        // razor never hit this (it never touches AdminDbContext), but StaffRoles.razor (Pass B, the FIRST
-        // desk page with its own DB-backed initialization) does, and DID trip EF's ConcurrencyDetector in
-        // a live HTTP round-trip test before this registration was added. A desk page that needs its OWN
-        // DB read during initialization should resolve IDbContextFactory<AdminDbContext> and create a
-        // FRESH, independent context/connection (Microsoft's own documented pattern for exactly this
-        // Blazor-plus-EF-Core hazard) rather than share the ambient scoped instance AdminLayout also
-        // touches — never edits AddStaffAuth/AdminLayout.razor (Pass A) to "fix" the shared instance
-        // itself.
+        // [Finisher fix] Register ONLY AddDbContextFactory, never ALSO AddDbContext for the SAME context
+        // type: EF Core's DbContextFactory<TContext> constructor takes an optional DbContextOptions
+        // <TContext> parameter, and AddDbContext<TContext> separately registers a SCOPED DbContextOptions
+        // <TContext> in DI — combining both makes ASP.NET Core's ValidateOnBuild (on by default in the
+        // Development environment, exactly what docker-compose.yml's admin-host service sets) throw
+        // "Cannot consume scoped service 'DbContextOptions<AdminDbContext>' from singleton
+        // 'IDbContextFactory<AdminDbContext>'" at boot — a real fresh-boot crash, not caught by the
+        // deterministic suite (its test hosts do not run in the Development environment, so ValidateOnBuild
+        // never fires there). The fix Microsoft's own docs give for needing BOTH a request-scoped
+        // AdminDbContext (StaffSignInPipeline/StaffBootstrapper/GrantTableStaffRoleResolver/
+        // DevSeamsStaffTransport/AdminActionExecutor all take one via direct constructor injection) AND an
+        // injectable factory (StaffRoles.razor.cs's own documented concurrent-DbContext hazard, immediately
+        // below): register the factory as the ONE source of DbContextOptions, then derive the scoped
+        // AdminDbContext FROM that factory rather than a second, independently-configured registration.
         services.AddDbContextFactory<AdminDbContext>(options => options.UseNpgsql(postgresConnectionString));
+        services.AddScoped<AdminDbContext>(sp => sp.GetRequiredService<IDbContextFactory<AdminDbContext>>().CreateDbContext());
         services.AddHostedService<AdminMigrationHostedService>();
 
         // Phase-2a union (PHASE_2A_SUBSTRATE.md §1): admin's OWN IPolicyTableSource, unioned with

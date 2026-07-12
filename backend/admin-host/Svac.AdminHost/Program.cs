@@ -96,6 +96,12 @@ builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.AuditTrailDeskMo
 
 builder.Services.AddRazorComponents();
 builder.Services.AddAntiforgery();
+// [Finisher fix] AdminLayout needs to tell "a request that carried a NOW-REJECTED staff cookie" apart
+// from "a request that never carried one" (SLICE_S5_CONTRACT.md §1b revocation leg — the former must
+// force a real redirect to /signin, the latter keeps the Phase-1 scaffold's existing inline-denial
+// rendering, per BootHttpTests.cs). Static SSR renders synchronously within one HTTP request, so
+// IHttpContextAccessor.HttpContext is reliably non-null throughout a page's OnInitializedAsync here.
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

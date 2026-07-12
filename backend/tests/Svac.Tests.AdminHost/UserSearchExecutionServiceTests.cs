@@ -46,12 +46,12 @@ public sealed class UserSearchExecutionServiceTests : IAsyncLifetime
     private static PolicyTable RealPolicyTable() =>
         new(new IPolicyTableSource[] { new CorePolicyTableSource(), new AdminPolicyTableSource() });
 
-    private static (UserSearchExecutionService Service, AdminActionExecutor Executor) NewService(AdminDbContext adminDb, CoreDbContext coreDb)
+    private static (UserSearchExecutionService Service, AdminActionExecutor Executor) NewService(AdminDbContext adminDb, CoreDbContext coreDb, string connectionString)
     {
         var table = RealPolicyTable();
         var eventStore = new PostgresEventStore(coreDb);
         var configRegistry = new ConfigRegistry(coreDb, eventStore);
-        var policyEngine = new PolicyEngine(table, staffRoleResolver: new GrantTableStaffRoleResolver(adminDb));
+        var policyEngine = new PolicyEngine(table, staffRoleResolver: new GrantTableStaffRoleResolver(AdminTestSupport.NewAdminDbFactory(connectionString)));
         var executor = new AdminActionExecutor(adminDb, coreDb, eventStore, policyEngine, table, configRegistry);
         var quotaService = new QuotaService(coreDb, configRegistry, Array.Empty<ICapModifier>());
         var searchSource = new EmptyUserSearchSource();
@@ -73,7 +73,7 @@ public sealed class UserSearchExecutionServiceTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         await SeedQuotaCap(coreDb, 500);
         var (_, safetyAgent, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "safety_agent" }, "search-actor");
-        var (service, _) = NewService(adminDb, coreDb);
+        var (service, _) = NewService(adminDb, coreDb, ConnectionString);
 
         var outcome = await service.Execute(CallerCtx(safetyAgent, "search-1"), UserSearchQueryClass.HandlePrefix, "nobody-should-match", cursor: null);
 
@@ -97,7 +97,7 @@ public sealed class UserSearchExecutionServiceTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         await SeedQuotaCap(coreDb, 500);
         var (_, superAdmin, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "super_admin" }, "search-empty-actor");
-        var (service, _) = NewService(adminDb, coreDb);
+        var (service, _) = NewService(adminDb, coreDb, ConnectionString);
 
         var outcome1 = await service.Execute(CallerCtx(superAdmin, "search-empty-1"), UserSearchQueryClass.EmailExact, "nobody@example.com", cursor: null);
         var outcome2 = await service.Execute(CallerCtx(superAdmin, "search-empty-2"), UserSearchQueryClass.EmailExact, "nobody@example.com", cursor: null);
@@ -118,7 +118,7 @@ public sealed class UserSearchExecutionServiceTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         await SeedQuotaCap(coreDb, 500);
         var (_, analyst, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "analyst" }, "search-analyst");
-        var (service, _) = NewService(adminDb, coreDb);
+        var (service, _) = NewService(adminDb, coreDb, ConnectionString);
 
         var outcome = await service.Execute(CallerCtx(analyst, "search-analyst-1"), UserSearchQueryClass.HandlePrefix, "someone", cursor: null);
 
@@ -138,7 +138,7 @@ public sealed class UserSearchExecutionServiceTests : IAsyncLifetime
         using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
         await SeedQuotaCap(coreDb, 1);
         var (_, contentMod, _) = await AdminTestSupport.SeedActiveStaff(adminDb, new[] { "content_moderator" }, "search-capped");
-        var (service, _) = NewService(adminDb, coreDb);
+        var (service, _) = NewService(adminDb, coreDb, ConnectionString);
 
         var first = await service.Execute(CallerCtx(contentMod, "search-cap-1"), UserSearchQueryClass.DeviceExact, "device-1", cursor: null);
         var second = await service.Execute(CallerCtx(contentMod, "search-cap-2"), UserSearchQueryClass.DeviceExact, "device-2", cursor: null);

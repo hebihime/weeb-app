@@ -17,7 +17,7 @@
 
     @if (Refused is not null)
     {
-        <p class="admin-badge admin-badge--danger">@Strings["admin.signin.refused_prefix"] @Refused</p>
+        <p class="admin-badge admin-badge--danger" data-testid="signin-refused">@Strings["admin.signin.refused_prefix"] @Refused</p>
     }
 
     @if (DevSeamsEnabled.Value)
@@ -25,8 +25,9 @@
         <div class="admin-fixture-list">
             @foreach (var fixture in Svac.AdminHost.Domain.Auth.DevSeamsStaffFixtures.All)
             {
-                <form method="post" action="@($"/devseams/signin/{fixture.Key}")">
+                <form data-testid="@($"devseams-fixture-{fixture.Key}")" method="post" action="/internal/devseams/staff-signin">
                     <AntiforgeryToken />
+                    <input type="hidden" name="fixture" value="@fixture.Key" />
                     <button type="submit" class="admin-button">@fixture.DisplayName</button>
                 </form>
             }
