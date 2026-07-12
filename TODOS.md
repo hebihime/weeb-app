@@ -7,12 +7,16 @@
   (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
   build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
 - **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
-  Heatmap data is anonymized at write, so retention past account_deletion is lawful (GDPR Recital 26 —
-  anonymous data is out of scope; keep despite the originating user's erasure wish). `NotExportable` +
-  `NotApplicable`-on-deletion dispositions stay. **ACCEPTANCE BAR for S9/S14 Phase-0:** the write path
-  must produce *genuinely anonymous* cells (k-anonymity floor + NO reversible subject key surviving
-  deletion), not merely pseudonymized — pseudonymous data is still personal data and Art.17 still bites.
-  Verify irreversibility, not just "no plaintext id," before the first `events_heatmap_provenance` row.
+  **Keep the analytics signal, sever the subject.** The cell/density/pattern (the actionable data) is
+  retained; only "whose signal is this" is dropped, so deleting an account keeps its contributions on the
+  map, just unattributed. Lawful under GDPR Recital 26 (anonymous data out of scope; kept despite the
+  originating user's erasure wish). `NotExportable` + `NotApplicable`-on-deletion dispositions stay.
+  **ACCEPTANCE BAR for S9/S14 Phase-0 — two-sided:** (1) *genuinely anonymous*, not pseudonymous — strip
+  the subject link either at write or by crypto-shredding it at deletion; a held-elsewhere salt keeps it
+  personal data and Art.17 still bites; (2) *no singling-out* — coarsen/bucket coordinate+time+rare-attr
+  so no retained cell re-identifies one person via the mosaic effect, while staying granular enough to
+  stay actionable. That coarsening tension is the design work. Verify irreversibility AND non-singling-out
+  before the first `events_heatmap_provenance` row.
 - **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
   before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
 - **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own

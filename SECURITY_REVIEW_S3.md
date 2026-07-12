@@ -20,13 +20,17 @@ One HIGH (heatmap) is a founder escalation, not a code fix.
   is resolved: heatmap data is anonymized at write, so retaining it past `account_deletion` is lawful
   (GDPR Recital 26 — genuinely anonymous data falls outside the Regulation; retained despite the
   originating user's erasure wish). The `NotApplicable`-on-deletion (§1c) and `export-registry`
-  `NotExportable` dispositions therefore stand as correct, not as a gap. **This discharges PII-4 IFF the
-  S9/S14 write path clears the anonymity bar — a build-time acceptance condition, not a live S3 bug (zero
-  heatmap writers until S9/S14):** cells must be *genuinely anonymous* — aggregated to a k-anonymity floor,
-  with NO reversible subject key surviving deletion anywhere (a held-elsewhere salt makes the data
-  *pseudonymous*, which is still personal data and Art.17 still applies). The stream name "provenance"
-  is the trap: provenance must not be subject-traceable post-deletion. **S9/S14 Phase-0 must verify
-  irreversibility (not merely "no plaintext id in the row") before the first provenance row is written.**
+  `NotExportable` dispositions therefore stand as correct, not as a gap. Intent: **keep the analytics
+  signal (cell/density/pattern), sever the subject** — a deleted account's contributions stay on the map,
+  just unattributed. **This discharges PII-4 IFF the S9/S14 write path clears a two-sided bar — a
+  build-time acceptance condition, not a live S3 bug (zero heatmap writers until S9/S14):** (1)
+  *irreversibility* — the subject link is dropped at write OR crypto-shredded at deletion; a
+  held-elsewhere salt makes the data *pseudonymous*, still personal data, Art.17 still applies; (2)
+  *no singling-out* — coordinate+time+rare-attribute coarsened/bucketed to a k-anonymity floor so no
+  retained cell re-identifies one person via the mosaic effect, while staying granular enough to remain
+  actionable. That coarsening tension is the S9/S14 design work. The stream name "provenance" is the trap:
+  provenance must not be subject-traceable post-deletion. **S9/S14 Phase-0 must verify BOTH irreversibility
+  and non-singling-out (not merely "no plaintext id in the row") before the first provenance row.**
   Carried to S9/S14 Phase-0 as a ruled constraint.
 
 ## FIX NOW — CRITICAL / HIGH (each with a now-green regression test)
