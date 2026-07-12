@@ -1,0 +1,53 @@
+{
+  "_comment": "SLICE_S5_CONTRACT.md §4 -- admin-host tunables. PHASE 2 (real row seeding, this pass): every key below has a REAL S5 consumer as of this pass (cookie lifetime, revalidation interval, the §5 quota cap, the executor's four-eyes step, the 13A retention verb) -- none is pending. Bounds seeded verbatim into ConfigEntryEntity.BoundsJson so ConfigBounds.ValidateAsync's generic check has real data on the actual SetValue path (OPS-3).",
+  "entries": [
+    {
+      "key": "admin.session_lifetime_hours",
+      "scope": "ops",
+      "type": "int",
+      "value": 8,
+      "requiresReason": false,
+      "bounds": [
+        1,
+        24
+      ],
+      "consumer": "StaffAuthServiceCollectionExtensions.AddStaffAuth (CookieAuthenticationOptions.ExpireTimeSpan, SLICE_S5_CONTRACT.md §1b)"
+    },
+    {
+      "key": "admin.session_revalidate_seconds",
+      "scope": "ops",
+      "type": "int",
+      "value": 300,
+      "requiresReason": false,
+      "bounds": [
+        15,
+        900
+      ],
+      "consumer": "StaffAuthServiceCollectionExtensions.RevalidateStaffSession (stamp+status revalidation interval, §1b)"
+    },
+    {
+      "key": "quota.admin.user_search.daily.cap",
+      "scope": "ops",
+      "type": "int",
+      "value": 500,
+      "requiresReason": false,
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume (10A `quota.<quotaKey>.cap` convention, QuotaService.cs:24) for quotaKey=AdminQuotaKeys.UserSearchDaily=\"admin.user_search.daily\" (SLICE_S5_CONTRACT.md §5) — the actual runtime key UserSearchExecutionService's quota check resolves. Renamed from the contract §4 table's literal `admin.user_search_daily_cap` (a Pass D build-phase fix, mirroring backend/tests/Svac.Tests.AimlRouter/BudgetCapConfigKeyWiringTests.cs's identical S2 fix for `aiml.call.daily`, pinned here by backend/tests/Svac.Tests.AdminHost/UserSearchQuotaCapConfigKeyWiringTests.cs): that spelling collided with nothing QuotaService.Consume ever reads, so every search would have thrown KeyNotFoundException the moment Pass D wired the real Consume call. Same v0 value (500), same scope/requiresReason — the fix is the key's spelling, not its shape."
+    },
+    {
+      "key": "admin.four_eyes_required",
+      "scope": "founder",
+      "type": "bool",
+      "value": false,
+      "requiresReason": true,
+      "consumer": "AdminActionExecutor.Execute step 5 (§1c/§4) — armed second-approver placeholder"
+    },
+    {
+      "key": "admin.staff_pii_retention_years",
+      "scope": "founder",
+      "type": "int",
+      "value": 6,
+      "requiresReason": true,
+      "consumer": "13A retention_expiry Pseudonymize verb for deactivated admin.staff_accounts rows (§6)"
+    }
+  ]
+}

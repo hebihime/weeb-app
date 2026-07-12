@@ -370,6 +370,73 @@ the backed-vs-unbacked branches so the floored path is timing-flat.
 §1c "retain full-history on account_deletion" likely conflicts with Art.17; not exploitable at S3 (zero
 writers); must be ruled on before the first heatmap write. Do NOT unilaterally overturn a ratified founder ruling.
 
+### S5 retro — admin-foundation (G0) — DONE (HARDENED GATE green; on `wave/s5-admin-desk`)
+
+**Shipped:** the staff/admin trust boundary as a Blazor Server host (`backend/admin-host`, LANE F) over S1's
+domain core — hand-built (no framework), static SSR + enhanced form posts, QuickGrid, token CSS. Two-layer
+auth (Entra authenticates via `Microsoft.Identity.Web` / Svac authorizes; DevSeams transport is the dev
+backend of the SAME pipeline; MFA enforced in OUR claims check; JIT refused; roles from OUR grants table;
+`ProdStaffAuthGuard` fail-closed). The `AdminActionExecutor` §1c chokepoint (7-step, ONE Postgres tx
+spanning AdminDbContext + CoreDbContext via a shared connection). Five surfaces: Dashboard tiles
+(`IMetricsTileSource`), Config Registry editor (the LEDGER HEADLINE — full 41-key v0 batch seeded, founder
+interstitial, ops inline reason, set display-only, bounds via ConfigBounds only), User Search
+(`IUserSearchSource`+Empty, audited+quota'd even on empty), Audit Trail (`IAuditReader`), Staff & Roles
+(provision/deactivate/reactivate/grant/revoke, all through the executor). Two `admin` tables, `admin.*`
+policy rows via `AdminPolicyTableSource`, the two `events_audit` read indexes, staff-pseudonymize purge.
+Domain-core touched additively only (config.set {hat,roles_held} enrichment + the indexes), byte-identical
+proof. Kills B6 (partial: the desk chassis every later desk registers into).
+
+**Green (verified by me, on the pushed commits, never on agent word):** build Debug+Release 0/0; suite
+**473 pass / 0 fail / 19 skip** (DomainCore 51/0, AimlRouter 51/2, Identity 87/5 all byte-identical;
+AdminHost 100/5; Architecture 187/5 with new chokepoint + no-DELETE-lifecycle + DataProtection-key-protection
+arch rules); ef-gate idempotent ×3 contexts; live `admin-host.e2e.mjs` **20/20 GREEN on two independent
+fresh boots**, exit 0, incl. the ledger outcome observed live; 0 restarts; clean log sweep. Security: 1
+CRITICAL (last-SuperAdmin lockout) + 3 HIGH + 1 LOW fixed, then 3 more pulled forward in round 2 (antiforgery,
+empty-search audit/quota, HandleConfirm scope recheck); 6 deferred with Skip proofs.
+
+**What worked:** (1) The Phase-2a substrate landing with S3 meant S5 only owned 3 small domain-core gaps —
+verified by an inventory pass against the real code, not the retro prose, before scoping. (2) Splitting
+Phase 2 into a tiny domain-core sub-pass (I did it myself for full understanding) + a large host build
+(fresh-agent sequential passes) held the S3 "a large module exceeds one agent" lesson. (3) The adversarial
+security phase paid for itself: the CRITICAL founder self-lockout, the ungated `GET /config` registry leak,
+and the plaintext DataProtection key ring were all adversarial-only finds.
+
+**What we learned / changed (fold UP):**
+(1) **Security remediation MUST re-run the LIVE E2E, not just the deterministic suite.** The remediate agent
+ran `dotnet test` (green) but not `admin-host.e2e.mjs`, so the S5-01 config-read gate silently broke the
+revoke stage (a role-less actor can no longer READ /config to reach the edit form) — a deterministic-green,
+live-red regression I caught only by running the E2E myself. L30 corollary: EVERY phase that changes request
+handling re-runs the live E2E before "green." (Fold to BUILD.md §8.)
+(2) **A Blazor host needs two seams baked in day one, or it ships latent prod breakage:** DataProtection
+keys persisted+encrypted (a scoped default breaks cookies/antiforgery across restart+instances; a plaintext
+ring is a cookie-forgery hole), and a scope-isolated DbContext per render path (Blazor static SSR shares one
+scoped DbContext across concurrent component reads → EF "second operation" races; `AddDbContextFactory` +
+per-read scope is the fix). (Fold to BUILD.md §9 for any future host.)
+(3) **The pre-commit gate lane is now ~4 min, not "<2s".** `Svac.Tests.Architecture` grew DB-backed
+Testcontainers tests over S3–S5, so the hook (contract: "seconds not minutes, never flaky") now runs a
+multi-minute DB suite. It is also a flake surface (a Testcontainers connection timeout under container
+contention appeared once). Fix owed: split the DB-backed arch tests out of the pre-commit lane into the
+periodic/integration lane, leaving the hook a true fast deterministic gate. (Tracked; see TODOS.)
+(4) **Agents self-commit+push each pass, still.** Every 2b pass and the finisher committed+pushed to the
+feature branch unprompted (the S1 scar). Harmless on a feature branch + fully re-verified, but branch
+protection remains the only structural fix. Reviewed every commit; trusted none.
+(5) **Concurrency tests must isolate the mechanism under test.** The S5-03 lockout guard's first concurrency
+test used mutual revoke (A↔B), where the loser is denied by ordinary Authorize, not the guard — self-action
+isolates the guard. Caught by actually running the test (it failed) before claiming green.
+(6) **My "HARDENED GATE green" was wrong twice — the PR (#2) caught what I did not.** Opening the S5 PR
+surfaced two real failures my local gate missed. (a) A FLAKY test: `StaffPurgeTests.…TimestampsSurvive` read
+a grant back through its SEEDING context (EF identity-map → in-memory 100ns `DateTimeOffset`) and asserted
+equal to a post-purge read through a fresh context (Postgres `timestamptz` → µs). Equal only when the 7th
+fractional digit is 0; green locally twice by luck, red in CI. Fix: capture both sides from a fresh context;
+re-run a was-flaky test 5+ times, never once. (b) A CI-ONLY drift gate: Phase-2a's `AddEventsAuditReadIndexes`
+migration never regenerated the byte-diff-gated `InitialCore.sql` (`emit-ddl-script.sh` runs in CI, not the
+pre-commit hook). It was HIDDEN behind (a): the EF-migration job showed `skipping` (gated on the failed
+build/test job), and only surfaced once the flaky fix turned build/test green. Lessons: after ANY EF migration
+run `build/scripts/emit-ddl-script.sh` and commit the regenerated `Initial*.sql` in the same commit; treat
+every `skipping` CI job as unknown, not pass, and re-check after each upstream fix; a flaky test is green-until-
+it-isn't, so one pass is not proof. Fix owed: fold the DDL drift gate into the pre-commit hook alongside the
+arch-test split (see TODOS). (Fold to BUILD.md §8.)
+
 ### Deferred-findings ledger (carry into the named slice's Phase-0 contract)
 
 | Finding | From | Severity | Carry to |
@@ -382,7 +449,13 @@ writers); must be ruled on before the first heatmap write. Do NOT unilaterally o
 | CONC-S2-5 — torn two-key config read (allowlist + routing policy) | S2 | LOW | when 9A gains an atomic multi-key snapshot read |
 | **PII-4 (heatmap retention) — account_deletion retains identifiable location provenance the user can't see (Art.15) or erase (Art.17); S1 §1c ruling likely conflicts with GDPR. FOUNDER ruling required** | S3 | HIGH (legal) | **S9/S14** — before the first `events_heatmap_provenance` write |
 | CONC-5 — session-cap eviction is check-then-act (transient over-cap, no privilege gain) | S3 | MED | S14 |
-| OPS-4 — `ConfigRegistry.SetValue` doesn't enforce `row.Scope` (founder key writable at ops authority) | S3 | MED | S5 (admin config desk) |
-| OPS-5 — config dual-key divergence (human `identity.*_cap` vs enforced `quota.*.cap`) | S3 | LOW | S5 (collapse to one key with the desk) |
+| ~~OPS-4 — `ConfigRegistry.SetValue` doesn't enforce `row.Scope`~~ | S3 | MED | **SUBSTANTIVELY RESOLVED at S5** — founder-key-writable-at-ops-authority is closed by the typed policy rows (`core.config.set.founder`={SuperAdmin}) + interstitial routing; residual = the domain-core `SetValue` scope assert (= S5-12 below) |
+| OPS-5 — config dual-key divergence (human `identity.*_cap` vs enforced `quota.*.cap`) | S3 | LOW | **NOT addressed at S5** (editor renders both keys; collapse-to-one still owed) → re-carry to the next config-manifest slice |
 | AUTH-4 — logout doesn't clear the device push token; sessions minted `device_id=null` | S3 | LOW | S4 (notification delivery) |
 | CONC-6/7 — deletion/export recovery-path 500s (`effectiveAt!.Value`, export loser `FirstAsync`) | S3 | LOW | S12 |
+| S5-06 / S5-07 — `AdminActionChokepointArchTests` scan blind spots (decoy `.Execute(` receiver; nested-`/Auth/` path allowlist) | S5 | MED | next touch of `AdminActionChokepointArchTests.cs` |
+| S5-08 — four-eyes exemption keys on computed hat, not "holds SuperAdmin" (over-refuses a dual-role SuperAdmin, fail-closed) | S5 | MED | next slice revisiting the executor four-eyes step |
+| S5-09 — null-`StaffRoles` + null-hat compose to ungate a hypothetical future `RequiresReason` row (no shipped row hits it) | S5 | LOW | first policy row wanting `StaffRoles=null` AND `RequiresReason=true` |
+| S5-10 — `IsFourEyesArmed` swallows a missing key → `false` (fail-open only if a seeded key is later dropped) | S5 | LOW | ops-desk slice touching `admin.four_eyes_required` |
+| S5-12 (domain-core half) — `ConfigRegistry.SetValue` has no `Scope!="set"` assert (admin-host half fixed at S5 round 2) | S5 | LOW | domain-core slice next touching `SetValue` |
+| S5-13 — C# `PendingConsumerSliceLint` lacks the `doneSlices` check the node mirror has; node's `\bDONE\b` match has no negation handling | S5 | LOW | next config-manifest slice |

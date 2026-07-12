@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Svac.AdminHost.Domain.Persistence;
+using Svac.AdminHost.Domain.Purge;
 using Svac.DomainCore.Contracts.Purge;
 using Svac.DomainCore.Persistence;
 using Svac.DomainCore.Purge;
@@ -9,19 +11,22 @@ using Xunit;
 namespace Svac.Tests.Architecture;
 
 /// <summary>
-/// B2's proof (SLICE_S1_CONTRACT.md §6, §10.3; SLICE_S3_CONTRACT.md §6a): the arch test enumerates every
-/// EF entity type (CoreDbContext AND, since S3, IdentityDbContext) + every declared blob/cache store and
-/// fails the build on any store absent from the purge-registry manifest — proven non-vacuous by a red
-/// fixture (an unregistered fixture table fails the gate). The registry under test is the REAL boot-time
-/// union (CorePurgeRegistrySource + IdentityPurgeRegistrySource), exactly the composition AddDomainCore +
-/// AddIdentityModule assemble via DI — never the parameterless (Core-only) default.
+/// B2's proof (SLICE_S1_CONTRACT.md §6, §10.3; SLICE_S3_CONTRACT.md §6a; SLICE_S5_CONTRACT.md §6): the
+/// arch test enumerates every EF entity type (CoreDbContext, IdentityDbContext, AND, since S5,
+/// AdminDbContext) + every declared blob/cache store and fails the build on any store absent from the
+/// purge-registry manifest — proven non-vacuous by a red fixture (an unregistered fixture table fails
+/// the gate). The registry under test is the union of every REAL host's own registration set
+/// (CorePurgeRegistrySource + IdentityPurgeRegistrySource + AdminPurgeRegistrySource) — Svac.PublicApi
+/// and Svac.AdminHost are two DIFFERENT deploy units that never share a process, so no single running
+/// host actually assembles this exact three-way union; this test is the one place that union is proven
+/// complete against every EF entity across every host at once.
 /// </summary>
 public sealed class PurgeRegistryGateTests
 {
-    private static readonly IReadOnlySet<string> RealStoreKeys = EnumerateCoreAndIdentityDbContextTableNames();
+    private static readonly IReadOnlySet<string> RealStoreKeys = EnumerateCoreAndIdentityAndAdminDbContextTableNames();
 
     private static PurgeRegistry BuildRealRegistry() =>
-        new(new IPurgeRegistrySource[] { new CorePurgeRegistrySource(), new IdentityPurgeRegistrySource() });
+        new(new IPurgeRegistrySource[] { new CorePurgeRegistrySource(), new IdentityPurgeRegistrySource(), new AdminPurgeRegistrySource() });
 
     [Fact]
     public void EveryCoreDbContextTable_IsRegisteredInThePurgeRegistry()
@@ -103,7 +108,7 @@ public sealed class PurgeRegistryGateTests
     private static List<string> FindUnregisteredStores(IEnumerable<string> realStores, IReadOnlySet<string> registeredStores) =>
         realStores.Where(s => !registeredStores.Contains(s)).ToList();
 
-    private static HashSet<string> EnumerateCoreAndIdentityDbContextTableNames()
+    private static HashSet<string> EnumerateCoreAndIdentityAndAdminDbContextTableNames()
     {
         var coreOptions = new DbContextOptionsBuilder<CoreDbContext>()
             .UseNpgsql("Host=localhost;Database=svac-model-enumeration-only")
@@ -115,9 +120,15 @@ public sealed class PurgeRegistryGateTests
             .Options;
         using var identityDb = new IdentityDbContext(identityOptions);
 
+        var adminOptions = new DbContextOptionsBuilder<AdminDbContext>()
+            .UseNpgsql("Host=localhost;Database=svac-model-enumeration-only")
+            .Options;
+        using var adminDb = new AdminDbContext(adminOptions);
+
         // Core's own registry keys are BARE table names (e.g. "events_ledger", §6 — unchanged from S1);
-        // identity's are schema-qualified (e.g. "identity.accounts", §6a) — the enumeration must match
-        // each side's own registration convention, not a single uniform shape.
+        // identity's and admin's are schema-qualified (e.g. "identity.accounts", "admin.staff_accounts",
+        // §6a/§6) — the enumeration must match each side's own registration convention, not a single
+        // uniform shape.
         var tableNames = coreDb.Model.GetEntityTypes()
             .Select(t => t.GetTableName())
             .Where(name => name is not null)
@@ -125,6 +136,17 @@ public sealed class PurgeRegistryGateTests
             .ToHashSet();
 
         foreach (var entityType in identityDb.Model.GetEntityTypes())
+        {
+            var table = entityType.GetTableName();
+            if (table is null)
+            {
+                continue;
+            }
+            var schema = entityType.GetSchema();
+            tableNames.Add(schema is null ? table : $"{schema}.{table}");
+        }
+
+        foreach (var entityType in adminDb.Model.GetEntityTypes())
         {
             var table = entityType.GetTableName();
             if (table is null)

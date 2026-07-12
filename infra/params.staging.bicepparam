@@ -7,3 +7,4 @@ param backupPairLocation = 'northeurope' // pending OQ-2 ratification
 param namePrefix = 'svac-staging'
 // See params.dev.bicepparam for why this reads an env var rather than embedding a secret literal.
 param postgresAdminPassword = readEnvironmentVariable('POSTGRES_ADMIN_PASSWORD', 'unset-fails-closed-at-deploy')
+param adminHostContainerImage = readEnvironmentVariable('ADMIN_HOST_CONTAINER_IMAGE', 'unset-fails-closed-at-deploy')

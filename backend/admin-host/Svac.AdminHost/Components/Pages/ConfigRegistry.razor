@@ -1,0 +1,101 @@
+@* SLICE_S5_CONTRACT.md §0/§4/§8 seam 1/2 (Pass C): THE LEDGER HEADLINE's read surface -- "config change =
+   audited 3A event, rendered from registry." Static SSR + enhanced form posts (§1a) -- every mutating
+   form here posts to a REAL HTTP endpoint (Svac.AdminHost.ConfigRegistry.ConfigRegistryEndpointExtensions), never
+   a Blazor interactive handler. This page ITSELF only ever READS IConfigRegistry.ListEntries (the pure 9A
+   client contract, §4: "zero new mechanism, zero new policy rows") -- every WRITE happens behind the
+   audited-action chokepoint in the endpoint handlers, never here.
+
+   Rendered via QuickGrid (§4: "render ListEntries via QuickGrid") with the same admin-data/admin-table
+   token classes admin.css already reserves for it. Every row/field/form below carries the data-testid +
+   field-name WIRE CONTRACT literally specified by backend/e2e/admin-host.e2e.mjs's own header comment --
+   that file is the test-author's authoritative target for this exact surface. *@
+@page "/config"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Svac.DomainCore.Contracts.Config
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.config.title"]</PageTitle>
+
+@if (!_canView)
+{
+    <div class="admin-card" data-testid="config-access-denied">
+        <h1>@Strings["admin.config.title"]</h1>
+        <p>@Strings["admin.config.access_denied"]</p>
+    </div>
+}
+else
+{
+    @if (Notice is not null)
+    {
+        @if (ErrorKind == "bounds")
+        {
+            <p class="admin-badge admin-badge--danger" data-testid="config-edit-error">@(Strings[Notice]) @Detail</p>
+        }
+        else if (ErrorKind == "denied")
+        {
+            <p class="admin-badge admin-badge--danger" data-testid="action-denied">@(Strings[Notice]) @Detail</p>
+        }
+        else
+        {
+            <p class="admin-badge">@(Strings[Notice])</p>
+        }
+    }
+
+    <div class="admin-card">
+        <h1>@Strings["admin.config.title"]</h1>
+        <p>@Strings["admin.config.body"]</p>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-table-wrap">
+            <QuickGrid Items="@_rows.AsQueryable()" Class="admin-data admin-table">
+                @* TemplateColumn, never PropertyColumn, for the key itself too -- a lambda's arrow token
+                   inside a razor attribute contains a literal greater-than sign that i18n-lint's hardcoded-
+                   literal regex misreads as a tag close, false-flagging every attribute after it up to the
+                   next real less-than sign. TemplateColumn's @context avoids the lambda entirely. *@
+                <TemplateColumn Title="@Strings["admin.config.table.key"]">
+                    <span data-testid="@($"config-row-{context.Key}")" style="display:none"></span>
+                    <code>@context.Key</code>
+                </TemplateColumn>
+                <TemplateColumn Title="@Strings["admin.config.table.scope"]">
+                    <span class="admin-badge" data-testid="@($"config-scope-{context.Key}")">@context.Scope</span>
+                </TemplateColumn>
+                <TemplateColumn Title="@Strings["admin.config.table.value"]">
+                    <span data-testid="@($"config-value-{context.Key}")">@context.ValueJson</span>
+                </TemplateColumn>
+                <TemplateColumn Title="@Strings["admin.config.table.pending"]">
+                    @if (_pending.TryGetValue(context.Key, out var slice))
+                    {
+                        <span class="admin-badge" data-testid="@($"config-pending-{context.Key}")">@Strings["admin.config.pending_prefix"] @slice</span>
+                    }
+                </TemplateColumn>
+                <TemplateColumn Title="@Strings["admin.config.table.edit"]">
+                    @if (context.Scope == "set")
+                    {
+                        <span class="admin-dim">@Strings["admin.config.display_only"]</span>
+                    }
+                    else
+                    {
+                        <form data-testid="@($"config-edit-form-{context.Key}")" method="post" action="@($"/config/{Uri.EscapeDataString(context.Key)}/edit")" class="admin-inline-form">
+                            <AntiforgeryToken />
+                            <input class="admin-input admin-input--sm" name="newValue" placeholder="@Strings["admin.config.new_value_placeholder"]" required />
+                            <input class="admin-input admin-input--sm" name="reason" placeholder="@Strings["admin.config.reason_placeholder"]" />
+                            <button type="submit" class="admin-button admin-button--sm">@Strings["admin.config.action.save"]</button>
+                        </form>
+                    }
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <h2>@Strings["admin.config.excluded.title"]</h2>
+        <ul class="admin-excluded-list">
+            @foreach (var item in ExcludedKeys)
+            {
+                <li><code>@item.KeyLabel</code>: @Strings[item.ReasonKey]</li>
+            }
+        </ul>
+    </div>
+}

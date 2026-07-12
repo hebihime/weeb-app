@@ -46,7 +46,22 @@ public sealed class ConfigRegistry(CoreDbContext db, Svac.DomainCore.Contracts.S
         row.UpdatedAt = DateTimeOffset.UtcNow;
         row.UpdatedBy = actor.ToString();
 
-        var payload = JsonSerializer.Serialize(new { key, value, reason, actor = actor.ToString() });
+        // [S5, SLICE_S5_CONTRACT.md §1c/§1d] When a staff actor drives the Set through AdminActionExecutor,
+        // enrich the SAME config.set event with which hat acted + the full role snapshot — additive payload
+        // fields, same event type, foreign-event law + projections unaffected. On every non-admin host
+        // ctx.Staff is null, so the payload is BYTE-IDENTICAL to S1/S2 (proven: DomainCore/AimlRouter/Identity
+        // suites unchanged). roles_held is ordinal-ordered so the serialized shape is deterministic/testable.
+        var payload = ctx.Staff is { } staff
+            ? JsonSerializer.Serialize(new
+            {
+                key,
+                value,
+                reason,
+                actor = actor.ToString(),
+                hat = staff.ActingHat.ToString(),
+                roles_held = staff.RolesHeld.OrderBy(r => (int)r).Select(r => r.ToString()).ToArray(),
+            })
+            : JsonSerializer.Serialize(new { key, value, reason, actor = actor.ToString() });
         // Same tx: the config-row mutation above is tracked but not yet saved; IEventStore.Append's own
         // SaveChangesAsync call commits BOTH the config row mutation and the audit event together in one
         // implicit EF transaction (§4: "every config change ... appends an Audit-stream event in the

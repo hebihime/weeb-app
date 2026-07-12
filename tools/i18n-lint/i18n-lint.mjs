@@ -11,6 +11,13 @@
 //   2. Hardcoded user-facing string tripwire (regex per platform; allowlist requires justification).
 //   3. Brand string-pack overrides must exist in the base catalog AND in both brands.
 //   4. Fastlane store metadata dirs (4 listings x 4 locales) in scope — EN-only listing fails that brand.
+//
+// RECORDED EXCEPTION (SLICE_S5_CONTRACT.md §11 OQ-1, RATIFIED (a), §8 seam 14): backend/admin-host's
+// Razor pages ARM the hardcoded-literal tripwire (rule 2) the moment the directory exists — the staff
+// portal's audience is internal operators, not the product's ×4-locale consumer surface, so rule 1 (key
+// parity across ALL canonical locales) does NOT apply to it; its catalog is legitimately EN-only forever
+// until Julien ratifies otherwise. Flipping to ×4 later is translation data dropped into the SAME
+// backend/admin-host/Svac.AdminHost.Domain/I18n/admin-en.json shape, never a rewrite.
 
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -209,6 +216,22 @@ export function collectIosCatalogs(repoRoot, locales) {
   return merged;
 }
 
+/**
+ * Every backend/admin-host/**\/*.razor file, as { path, content } pairs (SLICE_S5_CONTRACT.md §8 seam
+ * 14 / §11 OQ-1 RATIFIED (a)) — the hardcoded-literal tripwire's (rule 2) input for the "razor" platform.
+ * Deliberately NOT a catalog-parsing function like collectIosCatalogs/collectAndroidCatalogs: the admin
+ * host's catalog is a flat { key: value } JSON map (Svac.AdminHost.Domain/I18n/admin-en.json), read
+ * directly by AdminStringCatalog at runtime — this lint's job is only proving no Razor markup bypasses
+ * that catalog with a raw literal, never re-deriving key parity (rule 1 does not apply here, recorded
+ * above).
+ */
+export function collectRazorFiles(repoRoot) {
+  return walk(join(repoRoot, "backend", "admin-host"), (n) => n.endsWith(".razor"), []).map((full) => ({
+    path: full,
+    content: readFileSync(full, "utf8"),
+  }));
+}
+
 /** Merge every android/**\/res/values*\/strings.xml into one { locale: {name} } union. */
 export function collectAndroidCatalogs(repoRoot) {
   const merged = {};
@@ -257,6 +280,17 @@ async function main() {
     platformCatalogs.push({ platform: "android", catalogs: cats });
   } else {
     console.log("i18n-lint SKIP: android/ does not exist yet — strings.xml key-parity guarded until S7 Android lands");
+  }
+
+  if (existsSync(join(repoRoot, "backend", "admin-host"))) {
+    anyActive = true;
+    const razorFiles = collectRazorFiles(repoRoot);
+    // Rule 2 ONLY (recorded exception above) — every text node in App.razor/SignIn.razor/Dashboard.razor
+    // renders through @AdminStringCatalog (an @-expression, never a bare literal), so this is expected
+    // to be zero findings from commit one, not merely "not yet checked".
+    violations.push(...findHardcodedStrings(razorFiles, { platform: "razor" }).map((v) => `[admin-host razor] ${v}`));
+  } else {
+    console.log("i18n-lint SKIP: backend/admin-host/ does not exist yet — the razor hardcoded-literal tripwire arms with S5");
   }
 
   violations.push(...checkMessageKeyCoverage(platformCatalogs, messageKeys, locales));

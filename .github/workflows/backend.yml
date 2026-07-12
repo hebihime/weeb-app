@@ -178,6 +178,18 @@ jobs:
       - name: build Svac.PublicApi image (build stage only — no registry push at S1)
         if: steps.check.outputs.exists == 'true'
         run: docker build -f backend/public-host/Svac.PublicApi/Dockerfile -t svac-public-api:ci .
+      - name: check for the admin-host Dockerfile
+        id: check-admin
+        run: |
+          if [ -f backend/admin-host/Svac.AdminHost/Dockerfile ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "container-image SKIP: backend/admin-host/Svac.AdminHost/Dockerfile does not exist yet (guarded — S5 is the second host)"
+          fi
+      - name: build Svac.AdminHost image (build stage only — no registry push; SLICE_S5_CONTRACT.md §0)
+        if: steps.check-admin.outputs.exists == 'true'
+        run: docker build -f backend/admin-host/Svac.AdminHost/Dockerfile -t svac-admin-host:ci .
 
   compose-fresh-boot-and-substrate-e2e:
     name: compose fresh-boot health + substrate e2e (SLICE_S1_CONTRACT.md §10.4, guarded)
@@ -203,6 +215,18 @@ jobs:
       - name: substrate e2e against the live stack (SLICE_S1_CONTRACT.md §10.4)
         if: steps.check.outputs.exists == 'true'
         run: SUBSTRATE_E2E_TARGET=http://localhost:8090 node backend/e2e/substrate.e2e.mjs
+      - name: check for an admin-host compose service
+        id: check-admin
+        run: |
+          if grep -q "admin-host:" docker-compose.yml; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "SKIP: no admin-host service in docker-compose.yml yet"
+          fi
+      - name: admin-host /health 200 (SLICE_S5_CONTRACT.md §0 — the real, second host, side by side with public-api)
+        if: steps.check.outputs.exists == 'true' && steps.check-admin.outputs.exists == 'true'
+        run: curl -f http://localhost:8091/health
       - name: teardown
         if: always()
         run: docker compose down -v

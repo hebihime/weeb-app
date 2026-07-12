@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.AdminHost.Domain — SLICE_S5_CONTRACT.md §0/§1a. Internal implementation for the admin HOST (not
+    a feature module — S5's own scope ruling: "the S2 module-template assembly discipline applied to a
+    host"). Mirrors backend/domain-core/Svac.DomainCore/Svac.DomainCore.csproj's shape (plain SDK, no
+    Sdk.Web — this assembly maps no endpoints itself; Svac.AdminHost's Program.cs does that with Blazor
+    Razor Components): AdminDbContext (schema `admin`), the staff-role/purge/config policy DATA (rows,
+    not business logic — AdminActionExecutor/real staff auth/tile sources are Phase 2, explicitly NOT
+    scaffolded here per the task's deliverable list).
+
+    InternalsVisibleTo Svac.Tests.AdminHost only — mirrors Svac.DomainCore's own InternalsVisibleTo shape.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AdminHost.Domain</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Svac.Tests.AdminHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SLICE_S5_CONTRACT.md §8 seam 14 (keyed strings from commit one; OQ-1 ratified (a): EN-only
+         pending §11). Loaded by I18n\AdminStringCatalog.cs so every Razor page renders through this
+         catalog instead of a literal — never a second, ad hoc string mechanism. -->
+    <Content Include="I18n\admin-en.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,33 @@
+@* SLICE_S5_CONTRACT.md §1a — the root Razor Component mapped by MapRazorComponents<App>() in
+   Program.cs. Static SSR + enhanced navigation/form posts via blazor.web.js (no
+   AddInteractiveServerRenderMode()/SignalR circuit wiring — no desk has earned per-component
+   interactivity yet, §1a). RequireMutationsPolicyMapped/RequireTargetBindingConsistent (S1 boot-refusal
+   law) see EVERY route this Router discovers as ONE mapped endpoint set, carrying the
+   "admin.host.transport" PolicyAction attached uniformly in Program.cs. *@
+@inject AdminStringCatalog Strings
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Strings["admin.page.title"]</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/admin.css" />
+    <HeadOutlet />
+</head>
+<body>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Svac.AdminHost.Components.Layout.EmptyLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="typeof(Svac.AdminHost.Components.Layout.EmptyLayout)">
+                <PageTitle>@Strings["admin.notfound.title"]</PageTitle>
+                <p role="alert">@Strings["admin.notfound.body"]</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

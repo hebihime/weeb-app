@@ -9,13 +9,13 @@
     "storeKey": "events_ledger",
     "purgeClass": "StatutoryErasure",
     "verb": "Tombstone",
-    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+    "reason": "Art. 17 erasure — tombstone, never a real delete (immutability posture)"
   },
   {
     "storeKey": "events_ledger",
     "purgeClass": "MinorPurge",
     "verb": "Tombstone",
-    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+    "reason": "minor-protection purge — tombstone, never a real delete"
   },
   {
     "storeKey": "events_ledger",
@@ -27,7 +27,7 @@
     "storeKey": "events_ledger",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+    "reason": "ledger is retained indefinitely per questsystem §Day-One; no retention ceiling applies"
   },
   {
     "storeKey": "events_ledger",
@@ -45,13 +45,13 @@
     "storeKey": "ledger_entries",
     "purgeClass": "StatutoryErasure",
     "verb": "Tombstone",
-    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+    "reason": "Art. 17 erasure — tombstone, never a real delete (immutability posture)"
   },
   {
     "storeKey": "ledger_entries",
     "purgeClass": "MinorPurge",
     "verb": "Tombstone",
-    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+    "reason": "minor-protection purge — tombstone, never a real delete"
   },
   {
     "storeKey": "ledger_entries",
@@ -63,7 +63,7 @@
     "storeKey": "ledger_entries",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+    "reason": "ledger is retained indefinitely per questsystem §Day-One; no retention ceiling applies"
   },
   {
     "storeKey": "ledger_entries",
@@ -81,13 +81,13 @@
     "storeKey": "ledger_balances",
     "purgeClass": "StatutoryErasure",
     "verb": "Tombstone",
-    "reason": "Art. 17 erasure \u2014 tombstone, never a real delete (immutability posture)"
+    "reason": "Art. 17 erasure — tombstone, never a real delete (immutability posture)"
   },
   {
     "storeKey": "ledger_balances",
     "purgeClass": "MinorPurge",
     "verb": "Tombstone",
-    "reason": "minor-protection purge \u2014 tombstone, never a real delete"
+    "reason": "minor-protection purge — tombstone, never a real delete"
   },
   {
     "storeKey": "ledger_balances",
@@ -99,7 +99,7 @@
     "storeKey": "ledger_balances",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "ledger is retained indefinitely per questsystem \u00A7Day-One; no retention ceiling applies"
+    "reason": "ledger is retained indefinitely per questsystem §Day-One; no retention ceiling applies"
   },
   {
     "storeKey": "ledger_balances",
@@ -117,19 +117,19 @@
     "storeKey": "events_reputation",
     "purgeClass": "StatutoryErasure",
     "verb": "Tombstone",
-    "reason": "Art. 17 erasure \u2014 tombstone"
+    "reason": "Art. 17 erasure — tombstone"
   },
   {
     "storeKey": "events_reputation",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "events_reputation",
     "purgeClass": "ConsentRevocation",
     "verb": "NotApplicable",
-    "reason": "window-bounded recompute verb declared; the recompute writer arrives at S16 \u2014 no reputation events exist to recompute against at S1"
+    "reason": "window-bounded recompute verb declared; the recompute writer arrives at S16 — no reputation events exist to recompute against at S1"
   },
   {
     "storeKey": "events_reputation",
@@ -189,13 +189,13 @@
     "storeKey": "events_behavioral",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "events_behavioral",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "events_behavioral",
@@ -207,7 +207,7 @@
     "storeKey": "events_behavioral",
     "purgeClass": "RetentionExpiry",
     "verb": "Delete",
-    "reason": "retention window value set when the Metrics \u0026 Ops desk consumes it (S5) \u2014 mechanism is Delete regardless of the window\u0027s length"
+    "reason": "retention window value set when the Metrics & Ops desk consumes it (S5) — mechanism is Delete regardless of the window's length"
   },
   {
     "storeKey": "events_behavioral",
@@ -219,7 +219,7 @@
     "storeKey": "events_audit",
     "purgeClass": "AccountDeletion",
     "verb": "Tombstone",
-    "reason": "OQ-1 interim posture (a): tombstone actor PII in payload, record survives \u2014 the staff-action accountability trail is preserved"
+    "reason": "OQ-1 interim posture (a): tombstone actor PII in payload, record survives — the staff-action accountability trail is preserved"
   },
   {
     "storeKey": "events_audit",
@@ -255,7 +255,7 @@
     "storeKey": "events_heatmap_provenance",
     "purgeClass": "AccountDeletion",
     "verb": "NotApplicable",
-    "reason": "full-history retention per profilemodel \u00A71c founder ruling \u2014 account deletion does not trigger heatmap-provenance deletion"
+    "reason": "full-history retention per profilemodel §1c founder ruling — account deletion does not trigger heatmap-provenance deletion"
   },
   {
     "storeKey": "events_heatmap_provenance",
@@ -279,7 +279,7 @@
     "storeKey": "events_heatmap_provenance",
     "purgeClass": "RetentionExpiry",
     "verb": "Delete",
-    "reason": "12 months / R2 (core.purge.sweep \u2014 cell_history_months config)"
+    "reason": "12 months / R2 (core.purge.sweep — cell_history_months config)"
   },
   {
     "storeKey": "events_heatmap_provenance",
@@ -291,19 +291,19 @@
     "storeKey": "quota_counters",
     "purgeClass": "AccountDeletion",
     "verb": "Delete",
-    "reason": "hard delete the subject\u0027s counters"
+    "reason": "hard delete the subject's counters"
   },
   {
     "storeKey": "quota_counters",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "quota_counters",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "quota_counters",
@@ -315,7 +315,7 @@
     "storeKey": "quota_counters",
     "purgeClass": "RetentionExpiry",
     "verb": "Delete",
-    "reason": "delete expired windows (GC) \u2014 core.purge.sweep_interval_minutes"
+    "reason": "delete expired windows (GC) — core.purge.sweep_interval_minutes"
   },
   {
     "storeKey": "quota_counters",
@@ -327,37 +327,37 @@
     "storeKey": "config_entries",
     "purgeClass": "AccountDeletion",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "config_entries",
     "purgeClass": "StatutoryErasure",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "config_entries",
     "purgeClass": "MinorPurge",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "config_entries",
     "purgeClass": "ConsentRevocation",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "config_entries",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "config_entries",
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
-    "reason": "zero personal data by construction (\u00A72) \u2014 registered with reason, never silently exempt"
+    "reason": "zero personal data by construction (§2) — registered with reason, never silently exempt"
   },
   {
     "storeKey": "data_protection_keys",
@@ -369,13 +369,13 @@
     "storeKey": "data_protection_keys",
     "purgeClass": "StatutoryErasure",
     "verb": "CryptoShred",
-    "reason": "Art. 17 erasure \u2014 crypto-shred"
+    "reason": "Art. 17 erasure — crypto-shred"
   },
   {
     "storeKey": "data_protection_keys",
     "purgeClass": "MinorPurge",
     "verb": "CryptoShred",
-    "reason": "minor-protection purge \u2014 crypto-shred"
+    "reason": "minor-protection purge — crypto-shred"
   },
   {
     "storeKey": "data_protection_keys",
@@ -405,13 +405,13 @@
     "storeKey": "field_key_refs",
     "purgeClass": "StatutoryErasure",
     "verb": "CryptoShred",
-    "reason": "Art. 17 erasure \u2014 crypto-shred"
+    "reason": "Art. 17 erasure — crypto-shred"
   },
   {
     "storeKey": "field_key_refs",
     "purgeClass": "MinorPurge",
     "verb": "CryptoShred",
-    "reason": "minor-protection purge \u2014 crypto-shred"
+    "reason": "minor-protection purge — crypto-shred"
   },
   {
     "storeKey": "field_key_refs",
@@ -483,7 +483,7 @@
     "storeKey": "purge_runs",
     "purgeClass": "RetentionExpiry",
     "verb": "Delete",
-    "reason": "purge_runs itself carries retention_expiry \u2014 the registry eats its own dog food"
+    "reason": "purge_runs itself carries retention_expiry — the registry eats its own dog food"
   },
   {
     "storeKey": "projection_checkpoints",
@@ -507,19 +507,19 @@
     "storeKey": "identity.email_challenges",
     "purgeClass": "AccountDeletion",
     "verb": "Delete",
-    "reason": "keyed by email, not account_id (\u00A76a S2 scar) \u2014 hard delete every row matching the account\u0027s own account_id (login/email_change) or its still-live email (signup)"
+    "reason": "keyed by email, not account_id (§6a S2 scar) — hard delete every row matching the account's own account_id (login/email_change) or its still-live email (signup)"
   },
   {
     "storeKey": "identity.email_challenges",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.email_challenges",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete; the in-tx under-13 hard delete already happens PRE-pipeline at signup refusal (\u00A71g) \u2014 this cell covers a LATER minor-purge trigger (e.g. S18) against a challenge row that survived"
+    "reason": "minor-protection purge — hard delete; the in-tx under-13 hard delete already happens PRE-pipeline at signup refusal (§1g) — this cell covers a LATER minor-purge trigger (e.g. S18) against a challenge row that survived"
   },
   {
     "storeKey": "identity.email_challenges",
@@ -543,55 +543,55 @@
     "storeKey": "identity.accounts",
     "purgeClass": "AccountDeletion",
     "verb": "Tombstone",
-    "reason": "PII columns -\u003E NULL/sentinel; state pinned \u0027deleted\u0027; handle -\u003E identity.retired_handles; birthdate field key crypto-shredded via field_key_refs\u0027/data_protection_keys\u0027 existing global (purpose,subject) registration \u2014 no separate row needed here"
+    "reason": "PII columns -> NULL/sentinel; state pinned 'deleted'; handle -> identity.retired_handles; birthdate field key crypto-shredded via field_key_refs'/data_protection_keys' existing global (purpose,subject) registration — no separate row needed here"
   },
   {
     "storeKey": "identity.accounts",
     "purgeClass": "StatutoryErasure",
     "verb": "Tombstone",
-    "reason": "Art. 17 erasure \u2014 same tombstone mechanism as AccountDeletion"
+    "reason": "Art. 17 erasure — same tombstone mechanism as AccountDeletion"
   },
   {
     "storeKey": "identity.accounts",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "confirmed-minor: enumerated purge, no tombstone identity survives (the legal-hold copy is S12\u0027s store, not ours)"
+    "reason": "confirmed-minor: enumerated purge, no tombstone identity survives (the legal-hold copy is S12's store, not ours)"
   },
   {
     "storeKey": "identity.accounts",
     "purgeClass": "ConsentRevocation",
     "verb": "NotApplicable",
-    "reason": "account existence isn\u0027t consent-gated"
+    "reason": "account existence isn't consent-gated"
   },
   {
     "storeKey": "identity.accounts",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "n/a \u2014 accounts have no time-based expiry independent of deletion"
+    "reason": "n/a — accounts have no time-based expiry independent of deletion"
   },
   {
     "storeKey": "identity.accounts",
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
-    "reason": "n/a \u2014 not a blob store"
+    "reason": "n/a — not a blob store"
   },
   {
     "storeKey": "identity.refresh_tokens",
     "purgeClass": "AccountDeletion",
     "verb": "Delete",
-    "reason": "keyed by session_id, not account_id \u2014 hard delete every row whose session belongs to this account"
+    "reason": "keyed by session_id, not account_id — hard delete every row whose session belongs to this account"
   },
   {
     "storeKey": "identity.refresh_tokens",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.refresh_tokens",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "identity.refresh_tokens",
@@ -621,13 +621,13 @@
     "storeKey": "identity.sessions",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.sessions",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "identity.sessions",
@@ -657,13 +657,13 @@
     "storeKey": "identity.devices",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.devices",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "identity.devices",
@@ -675,7 +675,7 @@
     "storeKey": "identity.devices",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "n/a \u2014 no independent retention ceiling declared for device rows"
+    "reason": "n/a — no independent retention ceiling declared for device rows"
   },
   {
     "storeKey": "identity.devices",
@@ -687,31 +687,31 @@
     "storeKey": "identity.push_category_consents",
     "purgeClass": "AccountDeletion",
     "verb": "Delete",
-    "reason": "projection; stream keeps S1 OQ-1a posture \u2014 the evidence survives pseudonymized on events_consent, this cache row does not need to"
+    "reason": "projection; stream keeps S1 OQ-1a posture — the evidence survives pseudonymized on events_consent, this cache row does not need to"
   },
   {
     "storeKey": "identity.push_category_consents",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.push_category_consents",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "identity.push_category_consents",
     "purgeClass": "ConsentRevocation",
     "verb": "Delete",
-    "reason": "hard delete the account\u0027s per-category rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent \u2014 no residual row survives"
+    "reason": "hard delete the account's per-category rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent — no residual row survives"
   },
   {
     "storeKey": "identity.push_category_consents",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "n/a \u2014 no independent retention ceiling; bounded by the account\u0027s own lifetime"
+    "reason": "n/a — no independent retention ceiling; bounded by the account's own lifetime"
   },
   {
     "storeKey": "identity.push_category_consents",
@@ -729,25 +729,25 @@
     "storeKey": "identity.consent_current",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete"
+    "reason": "Art. 17 erasure — hard delete"
   },
   {
     "storeKey": "identity.consent_current",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete"
+    "reason": "minor-protection purge — hard delete"
   },
   {
     "storeKey": "identity.consent_current",
     "purgeClass": "ConsentRevocation",
     "verb": "Delete",
-    "reason": "hard delete the account\u0027s consent-kind rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent"
+    "reason": "hard delete the account's consent-kind rows on a broad consent-revocation purge; the rebuildable projection recomputes any still-valid grants via Replay over events_consent"
   },
   {
     "storeKey": "identity.consent_current",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "n/a \u2014 bounded by the account\u0027s own lifetime"
+    "reason": "n/a — bounded by the account's own lifetime"
   },
   {
     "storeKey": "identity.consent_current",
@@ -759,19 +759,19 @@
     "storeKey": "identity.handle_history",
     "purgeClass": "AccountDeletion",
     "verb": "Pseudonymize",
-    "reason": "HMAC re-key the account_id column \u2014 moderation linkage survives for key holders, the raw id is severed"
+    "reason": "HMAC re-key the account_id column — moderation linkage survives for key holders, the raw id is severed"
   },
   {
     "storeKey": "identity.handle_history",
     "purgeClass": "StatutoryErasure",
     "verb": "Pseudonymize",
-    "reason": "Art. 17 erasure \u2014 same re-key mechanism"
+    "reason": "Art. 17 erasure — same re-key mechanism"
   },
   {
     "storeKey": "identity.handle_history",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete (no moderation-linkage exception for a confirmed minor)"
+    "reason": "minor-protection purge — hard delete (no moderation-linkage exception for a confirmed minor)"
   },
   {
     "storeKey": "identity.handle_history",
@@ -795,19 +795,19 @@
     "storeKey": "identity.export_jobs",
     "purgeClass": "AccountDeletion",
     "verb": "Delete",
-    "reason": "hard delete incl. the artifact bytea column \u2014 the artifact contains the whole PII corpus, it dies with the account"
+    "reason": "hard delete incl. the artifact bytea column — the artifact contains the whole PII corpus, it dies with the account"
   },
   {
     "storeKey": "identity.export_jobs",
     "purgeClass": "StatutoryErasure",
     "verb": "Delete",
-    "reason": "Art. 17 erasure \u2014 hard delete incl. artifact"
+    "reason": "Art. 17 erasure — hard delete incl. artifact"
   },
   {
     "storeKey": "identity.export_jobs",
     "purgeClass": "MinorPurge",
     "verb": "Delete",
-    "reason": "minor-protection purge \u2014 hard delete incl. artifact"
+    "reason": "minor-protection purge — hard delete incl. artifact"
   },
   {
     "storeKey": "identity.export_jobs",
@@ -819,31 +819,31 @@
     "storeKey": "identity.export_jobs",
     "purgeClass": "RetentionExpiry",
     "verb": "Delete",
-    "reason": "expired-job sweep (identity.export.link_ttl_hours \u2014 delete rows whose expires_at has passed)"
+    "reason": "expired-job sweep (identity.export.link_ttl_hours — delete rows whose expires_at has passed)"
   },
   {
     "storeKey": "identity.export_jobs",
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
-    "reason": "no blob exists \u2014 the Postgres-bytea ruling (\u00A712 item 5) makes this class structurally empty until S11"
+    "reason": "no blob exists — the Postgres-bytea ruling (§12 item 5) makes this class structurally empty until S11"
   },
   {
     "storeKey": "identity.deletion_jobs",
     "purgeClass": "AccountDeletion",
     "verb": "Pseudonymize",
-    "reason": "the receipt SURVIVES \u2014 proof deletion ran; HMAC re-key the account_id column, mirrors purge_runs\u0027 own subject-pseudonymization posture"
+    "reason": "the receipt SURVIVES — proof deletion ran; HMAC re-key the account_id column, mirrors purge_runs' own subject-pseudonymization posture"
   },
   {
     "storeKey": "identity.deletion_jobs",
     "purgeClass": "StatutoryErasure",
     "verb": "Pseudonymize",
-    "reason": "Art. 17 erasure \u2014 same re-key mechanism, receipt survives"
+    "reason": "Art. 17 erasure — same re-key mechanism, receipt survives"
   },
   {
     "storeKey": "identity.deletion_jobs",
     "purgeClass": "MinorPurge",
     "verb": "Pseudonymize",
-    "reason": "minor-protection purge \u2014 same re-key mechanism, receipt survives"
+    "reason": "minor-protection purge — same re-key mechanism, receipt survives"
   },
   {
     "storeKey": "identity.deletion_jobs",
@@ -855,7 +855,7 @@
     "storeKey": "identity.deletion_jobs",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "the pseudonymized receipt is retained for the statutory period; no separate expiry sweep runs against it (mirrors events_consent\u0027s own RetentionExpiry posture)"
+    "reason": "the pseudonymized receipt is retained for the statutory period; no separate expiry sweep runs against it (mirrors events_consent's own RetentionExpiry posture)"
   },
   {
     "storeKey": "identity.deletion_jobs",
@@ -867,19 +867,19 @@
     "storeKey": "identity.retired_handles",
     "purgeClass": "AccountDeletion",
     "verb": "NotApplicable",
-    "reason": "subject-severed at write (OQ-2, \u00A72) \u2014 no linkage to any account_id exists for a per-subject purge call to reach"
+    "reason": "subject-severed at write (OQ-2, §2) — no linkage to any account_id exists for a per-subject purge call to reach"
   },
   {
     "storeKey": "identity.retired_handles",
     "purgeClass": "StatutoryErasure",
     "verb": "NotApplicable",
-    "reason": "subject-severed at write \u2014 no linkage exists"
+    "reason": "subject-severed at write — no linkage exists"
   },
   {
     "storeKey": "identity.retired_handles",
     "purgeClass": "MinorPurge",
     "verb": "NotApplicable",
-    "reason": "subject-severed at write \u2014 no linkage exists"
+    "reason": "subject-severed at write — no linkage exists"
   },
   {
     "storeKey": "identity.retired_handles",
@@ -891,7 +891,7 @@
     "storeKey": "identity.retired_handles",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "the OQ-2 quarantine-release sweep (identity.handle.retirement_days) is a GLOBAL, non-subject-scoped age sweep over the whole table \u2014 it does not fit IPurgePipeline.Run\u0027s per-subject SubjectRef shape (there is no subject column to filter on by design); landing a dedicated global sweep job is out of THIS deletion\u002Bpurge pass\u0027s scope. Registered honestly as NotApplicable-for-this-mechanism rather than a verb that would never actually fire correctly through a per-subject call."
+    "reason": "the OQ-2 quarantine-release sweep (identity.handle.retirement_days) is a GLOBAL, non-subject-scoped age sweep over the whole table — it does not fit IPurgePipeline.Run's per-subject SubjectRef shape (there is no subject column to filter on by design); landing a dedicated global sweep job is out of THIS deletion+purge pass's scope. Registered honestly as NotApplicable-for-this-mechanism rather than a verb that would never actually fire correctly through a per-subject call."
   },
   {
     "storeKey": "identity.retired_handles",
@@ -903,72 +903,144 @@
     "storeKey": "identity.reserved_handles",
     "purgeClass": "AccountDeletion",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.reserved_handles",
     "purgeClass": "StatutoryErasure",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.reserved_handles",
     "purgeClass": "MinorPurge",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.reserved_handles",
     "purgeClass": "ConsentRevocation",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.reserved_handles",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.reserved_handles",
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
-    "reason": "zero personal data \u2014 a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
+    "reason": "zero personal data — a seeded desk manifest (brand/staff/impersonation terms), registered with reason, never silently exempt"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "AccountDeletion",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "StatutoryErasure",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "MinorPurge",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "ConsentRevocation",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "RetentionExpiry",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
   },
   {
     "storeKey": "identity.ban_evasion_refs",
     "purgeClass": "OrphanedBlob",
     "verb": "NotApplicable",
-    "reason": "OQ-3 RATIFIED (a): a banned account\u0027s deletion WRITES this store (salted-HMAC email ref \u002B push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused \u2014 it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+    "reason": "OQ-3 RATIFIED (a): a banned account's deletion WRITES this store (salted-HMAC email ref + push-token hash, lawful_basis=legitimate_interest) so re-registration can be refused — it is deliberately retained evidence, never a purge target for any class reachable through this pipeline"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "staff are not consumer accounts; the consumer deletion pipeline never reaches them"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Pseudonymize",
+    "reason": "email/display_name/external_subject re-keyed (irreversible); stf_ id + status survive so every audit chain still resolves — the S1 OQ-1a posture applied to staff"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "18+ employment/engagement by construction — no minor staff exists"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "no consent-gated staff field"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "RetentionExpiry",
+    "verb": "Pseudonymize",
+    "reason": "admin.staff_pii_retention_years post-deactivation — same re-key mechanism as StatutoryErasure"
+  },
+  {
+    "storeKey": "admin.staff_accounts",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "AccountDeletion",
+    "verb": "NotApplicable",
+    "reason": "staff are not consumer accounts; the consumer deletion pipeline never reaches them"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "StatutoryErasure",
+    "verb": "Tombstone",
+    "reason": "reason texts + grantor/revoker PII tombstoned where the erased subject appears; grant/revoke structure survives (accountability)"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "MinorPurge",
+    "verb": "NotApplicable",
+    "reason": "18+ employment/engagement by construction — no minor staff exists"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "ConsentRevocation",
+    "verb": "NotApplicable",
+    "reason": "not consent-gated"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "RetentionExpiry",
+    "verb": "NotApplicable",
+    "reason": "rides admin.staff_accounts' own retention sweep — no separate expiry sweep runs against this store"
+  },
+  {
+    "storeKey": "admin.staff_role_grants",
+    "purgeClass": "OrphanedBlob",
+    "verb": "NotApplicable",
+    "reason": "not a blob store"
   }
 ]

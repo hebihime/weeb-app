@@ -1,0 +1,47 @@
+@* SLICE_S5_CONTRACT.md §8 seam 1/2 (Pass D): the Metrics & Ops desk — the FIRST live IMetricsTileSource
+   registrant (§8 seam 2), proving the seam non-vacuous on day one. Tiles render ONLY from registered,
+   role-filtered sources (real-or-honestly-dark, §8 seam 16) — an unregistered metric is simply absent,
+   never a placeholder. Markup shape carries the LITERAL wire contract backend/e2e/admin-host.e2e.mjs's
+   own header comment specifies: <section data-testid="tile-<tileId>">...<span
+   data-testid="tile-value-<tileId>">N</span>...</section> — this file implements TO that shape, not to
+   an independently-invented one. *@
+@page "/dashboard"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.dashboard.title"]</PageTitle>
+
+@if (!_canView)
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.dashboard.title"]</h1>
+        <p>@Strings["admin.dashboard.access_denied"]</p>
+    </div>
+}
+else
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.dashboard.title"]</h1>
+        <p>@Strings["admin.dashboard.body"]</p>
+    </div>
+
+    <div class="admin-tile-grid">
+        @foreach (var tile in _tiles)
+        {
+            <section class="admin-tile" data-testid="@($"tile-{tile.TileId}")">
+                <h2 class="admin-tile__title">@Strings[tile.TitleKey]</h2>
+                <span class="admin-tile__value" data-testid="@($"tile-value-{tile.TileId}")">@tile.Result.PrimaryValue</span>
+                @if (tile.Result.Details.Count > 0)
+                {
+                    <dl class="admin-tile__details">
+                        @foreach (var detail in tile.Result.Details)
+                        {
+                            <dt>@Strings[detail.LabelKey]</dt>
+                            <dd>@detail.Value</dd>
+                        }
+                    </dl>
+                }
+            </section>
+        }
+    </div>
+}

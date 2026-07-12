@@ -1,11 +1,52 @@
 # TODOS — weeb-app
 
-## S3 build wave — DONE at S3; awaiting merge + founder decisions before S5/S6
-- **S3 identity: DONE 2026-07-12.** THE HARDENED GATE green (`signup→verified→delete` E2E live twice);
-  Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM remediated, `SECURITY_REVIEW_S3.md`). All on
-  branch **`wave/s3-identity`** (commits `b1fd788`→Phase-3), open as **PR #1**, NOT merged to master
-  (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
-  build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
+## S3 build wave — S3 MERGED to master; S5 IN PROGRESS
+- **S3 identity: DONE 2026-07-12, MERGED to master (PR #1, `795209c`).** THE HARDENED GATE green
+  (`signup→verified→delete` E2E live twice); Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM
+  remediated, `SECURITY_REVIEW_S3.md`). The combined Phase-2a substrate (S3+S5+S6 deltas) landed with it.
+- **S5 admin desk: DONE 2026-07-12 on branch `wave/s5-admin-desk`** (commits `b9d1154`→`5892e9c`, pushed;
+  NOT yet merged to master — open for review, PR at Julien's call). All four phases through THE HARDENED
+  GATE, every gate re-verified by me (build 0/0; suite 473/0/19; live E2E 20/20 ×2 fresh boots; 0 restarts;
+  clean logs). Security: 1 CRITICAL + 3 HIGH + 1 LOW + 3 round-2 pull-forwards fixed, 6 deferred (Skip proofs).
+  Retro in SLICE_PLAYBOOK.md; DONE_WITH_CONCERNS notes below.
+  - **DONE_WITH_CONCERNS:** (a) S5-04 DataProtection prod key encryption is Azure-Key-Vault-specific
+    (`ProtectKeysWithAzureKeyVault`) — for Hetzner/Docker prod it needs a swap, same class as `IFieldKeyVault`;
+    Dev/compose (DevSeams) unaffected. (b) OPS-5 (config dual-key collapse) NOT addressed at S5, re-carried.
+    (c) pre-commit hook now ~4 min (see item below).
+  - **Substrate:** the combined S3+S5+S6 Phase-2a already landed with S3 (11/14 §1d symbols on master); S5
+    only owned the 3 gaps.
+  - **Phase 1 (scaffold): DONE, committed `b9d1154`** — Blazor host skeleton, 2 admin tables + migration,
+    AdminPolicyTableSource stub, compose :8091, Bicep, purge rows. Gate green (build 0/0; suite 384/10
+    byte-identical substrate; fresh-boot healthy).
+  - **Phase 2a (domain-core): DONE, committed `086baf1`** — config.set {hat,roles_held} enrichment
+    (byte-identical when Staff null) + two events_audit read indexes. Byte-identical proof + ef-gate green.
+  - **Phase 2b (host build): DONE, committed `a17a165`→`6cfb587` (5 pass commits + finisher), pushed.**
+    Auth shell (DevSeams + OIDC/Entra transports, MFA-in-our-claims, ProdStaffAuthGuard, cookie auth with
+    DataProtection keys persisted to the core DataProtectionKeys store, security_stamp revalidation,
+    bootstrap); AdminActionExecutor §1c chokepoint (7-step, ONE tx spanning AdminDbContext+CoreDbContext
+    via shared connection); Staff & Roles / Config Registry (full 41-key v0 batch = THE LEDGER HEADLINE) /
+    Dashboard tiles / User Search / Audit Trail; arch rules (chokepoint, no-DELETE-lifecycle); the
+    pending_consumer_slice dead-tunable lint. Finisher found+fixed 7 real cross-pass bugs (Development-only
+    ValidateOnBuild boot crash from double DbContext registration; Blazor static-SSR scoped-DbContext race
+    → DbContextFactory; sign-in wire mismatch; cookie name; bootstrap env vars).
+  - **HARDENED GATE for 2b: verified by me (never on agent word).** build Debug+Release 0/0; full suite
+    455 pass / 0 fail / 10 skip (DomainCore 51/0, AimlRouter 51/2, Identity 87/5 byte-identical; AdminHost
+    73/0; Architecture 183/3); live `admin-host.e2e.mjs` GREEN 20/20 on TWO independent fresh boots
+    (down -v → up --build), exit 0 each, incl. the ledger outcome observed live; all containers healthy,
+    0 restarts; log sweep clean (only benign migration probe + expected refusal-notice URLs +
+    pre-login no-principal + one DataProtection first-key-gen warn; zero real exceptions/500s/context races).
+  - **RULED 2026-07-12 (founder) — staff-row deletion / least-privileged DB role.** The accountability threat
+    (audit chain must always resolve stf_/srg_ ids) is closed in S5 at the APP LAYER: lifecycle is
+    state-transition only (deactivated_at/revoked_at), no DELETE code path, arch test asserts no
+    Remove/ExecuteDelete on the two staff entities (Pass B — DONE, `StaffLifecycleNeverDeletesArchTests.cs`).
+    Correct the contract's "(S1 pattern)" phantom.
+    The Postgres REVOKE is theater with one owner role, so NOT built for S5. See the platform-security
+    pre-prod item below.
+  - **OPEN → Phase 3 remediation: last-SuperAdmin lockout guard.** No guard yet against
+    revoke/deactivate dropping the active-SuperAdmin count to 0 (contract silent). Plan: build the
+    invariant "refuse any revoke/deactivate that would leave zero active SuperAdmins" in the executor +
+    a regression test, as part of Phase 3 (a security lens flags availability/lockout anyway). Obvious
+    safety default; reversible. Flagged to Julien.
 - **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
   **Keep the analytics signal, sever the subject.** The cell/density/pattern (the actionable data) is
   retained; only "whose signal is this" is dropped, so deleting an account keeps its contributions on the
@@ -19,8 +60,39 @@
   before the first `events_heatmap_provenance` row.
 - **PRE-PROD REQUIREMENT:** set `SVAC_ACA_INGRESS_CIDRS` to the real Azure Container Apps ingress subnet
   before any non-Development deploy — the anonymous rate limiter is inert-but-safe until then (OPS-1).
-- **NEXT (not started, awaiting greenlight):** S5 (admin desk) then S6 (anime test) — each its own
-  slice (Phase 1→4, stop at DONE). Both rebase their domain-core needs onto the landed Phase-2a surgery.
+- **NEXT (PARALLEL fan-out, greenlit by Julien 2026-07-12):** finish S5 (Phase 3 round-2 pull-forwards running → Phase 4 retro → DONE), while:
+  - **S4 (notifications-spine): Phase 0 RUNNING** (workflow `wn9sngv80`, template) — design panel → `SLICE_S4_CONTRACT.md` for ratification. No contract existed; deps S1+S3 (done). Disjoint module `backend/modules/notifications`.
+  - **S6 (anime-engine): READY to build** — `SLICE_S6_CONTRACT.md` already RATIFIED (§13); OQ-2 (20 short-form ids) delegated to build (reversible), OQ-1 (archetype count/names/palettes) has the ported 9 as working v1, **Julien's final call due before S9 first-ship, NOT before S6**. Substrate (FieldEncryptionPurpose.AnimeAnswers) landed in Phase-2a. Fans out the moment S5 lands.
+  - **Lane hygiene:** parallel build lanes each run in their own git worktree with a port-isolated compose stack (§7 lane rule) so their live-E2E gates (fixed :8090/:8091) don't collide; unit tests use random-port Testcontainers (safe concurrent).
+  - After S4/S6 land, **G1 opens:** S8 (con-registry, needs S1+S5) → S9 (web-funnel, first `web/` lane, needs S6+S8).
+
+## Pre-commit gate lane is ~4 min (violates the hook's "seconds not minutes" contract)
+- **What:** `Svac.Tests.Architecture` grew DB-backed Testcontainers tests over S3–S5, so `.githooks/pre-commit`
+  block #2 now runs a ~4-min DB suite (and flaked once on a Testcontainers connection timeout under container
+  contention). The hook's own contract says "deterministic, never flaky, seconds not minutes."
+- **Fix:** split the DB-backed arch tests into the periodic/integration lane; leave the pre-commit hook a true
+  fast deterministic gate (pure-code arch rules + secret-scan). Re-measure and record the runtime in the hook header.
+- **Also fold in (same touch):** the EF DDL drift gate is CI-only. `build/scripts/emit-ddl-script.sh` (regen
+  `Initial*.sql` + byte-diff) and `tools/ddl-lint` run in CI but NOT in the pre-commit hook, so an EF migration
+  committed without its regenerated `.sql` passes locally and fails the 7A gate in CI (bit S5 PR #2 — the
+  `AddEventsAuditReadIndexes` migration left `InitialCore.sql` stale). Add a fast `emit-ddl-script.sh --check`
+  (regen to a tmp, diff, no rewrite) to the hook so the drift is caught at commit time, not in CI.
+- **Why it matters:** a slow/flaky pre-commit invites `--no-verify` (banned) and slows every commit; a CI-only
+  drift gate means a green local commit can still red the PR (and can hide behind a `skipping` upstream job).
+
+## Least-privileged runtime DB role (pre-prod security hardening)
+- **What:** A dedicated runtime Postgres role with NO DELETE and NO DDL, used by every host at runtime;
+  migrations run under a distinct owner/migrator role. Platform-wide across schemas core/identity/admin.
+- **Why:** Defense-in-depth for the accountability chain + all PII tables against a compromised app
+  connection. Doing it per-table or per-slice is theater (an attacker deletes identity.accounts instead of
+  a staff row); only the uniform platform version is real. Ruled by founder 2026-07-12 (from S5 scaffold
+  finding: the contract's "DELETE revoked from the app role (S1 pattern)" describes a pattern that never
+  existed — one svac role both migrates and runs and owns the schema, so REVOKE is a no-op).
+- **Scope / touches:** docker-compose.yml, every host connection string, infra postgres-flexible.bicep,
+  Key Vault (two credentials). Its own slice or infra task.
+- **Timing:** PRE-PROD, before the first non-Dev deploy. NOT an S5 blocker (nothing issues DELETE today;
+  the app-layer guard + arch test close the live threat in S5). Bundle with the other pre-prod gates
+  (SVAC_ACA_INGRESS_CIDRS / OPS-1; Entra tenant at OQ-3).
 
 ## Azure SignalR self-host cost review
 - **What:** Re-evaluate managed Azure SignalR Service vs self-hosted SignalR + Redis backplane.

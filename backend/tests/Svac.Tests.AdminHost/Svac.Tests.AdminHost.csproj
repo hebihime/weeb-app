@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Svac.Tests.AdminHost — SLICE_S5_CONTRACT.md §0. The gate lane: deterministic, <2s where possible;
+    the one Testcontainers-backed boot fixture (AdminHostFixture) mirrors Svac.Tests.Identity's
+    IdentityHttpFixture exactly — a REAL, in-process host wired identically to Svac.AdminHost's own
+    Program.cs (AddDomainCore + AddAdminHostModule + MapRazorComponents + the boot-refusal checks)
+    against its own Testcontainer Postgres, so the boot-refusal proofs exercise the actual chokepoint,
+    never a DB-service-layer stand-in.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.Tests.AdminHost</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Underscore-delimited Given_When_Then test names match the repo-wide xUnit convention. CA1861
+         (prefer a cached static array over a literal argument) is a hot-path micro-optimization that
+         does not apply to test arrange code calling AdminTestSupport.SeedActiveStaff with a different
+         role combination per call site — extracting each into a uniquely-named static field would hurt
+         readability for zero runtime benefit in a <2s deterministic test lane. -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\admin-host\Svac.AdminHost.Domain\Svac.AdminHost.Domain.csproj" />
+    <ProjectReference Include="..\..\admin-host\Svac.AdminHost\Svac.AdminHost.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -388,6 +388,14 @@ namespace Svac.DomainCore.Persistence.Migrations
 
                     b.HasIndex("ReversalOf");
 
+                    b.HasIndex("ActorRef", "RecordedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_events_audit_actor_ref_recorded_at");
+
+                    b.HasIndex("EventType", "RecordedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_events_audit_event_type_recorded_at");
+
                     b.HasIndex("StreamId", "Seq")
                         .IsUnique();
 

@@ -1,0 +1,68 @@
+@* SLICE_S5_CONTRACT.md §0/§8 seam 1/7 (Pass D): the Audit Trail desk. IAuditReader.Query via QuickGrid
+   (disposition 13's ADOPTED first-party grid, §1a), cursor-paged, SuperAdmin-only (v0). Static SSR: a
+   GET-based filter form (query-string params, mirrors ConfigRegistry.razor's SupplyParameterFromQuery
+   pattern) rather than a POST — a filter is not a mutation, so it needs no antiforgery round trip; EVERY
+   load of this page (including the plain, filter-less landing view) still runs the audited-view path
+   (AuditTrail.razor.cs's own doc comment) because landing here IS a query. *@
+@page "/audit"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.audit.title"]</PageTitle>
+
+@if (!_canView)
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.audit.title"]</h1>
+        <p>@Strings["admin.audit.access_denied"]</p>
+    </div>
+}
+else
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.audit.title"]</h1>
+        <p>@Strings["admin.audit.body"]</p>
+    </div>
+
+    <div class="admin-card">
+        <form data-testid="audit-filter-form" method="get" action="/audit" class="admin-form">
+            <label class="admin-field">
+                <span>@Strings["admin.audit.filter.event_type_prefix"]</span>
+                <input class="admin-input" name="eventTypePrefix" value="@EventTypePrefix" />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.audit.filter.actor_ref"]</span>
+                <input class="admin-input" name="actorRef" value="@ActorRefFilter" />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.audit.filter.stream_id"]</span>
+                <input class="admin-input" name="streamId" value="@StreamIdFilter" />
+            </label>
+            <button type="submit" class="admin-button">@Strings["admin.audit.filter.apply"]</button>
+            <a class="admin-button admin-button--ghost" href="/audit">@Strings["admin.audit.filter.clear"]</a>
+        </form>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-table-wrap">
+            <QuickGrid Items="@_rows.AsQueryable()" Class="admin-data admin-table">
+                <PropertyColumn Property="@RecordedAtColumn" Title="@Strings["admin.audit.table.recorded_at"]" />
+                <PropertyColumn Property="@EventTypeColumn" Title="@Strings["admin.audit.table.event_type"]" />
+                <PropertyColumn Property="@ActorRefColumn" Title="@Strings["admin.audit.table.actor_ref"]" />
+                <PropertyColumn Property="@StreamIdColumn" Title="@Strings["admin.audit.table.stream_id"]" />
+                <TemplateColumn Title="@Strings["admin.audit.table.payload"]">
+                    <code data-testid="@($"audit-payload-{context.EventId}")">@(context.PayloadJson ?? Strings["admin.audit.tombstoned"])</code>
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+
+        @if (_hasMore && _nextCursor is not null)
+        {
+            <a class="admin-button admin-button--ghost"
+               data-testid="audit-next-page"
+               href="@($"/audit?eventTypePrefix={Uri.EscapeDataString(EventTypePrefix ?? "")}&actorRef={Uri.EscapeDataString(ActorRefFilter ?? "")}&streamId={Uri.EscapeDataString(StreamIdFilter ?? "")}&cursor={Uri.EscapeDataString(_nextCursor)}")">
+                @Strings["admin.audit.next_page"]
+            </a>
+        }
+    </div>
+}

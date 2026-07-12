@@ -1,0 +1,381 @@
+/*
+  backend/admin-host/Svac.AdminHost/wwwroot/css/admin.css — SLICE_S5_CONTRACT.md §1a/§8 seam 14, generated
+  by hand FROM design/tokens.v1.json + DESIGN.md's own portal deltas (never re-derived ad hoc):
+    - Neutral-professional register (DESIGN.md "Voice", tokens.v1.json .registers.neutral): NO candy
+      (bubblegum/mikan/foil), NO choco outline, NO Black 900 — weights limited to 400/500/700; Sky
+      (#38BDF2) is the ONE portal action color; danger (#ED4245) is allowed here (refusals, kill-switch
+      affordances later) unlike the playful consumer register.
+    - Layout: max-width 1180px portal shell (DESIGN.md line 81).
+    - Type: body 16/24 (DESIGN.md line 45: "Web portals shift body to 16/24"); a `data` row style 14/20,
+      tabular-nums, for anything QuickGrid renders (Pass C/D's tables) — declared now so no later pass
+      re-derives it.
+    - Radius: neutral_max = 16 (tokens.v1.json .radii.neutral_max) — every surface here caps there.
+    - Font: "M PLUS Rounded 1c" is declared as the FIRST family per tokens.v1.json (.fonts), but
+      tokens.v1.json also marks it `bundled: true, never_fetched: true` — no WOFF asset ships to this
+      backend host (client apps carry it, DesignKit), and "never_fetched" means this host must NEVER pull
+      it from a CDN at runtime either. The system-font stack is the honest fallback until a bundled asset
+      is wired here; flipping that in later is a font-face addition, never a rewrite of this file.
+*/
+
+:root {
+  /* tokens.v1.json .palette.light */
+  --admin-ground: #FFFFFF;
+  --admin-surface: #FFFFFF;
+  --admin-surface-2: #F7F5F2;
+  --admin-hairline: #E8E3DD;
+  --admin-text: #26170F;
+  --admin-dim: #8A7C72;
+  --admin-outline: #2B1B12;
+
+  /* tokens.v1.json .palette.candy.sky — the ONE portal action color (neutral register) */
+  --admin-action: #38BDF2;
+  --admin-action-ink: #0B3550;
+
+  /* tokens.v1.json .palette.semantic */
+  --admin-good: #3FB950;
+  --admin-warn: #F5A623;
+  --admin-danger: #ED4245;
+
+  /* tokens.v1.json .radii — neutral register caps at neutral_max (16); nothing here exceeds it */
+  --admin-radius-card: 12px;
+  --admin-radius-input: 10px;
+  --admin-radius-pill: 999px;
+  --admin-radius-max: 16px;
+
+  --admin-shell-max-width: 1180px;
+  --admin-font-family: "M PLUS Rounded 1c", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--admin-surface-2);
+  color: var(--admin-text);
+  font-family: var(--admin-font-family);
+  font-weight: 500; /* neutral register: 400/500/700 only, never 800/900 (Black 900 law) */
+  font-size: 16px;
+  line-height: 24px; /* DESIGN.md: "web portals shift body to 16/24" */
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--admin-action-ink);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* the `data` row style every QuickGrid table (Pass C/D) renders through (DESIGN.md line 45/93) */
+.admin-data,
+.admin-data td,
+.admin-data th {
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-shell {
+  max-width: var(--admin-shell-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell__header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-hairline);
+}
+
+.admin-shell__brand {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.admin-nav {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+
+.admin-nav__link {
+  font-weight: 500;
+  color: var(--admin-dim);
+  padding: 6px 4px;
+  border-bottom: 2px solid transparent;
+}
+
+.admin-nav__link:hover {
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.admin-nav__link--active {
+  color: var(--admin-text);
+  border-bottom-color: var(--admin-action);
+}
+
+.admin-shell__identity {
+  font-size: 14px;
+  color: var(--admin-dim);
+  white-space: nowrap;
+}
+
+.admin-shell__main {
+  flex: 1;
+  padding: 24px;
+}
+
+.admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-card);
+  padding: 24px;
+}
+
+.admin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--admin-action);
+  background: var(--admin-action);
+  color: #FFFFFF;
+  border-radius: var(--admin-radius-input);
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.admin-button:hover {
+  opacity: 0.92;
+}
+
+.admin-button--ghost {
+  background: transparent;
+  color: var(--admin-action-ink);
+}
+
+.admin-fixture-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.admin-fixture-list form {
+  margin: 0;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--admin-radius-pill);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--admin-surface-2);
+  color: var(--admin-dim);
+  border: 1px solid var(--admin-hairline);
+}
+
+.admin-badge--danger {
+  color: var(--admin-danger);
+  border-color: var(--admin-danger);
+}
+
+/* Staff & Roles desk (SLICE_S5_CONTRACT.md §0/§8 seam 1, Pass B) — additive, same token set, same
+   neutral-professional register (Sky action, radius <=16, no candy, no Black 900). */
+
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-input);
+  padding: 8px 10px;
+  min-width: 160px;
+}
+
+.admin-input:focus {
+  outline: 2px solid var(--admin-action);
+  outline-offset: 1px;
+}
+
+.admin-input--sm {
+  min-width: 96px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.admin-button--sm {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.admin-button--danger {
+  border-color: var(--admin-danger);
+  background: var(--admin-danger);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--admin-hairline);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.admin-inline-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 6px 0;
+  flex-wrap: wrap;
+}
+
+.admin-dim {
+  color: var(--admin-dim);
+  font-size: 13px;
+}
+
+/* Config Registry desk (SLICE_S5_CONTRACT.md §0/§4/§8 seam 1, Pass C) — additive, same token set, same
+   neutral-professional register. The confirm-with-reason interstitial (§4/§10.3) is served as a
+   standalone document (never through the Router/AdminLayout pipeline, since the wire contract requires
+   the propose POST to answer 200 directly) but references this SAME stylesheet for visual consistency. */
+
+.admin-excluded-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.admin-confirm-diff {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 16px 0;
+}
+
+.admin-confirm-diff dt {
+  font-weight: 700;
+  color: var(--admin-dim);
+  font-size: 13px;
+}
+
+.admin-confirm-diff dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dashboard (SLICE_S5_CONTRACT.md §0/§8 seam 1/2, Pass D) — additive, same token set, same
+   neutral-professional register. Tile values are data (tabular-nums, §8 seam 2's own "real, not
+   fabricated" law reflected visually — no decorative animation, no candy fill). */
+
+.admin-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.admin-tile {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-tile__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-tile__value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text);
+}
+
+.admin-tile__details {
+  margin: 4px 0 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 13px;
+}
+
+.admin-tile__details dt {
+  color: var(--admin-dim);
+}
+
+.admin-tile__details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* User Search / Audit Trail desks (SLICE_S5_CONTRACT.md §0/§8 seam 1/6/7, Pass D) — same token set. */
+
+.admin-table-wrap .admin-data {
+  font-variant-numeric: tabular-nums;
+}

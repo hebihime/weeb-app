@@ -24,6 +24,10 @@
          (Directory.Build.props) turns build-failing. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.10.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+    <!-- Admin host (SLICE_S5_CONTRACT.md §1a, disposition 13 confirmed): QuickGrid ships out-of-band from
+         the ASP.NET Core shared framework; pinned to the SAME 10.0.9 release train as every other
+         Microsoft.AspNetCore.* package above. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.QuickGrid" Version="10.0.9" />
 
     <!-- Hosting -->
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
@@ -59,5 +63,35 @@
     -->
     <PackageVersion Include="MailKit" Version="4.17.0" />
     <PackageVersion Include="MimeKit" Version="4.17.0" />
+
+    <!--
+      Admin host staff auth (SLICE_S5_CONTRACT.md §1b: "Prod/Staging: OIDC to Entra ID via
+      Microsoft.Identity.Web (Layer-1 standard; no hand-rolled OIDC)"). Microsoft's own first-party
+      library for ASP.NET Core <-> Entra ID (formerly Azure AD) integration — the only Layer-1 candidate
+      for this exact seam (search-before-building, CLAUDE.md): 1,300+ GitHub stars, maintained by the
+      Entra/identity platform team itself, 190M+ NuGet downloads, ships a net8.0 target that runs
+      unmodified on net10.0. Hand-rolling OIDC against Entra's endpoints was REJECTED at the contract
+      level (§1a: "Layer-1 standard; no hand-rolled OIDC") — this is the one legal way this host ever
+      speaks to Entra.
+    -->
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.13.0" />
+
+    <!--
+      Admin host DataProtection key-ring encryption (SECURITY_REVIEW_S5.md S5-04): the ASP.NET Core team's
+      OWN first-party extension for the exact seam it exists for (search-before-building, CLAUDE.md) — no
+      hand-rolled envelope encryption over the existing core.data_protection_keys XML payload. 1.6.3 is
+      current-stable; Azure.Identity (DefaultAzureCredential — the SAME credential-resolution story Key
+      Vault access already uses everywhere else this repo touches it) pinned alongside it for the same
+      transitive-version-drift reason every other CPM entry here exists.
+    -->
+    <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.6.3" />
+    <!-- 1.21.0, not 1.17.2: Azure.Core >= 1.53 now EXPORTS DefaultAzureCredential itself (the SDK
+         team's own consolidation) and Azure.Identity >= 1.21.0 is the version that drops its own
+         now-duplicate copy in favor of Azure.Core's — anything below 1.21.0 alongside the Azure.Core
+         1.55.0 floor Azure.Security.KeyVault.Keys/DataProtection.Keys pulls in hits CS0433
+         (github.com/Azure/azure-sdk-for-net#58822; microsoft-identity-web#3791). Microsoft.Identity.Web.
+         Certificate's own transitive Azure.Identity 1.17.2 request loses to this direct, higher pin under
+         CPM (NuGet's nearest-wins-among-satisfying-floors rule) — verified green end to end. -->
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
   </ItemGroup>
 </Project>

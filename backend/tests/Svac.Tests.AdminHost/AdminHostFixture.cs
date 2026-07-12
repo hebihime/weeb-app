@@ -1,0 +1,122 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Svac.AdminHost;
+using Svac.AdminHost.Auth;
+using Svac.AdminHost.ConfigRegistry;
+using Svac.AdminHost.Desks;
+using Svac.AdminHost.Domain.DependencyInjection;
+using Svac.AdminHost.Domain.Persistence;
+using Svac.AdminHost.Staff;
+using Svac.DomainCore.DependencyInjection;
+using Svac.DomainCore.Hosting;
+using Svac.DomainCore.Persistence;
+using Testcontainers.PostgreSql;
+using Xunit;
+
+namespace Svac.Tests.AdminHost;
+
+/// <summary>
+/// Boots a REAL, in-process Kestrel host wired EXACTLY like Svac.AdminHost's own Program.cs
+/// (AddSvacHosting + AddDomainCore + AddAdminHostModule + AddStaffAuth + MapRazorComponents +
+/// MapStaffAuthEndpoints + the THREE boot-refusal checks: RequireMutationsPolicyMapped,
+/// RequireTargetBindingConsistent, RequireAdminActionsCovered) against its OWN Testcontainer Postgres —
+/// mirrors Svac.Tests.Identity.IdentityHttpFixture exactly, so the boot-refusal proofs exercise the
+/// actual chokepoint the real host boots through, never a DB-service-layer stand-in.
+/// </summary>
+public sealed class AdminHostFixture : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
+        .WithImage("postgis/postgis:16-3.4")
+        .Build();
+
+    private Microsoft.AspNetCore.Builder.WebApplication? _app;
+
+    public HttpClient Client { get; private set; } = null!;
+
+    public string ConnectionString => _postgres.GetConnectionString();
+
+    public async Task InitializeAsync()
+    {
+        await _postgres.StartAsync();
+        var connectionString = _postgres.GetConnectionString();
+
+        using (var coreDb = new CoreDbContext(new DbContextOptionsBuilder<CoreDbContext>().UseNpgsql(connectionString).Options))
+        {
+            await coreDb.Database.MigrateAsync();
+        }
+        using (var adminDb = new AdminDbContext(new DbContextOptionsBuilder<AdminDbContext>().UseNpgsql(connectionString).Options))
+        {
+            await adminDb.Database.MigrateAsync();
+        }
+
+        var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(Array.Empty<string>());
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+
+        builder.Services.AddSvacHosting();
+        builder.Services.AddDomainCore(connectionString, devSeamsEnabled: true);
+        builder.Services.AddAdminHostModule(connectionString);
+        // Pass A: no Entra config in this fixture (mirrors a Development boot with no tenant) — the
+        // DevSeams transport is the only sign-in path this fixture exercises, exactly as it is in dev.
+        builder.Services.AddStaffAuth(connectionString, devSeamsEnabled: true, new StaffAuthEntraConfig(null, null, null));
+        builder.Services.AddSingleton<IDeskModule, DashboardDeskModule>();
+        // Pass B: the Staff & Roles desk — kept in sync with Program.cs's own registration so this
+        // fixture's "wired EXACTLY like Svac.AdminHost's own Program.cs" promise (this file's own doc
+        // comment) stays true, and the boot-refusal checks below (RequireMutationsPolicyMapped/
+        // RequireAdminActionsCovered) exercise the REAL composition, including MapStaffRolesEndpoints.
+        builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.StaffRolesDeskModule>();
+        // Pass C: the Config Registry desk — kept in sync with Program.cs's own registration for the
+        // SAME reason (this file's own doc comment), so RequireMutationsPolicyMapped/
+        // RequireAdminActionsCovered below also exercise MapConfigRegistryEndpoints for real.
+        builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.ConfigRegistryDeskModule>();
+        builder.Services.AddSingleton<Svac.AdminHost.ConfigRegistry.ConfigConfirmToken>();
+        builder.Services.AddRazorComponents();
+        builder.Services.AddAntiforgery();
+        // [Finisher fix] kept in sync with Program.cs's own registration (this file's own doc comment):
+        // AdminLayout.razor now injects IHttpContextAccessor (the revoked-cookie-vs-never-had-one
+        // distinction, SLICE_S5_CONTRACT.md §1b) — omitting it here would 500 every Razor-Component
+        // request through this fixture, never exercising the REAL composition it promises to mirror.
+        builder.Services.AddHttpContextAccessor();
+
+        _app = builder.Build();
+        _app.UseAuthentication();
+        _app.UseSvacRequestContext();
+        _app.UseAntiforgery();
+        _app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new Svac.DomainCore.Contracts.Api.HealthStatus("healthy", DateTimeOffset.UtcNow)));
+        _app.MapStaffAuthEndpoints(devSeamsEnabled: true, entraConfigured: false);
+        _app.MapStaffRolesEndpoints();
+        _app.MapConfigRegistryEndpoints();
+        _app.MapRazorComponents<Svac.AdminHost.Components.App>()
+            .WithMetadata(new Svac.DomainCore.Contracts.Policy.PolicyActionAttribute("admin.host.transport"))
+            .AddEndpointFilter(new PolicyEnforcementFilter("admin.host.transport"));
+
+        _app.RequireMutationsPolicyMapped();
+        _app.RequireTargetBindingConsistent();
+        _app.RequireAdminActionsCovered();
+
+        await _app.StartAsync();
+
+        var addressFeature = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()
+            ?? throw new InvalidOperationException("no server address feature available.");
+        Client = new HttpClient { BaseAddress = new Uri(addressFeature.Addresses.First()) };
+    }
+
+    public async Task DisposeAsync()
+    {
+        Client.Dispose();
+        if (_app is not null)
+        {
+            await _app.StopAsync();
+        }
+        await _postgres.DisposeAsync();
+    }
+
+    public IServiceScope NewScope() => _app!.Services.CreateScope();
+}
+
+[CollectionDefinition("AdminHostHttp")]
+public sealed class AdminHostHttpTestGroup : ICollectionFixture<AdminHostFixture>;

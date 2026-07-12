@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Svac.AdminHost — SLICE_S5_CONTRACT.md §0/§1a. LANE F: a Blazor Server HOST over S1's domain core, its
+    own deploy unit (never path-mounted under a consumer domain, §0 law d). Hand-built Blazor Razor
+    Components on .NET 10 + Microsoft.AspNetCore.Components.QuickGrid (disposition 13, confirmed) — no
+    admin framework, no themed component library (§1a). Render mode: static SSR + enhanced form POSTs by
+    default (§1a) — no AddInteractiveServerRenderMode()/SignalR circuit wiring exists in this scaffold
+    because no desk yet earns per-component interactivity; adding it is additive, never a rewrite, the
+    moment one does.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Svac.AdminHost</AssemblyName>
+    <UserSecretsId>svac-admin-host</UserSecretsId>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to the SAME 10.0.9 release train as every other Microsoft.AspNetCore.* package this repo
+         already pins (Directory.Packages.props) — QuickGrid ships out-of-band from the shared framework. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" />
+    <!-- SLICE_S5_CONTRACT.md §1b: prod/staging OIDC to Entra ID (Layer-1 standard, no hand-rolled OIDC). -->
+    <PackageReference Include="Microsoft.Identity.Web" />
+    <!-- SECURITY_REVIEW_S5.md S5-04: encrypts the DataProtection key ring's XML payload under an Azure
+         Key Vault RSA key before CoreDbXmlRepository ever writes it to core.data_protection_keys — a DB
+         dump alone no longer yields a usable cookie/antiforgery signing key. -->
+    <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Keys" />
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Contracts\Svac.DomainCore.Contracts.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore\Svac.DomainCore.csproj" />
+    <ProjectReference Include="..\..\domain-core\Svac.DomainCore.Hosting\Svac.DomainCore.Hosting.csproj" />
+    <!-- Deliberately NEVER a reference to any backend/modules/* project (identity/AimlRouter) or to
+         Svac.PublicApi — the admin host is its own deploy unit (§0 law d) and its own trust boundary
+         (§0 law c: no Svac.AdminHost* reference from Svac.PublicApi, checked the OTHER direction too by
+         AdminHostBoundaryTests). -->
+    <ProjectReference Include="..\Svac.AdminHost.Domain\Svac.AdminHost.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- config/admin-host.config.json and config/v0-batch.config.json (§5) live INSIDE this project's own
+       directory, so the SDK's default Content-item globbing already covers them (unlike Svac.Identity's
+       manifest, which lives in a SIBLING config/ folder and needs an explicit Content Include) — an
+       explicit Include here would be a NETSDK1022 duplicate-item build error. CopyToOutputDirectory
+       defaults to "Never" for implicit Content items, so it is set via a matching ItemGroup instead. -->
+  <ItemGroup>
+    <Content Update="config\admin-host.config.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="config\v0-batch.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
