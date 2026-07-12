@@ -19,7 +19,7 @@
 
 @if (!_canView)
 {
-    <div class="admin-card">
+    <div class="admin-card" data-testid="config-access-denied">
         <h1>@Strings["admin.config.title"]</h1>
         <p>@Strings["admin.config.access_denied"]</p>
     </div>

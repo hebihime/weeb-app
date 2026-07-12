@@ -556,15 +556,24 @@ async function stageRevokeThenDeniedMidSession(baseUrl, superAdminJar, economyOp
   const activeGrant = await psql(`SELECT count(*) FROM admin.staff_role_grants WHERE staff_id = '${staffId}' AND role = 'economy_ops' AND revoked_at IS NULL;`);
   assert(activeGrant.trim() === "0", "the economy_ops grant is still active after revocation");
 
-  // Mid-session, no re-login: the EconomyOps jar's cookie is untouched, but AdminActionExecutor
-  // re-reads grants from the DB on every call (SLICE_S5_CONTRACT.md §1b law 2) -- the very next attempt
-  // must deny.
+  // Mid-session, no re-login: the EconomyOps jar's cookie is untouched, but revocation bites at the very
+  // next action, proven two independent ways:
+  //  (a) READ gate (admin.config.read, SECURITY_REVIEW_S5.md S5-01): with zero roles the fixture can no
+  //      longer even VIEW the registry -- /config renders the access-denied card, with no editor form.
+  //  (b) SERVER-authoritative mutation: the UI hiding the form is not the boundary -- the endpoint is. A
+  //      direct edit POST is still denied (AdminActionExecutor re-reads grants per call, §1b law 2) and
+  //      the stored value stays byte-identical (asserted below).
   const page = await get(economyOpsJar, baseUrl, "/config");
-  const action = extractFormAction(page.text, `config-edit-form-${key}`);
-  const editToken = extractAntiforgeryToken(page.text);
-  const res = await postForm(economyOpsJar, baseUrl, action, { newValue: "1", reason: "post-revoke attempt", __RequestVerificationToken: editToken });
-  const landed = await followOnce(economyOpsJar, baseUrl, res);
-  assert(hasTestId(landed.text, "action-denied"), "the revoked fixture's very next action must be denied, mid-session, without re-login");
+  assert(hasTestId(page.text, "config-access-denied"), "a revoked, role-less fixture's /config view must be access-denied mid-session");
+  assert(!page.text.includes(`config-edit-form-${key}`), "a role-less fixture must not be served any config editor form after revocation");
+
+  // (b) POST the edit straight at the endpoint. The antiforgery token is scraped from the SuperAdmin's
+  // still-readable /config; whether the deny lands at the policy filter (grant re-read) or, once S5-11 is
+  // remediated, at antiforgery, the value MUST NOT move either way -- that invariant is what we assert.
+  const superConfig = await get(superAdminJar, baseUrl, "/config");
+  const editToken = extractAntiforgeryToken(superConfig.text);
+  const res = await postForm(economyOpsJar, baseUrl, `/config/${encodeURIComponent(key)}/edit`, { newValue: "1", reason: "post-revoke attempt", __RequestVerificationToken: editToken });
+  await followOnce(economyOpsJar, baseUrl, res);
 
   const after = await psql(`SELECT value FROM core.config_entries WHERE key = '${key}';`);
   assert(after === before, `"${key}" must be byte-identical after the post-revoke denied attempt`);
