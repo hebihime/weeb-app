@@ -123,6 +123,17 @@ jobs:
       - run: node --test tools/egress-lint/egress-lint.test.mjs
       - run: node tools/egress-lint/egress-lint.mjs
 
+  dead-tunable-lint:
+    name: "dead-tunable-lint (S5 §4/§12.7): pending_consumer_slice honest both directions"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: node --test tools/dead-tunable-lint/dead-tunable-lint.test.mjs
+      - run: node tools/dead-tunable-lint/dead-tunable-lint.mjs
+
   fa-map-lint:
     name: fa-map-lint (S7 — FA glyph→codepoint map ↔ iOS/Android Glyph enums in sync)
     runs-on: ubuntu-latest

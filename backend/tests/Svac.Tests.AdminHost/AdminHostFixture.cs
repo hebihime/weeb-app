@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Svac.AdminHost;
 using Svac.AdminHost.Auth;
+using Svac.AdminHost.ConfigRegistry;
 using Svac.AdminHost.Desks;
 using Svac.AdminHost.Domain.DependencyInjection;
 using Svac.AdminHost.Domain.Persistence;
@@ -68,6 +69,11 @@ public sealed class AdminHostFixture : IAsyncLifetime
         // comment) stays true, and the boot-refusal checks below (RequireMutationsPolicyMapped/
         // RequireAdminActionsCovered) exercise the REAL composition, including MapStaffRolesEndpoints.
         builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.StaffRolesDeskModule>();
+        // Pass C: the Config Registry desk — kept in sync with Program.cs's own registration for the
+        // SAME reason (this file's own doc comment), so RequireMutationsPolicyMapped/
+        // RequireAdminActionsCovered below also exercise MapConfigRegistryEndpoints for real.
+        builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.ConfigRegistryDeskModule>();
+        builder.Services.AddSingleton<Svac.AdminHost.ConfigRegistry.ConfigConfirmToken>();
         builder.Services.AddRazorComponents();
         builder.Services.AddAntiforgery();
 
@@ -78,6 +84,7 @@ public sealed class AdminHostFixture : IAsyncLifetime
         _app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new Svac.DomainCore.Contracts.Api.HealthStatus("healthy", DateTimeOffset.UtcNow)));
         _app.MapStaffAuthEndpoints(devSeamsEnabled: true, entraConfigured: false);
         _app.MapStaffRolesEndpoints();
+        _app.MapConfigRegistryEndpoints();
         _app.MapRazorComponents<Svac.AdminHost.Components.App>()
             .WithMetadata(new Svac.DomainCore.Contracts.Policy.PolicyActionAttribute("admin.host.transport"))
             .AddEndpointFilter(new PolicyEnforcementFilter("admin.host.transport"));

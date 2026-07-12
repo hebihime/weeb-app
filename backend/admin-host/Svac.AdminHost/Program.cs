@@ -1,5 +1,6 @@
 using Svac.AdminHost;
 using Svac.AdminHost.Auth;
+using Svac.AdminHost.ConfigRegistry;
 using Svac.AdminHost.Desks;
 using Svac.AdminHost.Domain.Auth;
 using Svac.AdminHost.Domain.Bootstrap;
@@ -81,6 +82,12 @@ builder.Services.AddSingleton<IDeskModule, DashboardDeskModule>();
 // SLICE_S5_CONTRACT.md §0/§8 seam 1/3 (Pass B): the Staff & Roles desk — the second live registrant,
 // proving the seam composes (zero edits to DashboardDeskModule or AdminLayout to add it).
 builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.StaffRolesDeskModule>();
+// SLICE_S5_CONTRACT.md §0/§4/§8 seam 1/2 (Pass C): THE LEDGER HEADLINE — the Config Registry desk, the
+// third live registrant (zero edits to DashboardDeskModule/StaffRolesDeskModule/AdminLayout to add it).
+builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.ConfigRegistryDeskModule>();
+// Pass C's own seam: the founder-scope confirm-with-reason interstitial's stateless, sealed confirmToken
+// (SLICE_S5_CONTRACT.md §4/§10.3) — off the SAME IDataProtectionProvider AddStaffAuth already registers.
+builder.Services.AddSingleton<ConfigConfirmToken>();
 
 builder.Services.AddRazorComponents();
 builder.Services.AddAntiforgery();
@@ -108,6 +115,12 @@ app.MapStaffAuthEndpoints(devSeamsEnabled, entraConfig.IsComplete);
 // IAdminActionExecutor. Carries "admin.host.transport" exactly like MapStaffAuthEndpoints above (the
 // specific admin.staff.* Authorize + audit happens INSIDE the executor, never at this transport layer).
 app.MapStaffRolesEndpoints();
+
+// SLICE_S5_CONTRACT.md §0/§1c/§4/§8 seam 3 (Pass C): the Config Registry desk's real HTTP form-post
+// surface — propose (ops commits directly; founder walks the confirm-with-reason interstitial) +
+// confirm, both routed through IAdminActionExecutor on the EXISTING core.config.set.founder/ops rows
+// (§4: zero new policy rows). Carries "admin.host.transport" exactly like MapStaffRolesEndpoints above.
+app.MapConfigRegistryEndpoints();
 
 // SLICE_S5_CONTRACT.md §3/§8 seam 1: "admin.host.transport" maps EVERY Razor Component endpoint
 // (the sign-in page + every desk page) honestly for RequireMutationsPolicyMapped — attached UNIFORMLY
