@@ -1,13 +1,46 @@
-@* SLICE_S5_CONTRACT.md §1b/§4: the pre-auth sign-in page. SCAFFOLD STUB — returns the shell only; no
-   real auth pipeline (DevSeams fixture issuance / Entra OIDC) exists yet, both explicitly Phase 2. Its
-   4A wiring (the "admin.host.transport" PolicyAction, §3) is real: attached uniformly to every Razor
-   Component endpoint in Program.cs, never per-page here. *@
+@* SLICE_S5_CONTRACT.md §1b/§4: the pre-auth sign-in page — the auth shell's ONE entry point. Renders
+   EITHER the DevSeams fixture list (dev; a real HTTP form POST per fixture through the SAME
+   StaffSignInPipeline prod uses) OR the Entra challenge link (prod/staging, only when Entra is actually
+   configured — absence law, never a dead button). Its 4A wiring (the "admin.host.transport"
+   PolicyAction, §3) is real: attached uniformly to every Razor Component endpoint in Program.cs, never
+   per-page here. *@
 @page "/"
 @page "/signin"
 @inject AdminStringCatalog Strings
+@inject DevSeamsEnabledFlag DevSeamsEnabled
 
 <PageTitle>@Strings["admin.signin.title"]</PageTitle>
 
-<h1>@Strings["admin.signin.title"]</h1>
-<p>@Strings["admin.signin.body"]</p>
-<p><a href="/dashboard">@Strings["admin.nav.dashboard"]</a></p>
+<div class="admin-card">
+    <h1>@Strings["admin.signin.title"]</h1>
+    <p>@Strings["admin.signin.body"]</p>
+
+    @if (Refused is not null)
+    {
+        <p class="admin-badge admin-badge--danger">@Strings["admin.signin.refused_prefix"] @Refused</p>
+    }
+
+    @if (DevSeamsEnabled.Value)
+    {
+        <div class="admin-fixture-list">
+            @foreach (var fixture in Svac.AdminHost.Domain.Auth.DevSeamsStaffFixtures.All)
+            {
+                <form method="post" action="@($"/devseams/signin/{fixture.Key}")">
+                    <AntiforgeryToken />
+                    <button type="submit" class="admin-button">@fixture.DisplayName</button>
+                </form>
+            }
+        </div>
+    }
+    else
+    {
+        <p><a class="admin-button" href="/staffauth/challenge">@Strings["admin.signin.entra_challenge"]</a></p>
+    }
+
+    <p><a href="/dashboard">@Strings["admin.nav.dashboard"]</a></p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "refused")]
+    private string? Refused { get; set; }
+}

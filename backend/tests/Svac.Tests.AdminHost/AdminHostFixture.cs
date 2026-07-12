@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Svac.AdminHost;
+using Svac.AdminHost.Auth;
+using Svac.AdminHost.Desks;
 using Svac.AdminHost.Domain.DependencyInjection;
 using Svac.AdminHost.Domain.Persistence;
 using Svac.DomainCore.DependencyInjection;
@@ -18,11 +20,11 @@ namespace Svac.Tests.AdminHost;
 
 /// <summary>
 /// Boots a REAL, in-process Kestrel host wired EXACTLY like Svac.AdminHost's own Program.cs
-/// (AddSvacHosting + AddDomainCore + AddAdminHostModule + MapRazorComponents + the THREE boot-refusal
-/// checks: RequireMutationsPolicyMapped, RequireTargetBindingConsistent, RequireAdminActionsCovered)
-/// against its OWN Testcontainer Postgres — mirrors Svac.Tests.Identity.IdentityHttpFixture exactly, so
-/// the boot-refusal proofs exercise the actual chokepoint the real host boots through, never a
-/// DB-service-layer stand-in.
+/// (AddSvacHosting + AddDomainCore + AddAdminHostModule + AddStaffAuth + MapRazorComponents +
+/// MapStaffAuthEndpoints + the THREE boot-refusal checks: RequireMutationsPolicyMapped,
+/// RequireTargetBindingConsistent, RequireAdminActionsCovered) against its OWN Testcontainer Postgres —
+/// mirrors Svac.Tests.Identity.IdentityHttpFixture exactly, so the boot-refusal proofs exercise the
+/// actual chokepoint the real host boots through, never a DB-service-layer stand-in.
 /// </summary>
 public sealed class AdminHostFixture : IAsyncLifetime
 {
@@ -56,13 +58,19 @@ public sealed class AdminHostFixture : IAsyncLifetime
         builder.Services.AddSvacHosting();
         builder.Services.AddDomainCore(connectionString, devSeamsEnabled: true);
         builder.Services.AddAdminHostModule(connectionString);
+        // Pass A: no Entra config in this fixture (mirrors a Development boot with no tenant) — the
+        // DevSeams transport is the only sign-in path this fixture exercises, exactly as it is in dev.
+        builder.Services.AddStaffAuth(connectionString, devSeamsEnabled: true, new StaffAuthEntraConfig(null, null, null));
+        builder.Services.AddSingleton<IDeskModule, DashboardDeskModule>();
         builder.Services.AddRazorComponents();
         builder.Services.AddAntiforgery();
 
         _app = builder.Build();
+        _app.UseAuthentication();
         _app.UseSvacRequestContext();
         _app.UseAntiforgery();
         _app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new Svac.DomainCore.Contracts.Api.HealthStatus("healthy", DateTimeOffset.UtcNow)));
+        _app.MapStaffAuthEndpoints(devSeamsEnabled: true, entraConfigured: false);
         _app.MapRazorComponents<Svac.AdminHost.Components.App>()
             .WithMetadata(new Svac.DomainCore.Contracts.Policy.PolicyActionAttribute("admin.host.transport"))
             .AddEndpointFilter(new PolicyEnforcementFilter("admin.host.transport"));

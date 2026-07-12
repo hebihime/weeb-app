@@ -1,0 +1,60 @@
+@* The authenticated shell (SLICE_S5_CONTRACT.md §1a/§8 seams 1/15): 1180px portal shell, Sky action
+   color, the desk nav rendered ONLY from registered IDeskModule instances, role-filtered — an
+   unregistered desk (Config Registry/User Search/Audit Trail/Staff & Roles today) is simply ABSENT from
+   this list, never grayed or placeholder-dark (§0 nav-absence law). *@
+@inherits LayoutComponentBase
+@inject AdminStringCatalog Strings
+@inject IEnumerable<IDeskModule> Desks
+@inject IStaffRoleResolver StaffRoleResolver
+@inject IRequestContextAccessor RequestContextAccessor
+@inject NavigationManager Nav
+
+<div class="admin-shell">
+    <header class="admin-shell__header">
+        <span class="admin-shell__brand">@Strings["admin.page.title"]</span>
+        <nav class="admin-nav">
+            @foreach (var desk in _visibleDesks)
+            {
+                <a class="admin-nav__link @(IsActive(desk.RouteHref) ? "admin-nav__link--active" : "")" href="@desk.RouteHref">@Strings[desk.TitleKey]</a>
+            }
+        </nav>
+        @if (_currentActor is not null)
+        {
+            <span class="admin-shell__identity">@_currentActor</span>
+            <form method="post" action="/staffauth/signout">
+                <AntiforgeryToken />
+                <button type="submit" class="admin-button admin-button--ghost">@Strings["admin.nav.signout"]</button>
+            </form>
+        }
+    </header>
+    <main class="admin-shell__main">
+        @Body
+    </main>
+</div>
+
+@code {
+    private IReadOnlyList<IDeskModule> _visibleDesks = Array.Empty<IDeskModule>();
+    private string? _currentActor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ctx = RequestContextAccessor.Current;
+        // Pass A ships the shell + nav seam; the REAL per-desk content gate is each desk's own
+        // admin.*.read policy row (admin.dashboard.read today, enforced by the desk's Pass D content —
+        // this scaffold stub carries none yet). An anonymous visitor sees an honest empty nav (GrantsOf
+        // resolves Empty for a non-staff actor) rather than a hard redirect, so the transport-level
+        // "admin.host.transport" row (Staff+Anonymous, DenyAsAbsence) stays the single source of truth
+        // for pre-auth reachability — never a second, layout-level gate that could drift from it.
+        _currentActor = ctx.Actor.Kind == Svac.DomainCore.Contracts.Ids.ActorKind.Staff ? ctx.Actor.ToString() : null;
+
+        var roles = await StaffRoleResolver.GrantsOf(ctx.Actor);
+        _visibleDesks = Desks
+            .Where(d => d.VisibleTo.Overlaps(roles))
+            .OrderBy(d => d.NavOrder)
+            .ThenBy(d => d.DeskId, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private bool IsActive(string routeHref) =>
+        string.Equals(new Uri(Nav.Uri).AbsolutePath.TrimEnd('/'), routeHref.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+}

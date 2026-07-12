@@ -1,0 +1,10 @@
+@* The pre-auth shell (SLICE_S5_CONTRACT.md §1a/§8 seam 15): the sign-in page renders with NO nav — an
+   anonymous visitor sees nothing about desk structure or staff identity, ever. Real desks opt INTO
+   AdminLayout explicitly via `@layout AdminLayout`; this is the Router's DefaultLayout (App.razor). *@
+@inherits LayoutComponentBase
+
+<div class="admin-shell">
+    <main class="admin-shell__main">
+        @Body
+    </main>
+</div>

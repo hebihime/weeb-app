@@ -63,5 +63,17 @@
     -->
     <PackageVersion Include="MailKit" Version="4.17.0" />
     <PackageVersion Include="MimeKit" Version="4.17.0" />
+
+    <!--
+      Admin host staff auth (SLICE_S5_CONTRACT.md §1b: "Prod/Staging: OIDC to Entra ID via
+      Microsoft.Identity.Web (Layer-1 standard; no hand-rolled OIDC)"). Microsoft's own first-party
+      library for ASP.NET Core <-> Entra ID (formerly Azure AD) integration — the only Layer-1 candidate
+      for this exact seam (search-before-building, CLAUDE.md): 1,300+ GitHub stars, maintained by the
+      Entra/identity platform team itself, 190M+ NuGet downloads, ships a net8.0 target that runs
+      unmodified on net10.0. Hand-rolling OIDC against Entra's endpoints was REJECTED at the contract
+      level (§1a: "Layer-1 standard; no hand-rolled OIDC") — this is the one legal way this host ever
+      speaks to Entra.
+    -->
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.13.0" />
   </ItemGroup>
 </Project>

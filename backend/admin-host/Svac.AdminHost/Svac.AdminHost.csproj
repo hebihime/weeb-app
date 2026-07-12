@@ -20,6 +20,8 @@
     <!-- Pinned to the SAME 10.0.9 release train as every other Microsoft.AspNetCore.* package this repo
          already pins (Directory.Packages.props) — QuickGrid ships out-of-band from the shared framework. -->
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" />
+    <!-- SLICE_S5_CONTRACT.md §1b: prod/staging OIDC to Entra ID (Layer-1 standard, no hand-rolled OIDC). -->
+    <PackageReference Include="Microsoft.Identity.Web" />
   </ItemGroup>
 
   <ItemGroup>

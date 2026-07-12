@@ -12,17 +12,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@Strings["admin.page.title"]</title>
     <base href="/" />
+    <link rel="stylesheet" href="css/admin.css" />
     <HeadOutlet />
 </head>
 <body>
     <Router AppAssembly="typeof(Program).Assembly">
         <Found Context="routeData">
-            <RouteView RouteData="routeData" />
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Svac.AdminHost.Components.Layout.EmptyLayout)" />
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>@Strings["admin.notfound.title"]</PageTitle>
-            <p role="alert">@Strings["admin.notfound.body"]</p>
+            <LayoutView Layout="typeof(Svac.AdminHost.Components.Layout.EmptyLayout)">
+                <PageTitle>@Strings["admin.notfound.title"]</PageTitle>
+                <p role="alert">@Strings["admin.notfound.body"]</p>
+            </LayoutView>
         </NotFound>
     </Router>
     <script src="_framework/blazor.web.js"></script>

@@ -13,8 +13,12 @@
     <AssemblyName>Svac.Tests.AdminHost</AssemblyName>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Underscore-delimited Given_When_Then test names match the repo-wide xUnit convention. -->
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- Underscore-delimited Given_When_Then test names match the repo-wide xUnit convention. CA1861
+         (prefer a cached static array over a literal argument) is a hot-path micro-optimization that
+         does not apply to test arrange code calling AdminTestSupport.SeedActiveStaff with a different
+         role combination per call site — extracting each into a uniquely-named static field would hurt
+         readability for zero runtime benefit in a <2s deterministic test lane. -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

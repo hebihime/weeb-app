@@ -5,9 +5,12 @@
    (§8 seam 16: "real-or-honestly-dark"). Its 4A wiring (the "admin.host.transport" PolicyAction, §3) is
    real: attached uniformly to every Razor Component endpoint in Program.cs, never per-page here. *@
 @page "/dashboard"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
 @inject AdminStringCatalog Strings
 
 <PageTitle>@Strings["admin.dashboard.title"]</PageTitle>
 
-<h1>@Strings["admin.dashboard.title"]</h1>
-<p>@Strings["admin.dashboard.body"]</p>
+<div class="admin-card">
+    <h1>@Strings["admin.dashboard.title"]</h1>
+    <p>@Strings["admin.dashboard.body"]</p>
+</div>
