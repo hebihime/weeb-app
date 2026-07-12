@@ -1,0 +1,4 @@
+{
+  "_comment": "SLICE_S5_CONTRACT.md §4 — admin-host tunables (admin.session_lifetime_hours, admin.session_revalidate_seconds, admin.user_search_daily_cap, admin.four_eyes_required, admin.staff_pii_retention_years). SCAFFOLD: this manifest ships EMPTY-VALID — a sibling, union-merge-friendly 9A manifest per S1's format (never an edit to backend/domain-core/Svac.DomainCore/Config/manifests/domain-core.config.json) that loads cleanly at boot with zero rows. Full row seeding (every key requiring a real consumer per the dead-tunable lint, §4) is Phase 2, once the config editor / four-eyes check / staff-PII-retention purge verb that would actually consume each key exists — seeding the keys before their consumer exists would itself fail the lint this manifest format enforces.",
+  "entries": []
+}

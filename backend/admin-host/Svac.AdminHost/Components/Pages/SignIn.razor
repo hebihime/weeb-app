@@ -1,0 +1,13 @@
+@* SLICE_S5_CONTRACT.md §1b/§4: the pre-auth sign-in page. SCAFFOLD STUB — returns the shell only; no
+   real auth pipeline (DevSeams fixture issuance / Entra OIDC) exists yet, both explicitly Phase 2. Its
+   4A wiring (the "admin.host.transport" PolicyAction, §3) is real: attached uniformly to every Razor
+   Component endpoint in Program.cs, never per-page here. *@
+@page "/"
+@page "/signin"
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.signin.title"]</PageTitle>
+
+<h1>@Strings["admin.signin.title"]</h1>
+<p>@Strings["admin.signin.body"]</p>
+<p><a href="/dashboard">@Strings["admin.nav.dashboard"]</a></p>

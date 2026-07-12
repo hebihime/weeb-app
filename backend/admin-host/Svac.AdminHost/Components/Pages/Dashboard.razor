@@ -1,0 +1,13 @@
+@* SLICE_S5_CONTRACT.md §8 seam 1/2: the Metrics & Ops desk shell — the ONE dashboard stub route this
+   scaffold ships. SCAFFOLD STUB — no IMetricsTileSource/IDeskModule registration exists yet (both
+   explicitly Phase 2); the desk nav absence law (§0) means an unregistered desk stays ABSENT, never
+   grayed or placeholder-dark, so this route renders an honest empty shell rather than fabricated tiles
+   (§8 seam 16: "real-or-honestly-dark"). Its 4A wiring (the "admin.host.transport" PolicyAction, §3) is
+   real: attached uniformly to every Razor Component endpoint in Program.cs, never per-page here. *@
+@page "/dashboard"
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.dashboard.title"]</PageTitle>
+
+<h1>@Strings["admin.dashboard.title"]</h1>
+<p>@Strings["admin.dashboard.body"]</p>

@@ -111,6 +111,35 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # SLICE_S5_CONTRACT.md §0/§1a: LANE F, Blazor Server admin host — its own deploy unit, distinct port
+  # (8091, the reserved public/admin/partner block above), never path-mounted under public-api. Named
+  # "admin-host", never "admin-api" (§1a note: the separate "admin API" REST host is NOT this slice's —
+  # 1A's four-host enumeration arrives with its first machine consumer). Reaches postgres (real
+  # dependency: schema `admin` migrations + the shared schema `core` config/audit reads) and redis (same
+  # default compose network, resolvable by service name today; no active runtime dependency yet — this
+  # host maps no interactive/SignalR render mode, §1a — so no depends_on is added for it: adding one
+  # would assert a health-gated startup ordering this host does not actually need).
+  admin-host:
+    build:
+      context: .
+      dockerfile: backend/admin-host/Svac.AdminHost/Dockerfile
+    environment:
+      ConnectionStrings__Core: "Host=postgres;Port=5432;Database=svac;Username=svac;Password=svac_dev_only"
+      SVAC_DEVSEAMS_ENABLED: "true"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    ports:
+      - "8091:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:

@@ -1,11 +1,12 @@
 # TODOS — weeb-app
 
-## S3 build wave — DONE at S3; awaiting merge + founder decisions before S5/S6
-- **S3 identity: DONE 2026-07-12.** THE HARDENED GATE green (`signup→verified→delete` E2E live twice);
-  Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM remediated, `SECURITY_REVIEW_S3.md`). All on
-  branch **`wave/s3-identity`** (commits `b1fd788`→Phase-3), open as **PR #1**, NOT merged to master
-  (master push is PR-gated). The Phase-2a substrate + S3 domain-core deltas live on that branch — S5/S6
-  build ON it (serial under the merge gate), so the branch is the base for the rest of the wave.
+## S3 build wave — S3 MERGED to master; S5 IN PROGRESS
+- **S3 identity: DONE 2026-07-12, MERGED to master (PR #1, `795209c`).** THE HARDENED GATE green
+  (`signup→verified→delete` E2E live twice); Phase-3 security done (1 CRITICAL + 7 HIGH + 6 MEDIUM
+  remediated, `SECURITY_REVIEW_S3.md`). The combined Phase-2a substrate (S3+S5+S6 deltas) landed with it.
+- **S5 admin desk: IN PROGRESS on branch `wave/s5-admin-desk` (off master).** Contract
+  `SLICE_S5_CONTRACT.md` RATIFIED (§13). Greenlit by Julien 2026-07-12. Phases 1→4 to THE HARDENED GATE,
+  stop at DONE for /compact.
 - **RULED 2026-07-12 (founder) — heatmap retention (SECURITY_REVIEW_S3 PII-4): anonymize-at-write.**
   **Keep the analytics signal, sever the subject.** The cell/density/pattern (the actionable data) is
   retained; only "whose signal is this" is dropped, so deleting an account keeps its contributions on the

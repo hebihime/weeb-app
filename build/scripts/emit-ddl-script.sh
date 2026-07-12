@@ -28,6 +28,7 @@ export PATH="$PATH:$HOME/.dotnet/tools"
 PAIRS=(
   "backend/domain-core/Svac.DomainCore|backend/domain-core/Svac.DomainCore/Persistence/Migrations/InitialCore.sql"
   "backend/modules/identity/Svac.Identity|backend/modules/identity/Svac.Identity/Persistence/Migrations/InitialIdentity.sql"
+  "backend/admin-host/Svac.AdminHost.Domain|backend/admin-host/Svac.AdminHost.Domain/Persistence/Migrations/InitialAdmin.sql"
 )
 
 DRIFTED=()

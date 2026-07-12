@@ -1,0 +1,13 @@
+{
+  "_comment": "SLICE_S5_CONTRACT.md §8 seam 14 / §11 OQ-1 RATIFIED (a): every admin string keyed from commit one; this catalog ships EN-only (staff-only audience, internal operators) pending the exception's own record in tools/i18n-lint/i18n-lint.mjs. Flipping to the product's x4 locale set later is translation data, zero rework.",
+  "entries": {
+    "admin.page.title": "Svac Admin",
+    "admin.notfound.title": "Not found",
+    "admin.notfound.body": "Sorry, there's nothing here.",
+    "admin.signin.title": "Staff sign-in",
+    "admin.signin.body": "Sign-in is not wired yet — this is a scaffold stub (SLICE_S5_CONTRACT.md Phase 2 ships the real Entra/DevSeams pipeline).",
+    "admin.nav.dashboard": "Dashboard",
+    "admin.dashboard.title": "Admin Dashboard",
+    "admin.dashboard.body": "This is a scaffold stub. Tiles (config-change events, purge runs, stream volumes, staff sign-ins, aiml.route_decided) register here in Phase 2 (SLICE_S5_CONTRACT.md §8 seam 2)."
+  }
+}

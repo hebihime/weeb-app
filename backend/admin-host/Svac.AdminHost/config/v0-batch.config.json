@@ -1,0 +1,4 @@
+{
+  "_comment": "SLICE_S5_CONTRACT.md §4 — the eng-review §5 v0 config batch (verification.age_gate_challenge_threshold, match.swipe_cap_free_daily, premium.price_usd_monthly, romantic.superlike_budget, battle.freemium_limit, ads.sponsored_card_ratio, heatmap.cell_provenance_days, and the rest of the founder-ratified table). SCAFFOLD: this manifest ships EMPTY-VALID — a sibling, union-merge-friendly 9A manifest per S1's format that loads cleanly at boot with zero rows. Full row seeding is Phase 2, THE LEDGER HEADLINE ('config change = audited 3A event, rendered from registry') — seeded then, with each key's `pending_consumer_slice` honestly naming the BUILD.md §7 slice that actually reads it (S12/S14/S18/S19/S20/S22/S23/S25/S27/S28/S30/S32/S33/S34/S35), per the dead-tunable lint's pending-key extension (PHASE_2A_SUBSTRATE.md §6: 'rides the S5 build', not this scaffold pass).",
+  "entries": []
+}

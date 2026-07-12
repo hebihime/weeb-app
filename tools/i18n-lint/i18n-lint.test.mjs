@@ -11,7 +11,12 @@ import {
   parseAndroidStrings,
   androidResName,
   checkMessageKeyCoverage,
+  collectRazorFiles,
 } from "./i18n-lint.mjs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const LOCALES = ["en", "es", "pt", "zh-Hans"];
 
@@ -200,4 +205,30 @@ test("RED: a message key missing its underscored Android name is caught", () => 
 test("checkMessageKeyCoverage: an absent platform (empty catalogs) is skipped, not failed", () => {
   const empty = Object.fromEntries(LOCALES.map((l) => [l, {}]));
   assert.deepEqual(checkMessageKeyCoverage([{ platform: "ios", catalogs: empty }], ["limit_reached.generic"], LOCALES), []);
+});
+
+test("collectRazorFiles: finds the real admin-host .razor files under backend/admin-host", () => {
+  const files = collectRazorFiles(repoRoot);
+  const relPaths = files.map((f) => f.path.replace(repoRoot, "").replace(/\\/g, "/"));
+
+  assert.ok(relPaths.some((p) => p.endsWith("Components/App.razor")));
+  assert.ok(relPaths.some((p) => p.endsWith("Components/Pages/SignIn.razor")));
+  assert.ok(relPaths.some((p) => p.endsWith("Components/Pages/Dashboard.razor")));
+});
+
+test("SLICE_S5_CONTRACT.md §8 seam 14: the REAL shipped admin-host .razor files carry zero hardcoded literals", () => {
+  // Every text node in these files renders through @AdminStringCatalog (an @-expression, never a bare
+  // literal) — this is the standing, permanent regression proof over the committed files themselves.
+  const files = collectRazorFiles(repoRoot);
+  assert.ok(files.length >= 3, "expected at least the three scaffold .razor files to be found");
+
+  const violations = findHardcodedStrings(files, { platform: "razor" });
+  assert.deepEqual(violations, []);
+});
+
+test("RED: an admin-host .razor file with a bare literal IS caught by the razor platform pattern", () => {
+  const fixture = [{ path: "Fixture.razor", content: "<h1>Hardcoded literal test</h1>" }];
+  const violations = findHardcodedStrings(fixture, { platform: "razor" });
+  assert.equal(violations.length, 1);
+  assert.ok(violations[0].includes("Hardcoded literal test"));
 });

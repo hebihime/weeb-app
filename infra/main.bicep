@@ -113,6 +113,28 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
   }
 }
 
+// SLICE_S5_CONTRACT.md §0 law d / §1a: the admin host's own Container App — additive, bicep-build-
+// validated, undeployable until OQ-3 (every params.*.bicepparam file supplies a non-image, fails-closed
+// sentinel for this param, mirroring postgresAdminPassword's own readEnvironmentVariable fallback
+// pattern exactly — a deploy attempt before OQ-3 fails closed at the Container App resource, never
+// silently). Reuses the SAME postgresAdminPassword this file already threads into `postgres` above — no
+// second secret mechanism invented for one additive module.
+@description('Fully-qualified admin-host image reference. No real default — every params file supplies a fails-closed sentinel until the real Container Registry exists (OQ-3).')
+param adminHostContainerImage string
+
+module adminHost 'modules/admin-host-container-app.bicep' = {
+  name: 'adminHost'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    containerAppsEnvironmentId: containerAppsEnv.outputs.environmentId
+    containerImage: adminHostContainerImage
+    postgresConnectionString: 'Host=${postgres.outputs.serverFqdn};Port=5432;Database=svac;Username=svac_admin;Password=${postgresAdminPassword}'
+    tags: commonTags
+  }
+}
+
 output containerAppsEnvironmentId string = containerAppsEnv.outputs.environmentId
 output postgresServerFqdn string = postgres.outputs.serverFqdn
 output keyVaultUri string = keyVault.outputs.vaultUri
+output adminHostFqdn string = adminHost.outputs.adminHostFqdn

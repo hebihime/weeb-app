@@ -49,6 +49,11 @@
          compile-time dependency surface states plainly what it needs. -->
     <ProjectReference Include="..\..\modules\identity\Svac.Identity.Contracts\Svac.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\modules\identity\Svac.Identity\Svac.Identity.csproj" />
+    <!-- PurgeRegistryGateTests.cs (SLICE_S5_CONTRACT.md §6) + AdminHostBoundaryTests.cs (§0 law c): this
+         NEUTRAL verifier project may see both Svac.PublicApi and Svac.AdminHost.Domain — the boundary
+         rule under test is "Svac.PublicApi never references Svac.AdminHost*", not "no test project may
+         see both sides". -->
+    <ProjectReference Include="..\..\admin-host\Svac.AdminHost.Domain\Svac.AdminHost.Domain.csproj" />
   </ItemGroup>
 
 </Project>

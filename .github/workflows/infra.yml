@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs infra/edge-guard.idor-lens.test.mjs infra/purge-completeness.lens.test.mjs
+      - run: node --test infra/edge-guard.test.mjs infra/residency.test.mjs infra/edge-guard.idor-lens.test.mjs infra/purge-completeness.lens.test.mjs infra/admin-host-container-app.test.mjs
 
   what-if:
     name: what-if against dev (guarded on Azure OIDC configured)
