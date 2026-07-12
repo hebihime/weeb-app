@@ -20,7 +20,12 @@ public static class AdminActionKeys
     /// <summary>The five real day-one AdminActionExecutor consumers named in §8 seam 3 as
     /// grant/revoke/provision/deactivate/config-set — the four verb-less staff-lifecycle actions here;
     /// config.set rides the ALREADY-covered core.config.set.* rows (§1c: "verbs with a native 3A event
-    /// are NOT double-logged"), so it is not repeated in this executor-owned list.</summary>
+    /// are NOT double-logged"), so it is not repeated in this executor-owned list.
+    /// [Pass D] Two more executor-routed, self-logging READ-PATH actions (§0/§8 seam 3/6/7):
+    /// admin.user_search.execute (UserSearchExecutionService) and admin.audit.read
+    /// (AuditViewExecutionService) — both already have AdminPolicyTableSource rows (§3), so adding them
+    /// here is the SAME "add your own verbs to this list" seam this doc already describes, never a
+    /// second, drifting enumeration.</summary>
     public static readonly IReadOnlyList<string> All = new[]
     {
         "admin.staff.provision",
@@ -28,5 +33,7 @@ public static class AdminActionKeys
         "admin.staff.reactivate",
         "admin.staff.role_grant",
         "admin.staff.role_revoke",
+        "admin.user_search.execute",
+        "admin.audit.read",
     };
 }

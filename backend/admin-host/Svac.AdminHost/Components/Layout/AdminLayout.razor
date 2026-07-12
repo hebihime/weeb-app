@@ -7,6 +7,7 @@
 @inject IEnumerable<IDeskModule> Desks
 @inject IStaffRoleResolver StaffRoleResolver
 @inject IRequestContextAccessor RequestContextAccessor
+@inject Svac.DomainCore.Contracts.Behavioral.IBehavioralStream BehavioralStream
 @inject NavigationManager Nav
 
 <div class="admin-shell">
@@ -53,6 +54,15 @@
             .OrderBy(d => d.NavOrder)
             .ThenBy(d => d.DeskId, StringComparer.Ordinal)
             .ToList();
+
+        // SLICE_S5_CONTRACT.md §8 seam 17 (Pass D fix — no prior pass wired this): "desk page-views emit
+        // on the behavioral stream; the E2E reads one back." Every page renders through THIS shared
+        // layout, so emitting here (once) covers every desk without a per-page edit. A plain Emit call —
+        // never one of AdminActionChokepointArchTests' three named mutating shapes — so this legitimately
+        // sits outside any IAdminActionExecutor.Execute call, exactly like every other cross-cutting read
+        // AdminLayout already performs (StaffRoleResolver.GrantsOf above).
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        await BehavioralStream.Emit("admin.page_view", System.Text.Json.JsonSerializer.Serialize(new { path }), ctx);
     }
 
     private bool IsActive(string routeHref) =>

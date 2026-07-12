@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Svac.AdminHost.Domain.Audit;
 using Svac.AdminHost.Domain.Execution;
 using Svac.AdminHost.Domain.I18n;
 using Svac.AdminHost.Domain.Persistence;
 using Svac.AdminHost.Domain.Policy;
 using Svac.AdminHost.Domain.Purge;
+using Svac.AdminHost.Domain.Search;
+using Svac.AdminHost.Domain.Tiles;
 using Svac.DomainCore.Contracts.Policy;
 using Svac.DomainCore.Purge;
 
@@ -65,6 +68,31 @@ public static class AdminHostServiceCollectionExtensions
         // AdminActionExecutor's own doc comment), never a singleton (that would leak one request's
         // connection swap into every other concurrent request sharing the instance).
         services.AddScoped<IAdminActionExecutor, AdminActionExecutor>();
+
+        // SLICE_S5_CONTRACT.md §0/§8 seam 6/§9 (Pass D): the host-owned search port. EmptyUserSearchSource
+        // is the day-one registration — honest-dark UI, never fabricated rows; S3's real adapter is a
+        // later ONE-DI-LINE swap (see IUserSearchSource's own doc comment), never a signature change here.
+        services.AddSingleton<IUserSearchSource, EmptyUserSearchSource>();
+        // The audited-execute path around that port (auth->4A->quota->audit->render, §0/§9) — scoped
+        // exactly like IAdminActionExecutor itself, which this service is a thin, single-purpose client of.
+        services.AddScoped<UserSearchExecutionService>();
+
+        // SLICE_S5_CONTRACT.md §0 (Pass D): the Audit Trail desk's audited-view path — same shape,
+        // one action (admin.audit.read) instead of admin.user_search.execute.
+        services.AddScoped<AuditViewExecutionService>();
+
+        // SLICE_S5_CONTRACT.md §8 seam 2 (Pass D): every LIVE S1/S2 tile source, registered as
+        // IEnumerable<IMetricsTileSource> (mirrors the IPolicyTableSource/IPurgeRegistrySource union
+        // pattern above) — Dashboard.razor renders exactly the set resolved here, role-filtered.
+        // ConfigChangeTileSource is registered FIRST (§8 seam 2: "the config-change tile is tile #1") —
+        // the built-in container resolves IEnumerable<T> in registration order, and Dashboard.razor.cs
+        // renders tiles in the order it receives them, so this ordering IS the rendering order, never a
+        // second, separate sort key to keep in sync.
+        services.AddScoped<IMetricsTileSource, ConfigChangeTileSource>();
+        services.AddScoped<IMetricsTileSource, PurgeRunsTileSource>();
+        services.AddScoped<IMetricsTileSource, StreamVolumeTileSource>();
+        services.AddScoped<IMetricsTileSource, StaffSignInsTileSource>();
+        services.AddScoped<IMetricsTileSource, AimlRouteTileSource>();
 
         return services;
     }

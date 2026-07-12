@@ -321,3 +321,61 @@ a:hover {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* Dashboard (SLICE_S5_CONTRACT.md §0/§8 seam 1/2, Pass D) — additive, same token set, same
+   neutral-professional register. Tile values are data (tabular-nums, §8 seam 2's own "real, not
+   fabricated" law reflected visually — no decorative animation, no candy fill). */
+
+.admin-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.admin-tile {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-hairline);
+  border-radius: var(--admin-radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-tile__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-dim);
+}
+
+.admin-tile__value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text);
+}
+
+.admin-tile__details {
+  margin: 4px 0 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 13px;
+}
+
+.admin-tile__details dt {
+  color: var(--admin-dim);
+}
+
+.admin-tile__details dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* User Search / Audit Trail desks (SLICE_S5_CONTRACT.md §0/§8 seam 1/6/7, Pass D) — same token set. */
+
+.admin-table-wrap .admin-data {
+  font-variant-numeric: tabular-nums;
+}

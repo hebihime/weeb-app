@@ -142,6 +142,47 @@ public sealed class StaffSignInTests : IAsyncLifetime
         Assert.Single(events, e => e.EventType == "admin.signin.refused");
     }
 
+    // -------------------- allowed leg is audited too (Pass D fix) --------------------
+
+    [Fact]
+    public async Task SignIn_MfaPresentAndActiveStaffRow_Allowed_AndAudited_TheLiveSourceForTheStaffSignInsTile()
+    {
+        using var adminDb = AdminTestSupport.NewAdminDb(ConnectionString);
+        using var coreDb = AdminTestSupport.NewCoreDb(ConnectionString);
+        var pipeline = NewPipeline(adminDb, coreDb);
+        var subject = "test:allowed-subject";
+        var staffId = AdminTestSupport.FreshStaffId();
+        adminDb.StaffAccounts.Add(new StaffAccountEntity
+        {
+            Id = staffId,
+            ExternalSubject = subject,
+            Email = "allowed@devseams.svac.internal",
+            DisplayName = "Allowed fixture",
+            Status = "active",
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            Region = "US",
+            LawfulBasis = "contract",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await adminDb.SaveChangesAsync();
+
+        var result = await pipeline.SignIn(
+            new Svac.AdminHost.Domain.Auth.StaffExternalClaims(subject, HasMfaClaim: true, "allowed@devseams.svac.internal", "Allowed fixture"),
+            AdminTestSupport.SystemCtx("allowed-signin"));
+
+        Assert.IsType<Svac.AdminHost.Domain.Auth.StaffSignInResult.Allowed>(result);
+
+        // Pass D fix: BEFORE this pass, the allowed leg appended NOTHING — no live source existed for
+        // the dashboard's "staff sign-ins" tile (SLICE_S5_CONTRACT.md §8 seam 2), which would have had to
+        // either fabricate a count from refusals alone or not exist at all. Keyed by the resolved stf_
+        // ref (a real row exists on this leg), never the pre-mapping "signin:{subject}" shape the
+        // refusal legs use before a row is found.
+        var events = await CollectAuditEvents(coreDb, staffId);
+        var succeeded = Assert.Single(events, e => e.EventType == "admin.signin.succeeded");
+        Assert.DoesNotContain("password", succeeded.PayloadJson ?? "", StringComparison.OrdinalIgnoreCase); // metadata only
+    }
+
     // -------------------- security-stamp live revalidation --------------------
 
     [Fact]

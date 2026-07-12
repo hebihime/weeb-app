@@ -38,6 +38,12 @@ namespace Svac.AdminHost.Domain.Execution;
 ///      IConfigRegistry.SetValue call already appended the {hat, roles_held}-enriched config.set event,
 ///      PHASE_2A_SUBSTRATE.md §1) — this executor appends NOTHING further for those. Every other action
 ///      key gets ONE admin.action.executed envelope {action, target_ref, hat, roles_held, reason}.
+///      [Pass D] Two READ-PATH actions extend this SAME self-logging exemption, for the same reason
+///      config.set has it — their `work` delegate already appends a richer, differently-shaped,
+///      contract-mandated event: admin.user_search.execute (UserSearchExecutionService appends
+///      admin.user_search.executed {query_class,query_term,hat}, SLICE_S5_CONTRACT.md §0/§9) and
+///      admin.audit.read (AuditViewExecutionService appends admin.audit.viewed {filter,hat}, §0's "each
+///      VIEW query itself audited (filter metadata, not results)"). See IsSelfLoggingAction below.
 ///   8. commit the shared transaction; return Success(ctx).
 ///
 /// Boot law (Svac.AdminHost.AdminHostBootChecks.RequireAdminActionsCovered, already real): every action
@@ -167,7 +173,7 @@ public sealed class AdminActionExecutor(
             // RequiresReason=true but whose CONFIG entry requires_reason=false with reason=null, and
             // expects the call to reach work() (and IConfigRegistry's own bounds check) rather than being
             // refused here. ---
-            if (row.RequiresReason && !IsConfigSetAction(action) && string.IsNullOrWhiteSpace(reason))
+            if (row.RequiresReason && !IsSelfLoggingAction(action) && string.IsNullOrWhiteSpace(reason))
             {
                 await transaction.CommitAsync(ct); // nothing was written — commit-of-nothing == rollback-of-nothing
                 return new AdminActionResult.ReasonRequired();
@@ -222,13 +228,14 @@ public sealed class AdminActionExecutor(
             }
 
             // --- 7. exactly ONE audit event per action. ---
-            if (!IsConfigSetAction(action))
+            if (!IsSelfLoggingAction(action))
             {
                 await AppendAuditEvent(ctx, AdminActionExecuted, action, target, reason, hat, rolesHeld, ct);
             }
-            // config.set actions are SELF-LOGGING: work's own IConfigRegistry.SetValue call already
-            // appended the enriched config.set event (ctx.Staff → {hat, roles_held}), in the SAME shared
-            // transaction, same SaveChangesAsync pattern as everything else here — appending anything
+            // config.set / admin.user_search.execute / admin.audit.read are all SELF-LOGGING: `work`
+            // itself already appended its own event (the enriched config.set event, or Pass D's
+            // admin.user_search.executed / admin.audit.viewed) in the SAME shared transaction, same
+            // SaveChangesAsync/eventStore.Append pattern as everything else here — appending anything
             // further would double-log (SLICE_S5_CONTRACT.md §1c step 7's own "NOT double-logged" law).
 
             await transaction.CommitAsync(ct);
@@ -255,6 +262,16 @@ public sealed class AdminActionExecutor(
     }
 
     private static bool IsConfigSetAction(string action) => action.StartsWith("core.config.set.", StringComparison.Ordinal);
+
+    /// <summary>
+    /// [Pass D] Every action whose OWN `work` delegate already appends its own, differently-shaped audit
+    /// event — the generalized form of the config.set exemption already documented on step 7 above. Adding
+    /// a THIRD self-logging action here is exactly the pattern a future desk should follow when its verb
+    /// needs a richer event than the generic admin.action.executed envelope; it never requires touching
+    /// anything else in this file.
+    /// </summary>
+    private static bool IsSelfLoggingAction(string action) =>
+        IsConfigSetAction(action) || action is "admin.user_search.execute" or "admin.audit.read";
 
     private static bool IsUniqueViolation(DbUpdateException ex, string constraintName) =>
         ex.InnerException is Npgsql.PostgresException pg

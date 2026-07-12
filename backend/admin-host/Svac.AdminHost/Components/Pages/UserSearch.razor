@@ -1,0 +1,90 @@
+@* SLICE_S5_CONTRACT.md §0/§8 seam 1/6 (Pass D): the User Search desk. GET-driven end to end (static SSR,
+   §1a) -- the wire contract (backend/e2e/admin-host.e2e.mjs's header comment) is literally
+   "GET|POST /user-search?query=...&queryClass=... -> 200 ... data-testid=user-search-results" -- a GET
+   form is the simplest, antiforgery-free way to satisfy it (a search is a query, not a mutation, at the
+   HTTP layer; the STAFF-SIDE audit/quota consumption it triggers is a separate, real concern this page's
+   code-behind routes through the audited executor regardless of verb). *@
+@page "/user-search"
+@layout Svac.AdminHost.Components.Layout.AdminLayout
+@inject AdminStringCatalog Strings
+
+<PageTitle>@Strings["admin.user_search.title"]</PageTitle>
+
+@if (!_canView)
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.user_search.title"]</h1>
+        <p>@Strings["admin.user_search.access_denied"]</p>
+    </div>
+}
+else
+{
+    <div class="admin-card">
+        <h1>@Strings["admin.user_search.title"]</h1>
+        <p>@Strings["admin.user_search.body"]</p>
+    </div>
+
+    <div class="admin-card">
+        <form data-testid="user-search-form" method="get" action="/user-search" class="admin-form">
+            <label class="admin-field">
+                <span>@Strings["admin.user_search.field.query"]</span>
+                <input class="admin-input" name="query" value="@Query" required />
+            </label>
+            <label class="admin-field">
+                <span>@Strings["admin.user_search.field.query_class"]</span>
+                <select class="admin-input" name="queryClass">
+                    @foreach (var qc in AllQueryClasses)
+                    {
+                        <option value="@qc" selected="@(qc == QueryClassRaw)">@qc</option>
+                    }
+                </select>
+            </label>
+            <button type="submit" class="admin-button">@Strings["admin.user_search.action.search"]</button>
+        </form>
+    </div>
+
+    @if (_searchAttempted && _outcome is not null)
+    {
+        <div class="admin-card" data-testid="user-search-results">
+            @switch (_outcome)
+            {
+                case UserSearchExecutionOutcome.QuotaLimited:
+                    <p class="admin-badge admin-badge--danger" data-testid="user-search-limit-reached">@Strings["admin.user_search.limit_reached"]</p>
+                    break;
+                case UserSearchExecutionOutcome.AccessDenied:
+                    <p class="admin-badge admin-badge--danger" data-testid="action-denied">@Strings["admin.user_search.denied"]</p>
+                    break;
+                case UserSearchExecutionOutcome.Rendered rendered when rendered.Page.Items.Count == 0:
+                    <p data-testid="user-search-empty">
+                        @(rendered.Page.SourceLive ? Strings["admin.user_search.empty"] : Strings["admin.user_search.source_not_live"])
+                    </p>
+                    break;
+                case UserSearchExecutionOutcome.Rendered rendered:
+                    <div class="admin-table-wrap">
+                        <table class="admin-data admin-table">
+                            <thead>
+                                <tr>
+                                    <th>@Strings["admin.user_search.table.user_ref"]</th>
+                                    <th>@Strings["admin.user_search.table.handle"]</th>
+                                    <th>@Strings["admin.user_search.table.email_masked"]</th>
+                                    <th>@Strings["admin.user_search.table.account_state"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in rendered.Page.Items)
+                                {
+                                    <tr data-testid="user-search-row">
+                                        <td>@row.UserRef</td>
+                                        <td>@row.Handle</td>
+                                        <td>@row.EmailMasked</td>
+                                        <td>@row.AccountState</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    break;
+            }
+        </div>
+    }
+}

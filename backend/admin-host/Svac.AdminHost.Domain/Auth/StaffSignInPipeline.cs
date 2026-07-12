@@ -23,7 +23,9 @@ namespace Svac.AdminHost.Domain.Auth;
 /// Every refusal is audited <c>admin.signin.refused</c> (metadata only: subject + a reason key, NEVER the
 /// raw claim bag) — stream_id is <c>signin:{externalSubject}</c> pre-mapping (no ActorRef resolvable yet,
 /// true for the no-MFA and unknown-subject legs) or the resolved <c>stf_</c> ref once a row is found
-/// (true for the inactive-account leg).
+/// (true for the inactive-account leg). [Pass D] The ALLOWED leg is audited too, symmetrically:
+/// <c>admin.signin.succeeded</c> (metadata only: subject, keyed by the resolved <c>stf_</c> ref) — this
+/// is the live source the dashboard's "staff sign-ins" tile (SLICE_S5_CONTRACT.md §8 seam 2) reads.
 /// </summary>
 public sealed class StaffSignInPipeline(AdminDbContext adminDb, IEventStore eventStore)
 {
@@ -54,7 +56,21 @@ public sealed class StaffSignInPipeline(AdminDbContext adminDb, IEventStore even
             .ToListAsync(ct);
         var roles = roleCodes.Select(StaffRoleCodes.Parse).ToHashSet();
 
+        // [Pass D fix] The allowed leg was never audited before this pass — every refusal leg was, but a
+        // SUCCESSFUL sign-in left no live source for the dashboard's "staff sign-ins" tile (§8 seam 2) to
+        // read (real-or-honestly-dark, §8 seam 16, forbids fabricating that tile from refusals alone).
+        // Symmetric with AuditRefusal below: metadata only (subject, never the raw claim bag), keyed by
+        // the resolved stf_ ref (a real row exists on this leg, unlike the no-MFA/unknown-subject
+        // refusal legs above).
+        await AuditSuccess(staff.Id, claims.ExternalSubject, ctx, ct);
+
         return new StaffSignInResult.Allowed(new ActorRef(OpaqueId.Parse(staff.Id), ActorKind.Staff), roles);
+    }
+
+    private async Task AuditSuccess(string streamId, string subject, RequestContext ctx, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Serialize(new { subject });
+        await eventStore.Append(StreamType.Audit, streamId, "admin.signin.succeeded", payload, ctx, ExpectedVersion.AnyVersion, ct);
     }
 
     private async Task AuditRefusal(string streamId, string subject, string reasonKey, RequestContext ctx, CancellationToken ct)

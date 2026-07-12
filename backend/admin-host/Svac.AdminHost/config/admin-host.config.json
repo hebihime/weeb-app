@@ -26,12 +26,12 @@
       "consumer": "StaffAuthServiceCollectionExtensions.RevalidateStaffSession (stamp+status revalidation interval, §1b)"
     },
     {
-      "key": "admin.user_search_daily_cap",
+      "key": "quota.admin.user_search.daily.cap",
       "scope": "ops",
       "type": "int",
       "value": 500,
       "requiresReason": false,
-      "consumer": "admin.user_search.daily 10A quota key's cap (§5) — Pass C/S3's user-search desk"
+      "consumer": "Svac.DomainCore.Quota.QuotaService.Consume (10A `quota.<quotaKey>.cap` convention, QuotaService.cs:24) for quotaKey=AdminQuotaKeys.UserSearchDaily=\"admin.user_search.daily\" (SLICE_S5_CONTRACT.md §5) — the actual runtime key UserSearchExecutionService's quota check resolves. Renamed from the contract §4 table's literal `admin.user_search_daily_cap` (a Pass D build-phase fix, mirroring backend/tests/Svac.Tests.AimlRouter/BudgetCapConfigKeyWiringTests.cs's identical S2 fix for `aiml.call.daily`, pinned here by backend/tests/Svac.Tests.AdminHost/UserSearchQuotaCapConfigKeyWiringTests.cs): that spelling collided with nothing QuotaService.Consume ever reads, so every search would have thrown KeyNotFoundException the moment Pass D wired the real Consume call. Same v0 value (500), same scope/requiresReason — the fix is the key's spelling, not its shape."
     },
     {
       "key": "admin.four_eyes_required",

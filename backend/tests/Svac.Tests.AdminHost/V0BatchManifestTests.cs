@@ -18,13 +18,21 @@ public sealed class V0BatchManifestTests
     private sealed record ExpectedEntry(string Key, string Scope, string Type, string ValueJson, string? PendingConsumerSlice);
 
     // SLICE_S5_CONTRACT.md §4, first table ("Admin-host tunables") -- every one of these five keys has a
-    // REAL S5 consumer by the time Pass A/B/C ship (cookie lifetime, revalidation interval, the §5 quota
+    // REAL S5 consumer by the time Pass A/B/C/D ship (cookie lifetime, revalidation interval, the §5 quota
     // cap, the executor's four-eyes step, the 13A retention verb) -- none is ever pending.
+    //
+    // "quota.admin.user_search.daily.cap" is the REAL, wired spelling of the contract §4 table's literal
+    // "admin.user_search_daily_cap" (Pass D fix, mirrors BudgetCapConfigKeyWiringTests.cs's identical S2
+    // fix for aiml.call.daily -- see admin-host.config.json's own comment on this key and
+    // UserSearchQuotaCapConfigKeyWiringTests.cs, which pins the QuotaService.Consume key-derivation
+    // formula independently of this transcription). The contract's literal spelling would never be read
+    // by QuotaService.Consume's own "quota.<quotaKey>.cap" convention -- shipping it unrenamed would be
+    // the exact class of dead tunable the S2 fix already caught once.
     private static readonly ExpectedEntry[] AdminHostTunablesTranscription =
     {
         new("admin.session_lifetime_hours", "ops", "int", "8", null),
         new("admin.session_revalidate_seconds", "ops", "int", "300", null),
-        new("admin.user_search_daily_cap", "ops", "int", "500", null),
+        new("quota.admin.user_search.daily.cap", "ops", "int", "500", null),
         new("admin.four_eyes_required", "founder", "bool", "false", null),
         new("admin.staff_pii_retention_years", "founder", "int", "6", null),
     };

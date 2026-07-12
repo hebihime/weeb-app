@@ -88,6 +88,11 @@ builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.ConfigRegistryDe
 // Pass C's own seam: the founder-scope confirm-with-reason interstitial's stateless, sealed confirmToken
 // (SLICE_S5_CONTRACT.md §4/§10.3) — off the SAME IDataProtectionProvider AddStaffAuth already registers.
 builder.Services.AddSingleton<ConfigConfirmToken>();
+// SLICE_S5_CONTRACT.md §0/§8 seam 1/6 (Pass D) — the User Search desk, the fourth live registrant (zero
+// edits to Dashboard/StaffRoles/ConfigRegistry desk modules or AdminLayout to add it).
+builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.UserSearchDeskModule>();
+// SLICE_S5_CONTRACT.md §0/§8 seam 1/7 (Pass D) — the Audit Trail desk, the fifth live registrant.
+builder.Services.AddSingleton<IDeskModule, Svac.AdminHost.Desks.AuditTrailDeskModule>();
 
 builder.Services.AddRazorComponents();
 builder.Services.AddAntiforgery();
