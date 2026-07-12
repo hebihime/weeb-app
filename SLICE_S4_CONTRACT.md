@@ -370,3 +370,38 @@ Ledger row: **"delivery-tracked notice lands via push AND email fallback"** — 
 16. **Reserved payload fields dropped (real-or-honestly-dark):** P1's `Actions[]` and P3's `priority`/`ttl` are additive internal shapes with zero users; S21/S22 add them as registrations. The genuinely hard-to-retrofit part — wire minimization — IS locked now via `PushRender`.
 17. **Prefs API: per-category PUT/DELETE (P1/P3)** over P2's whole-doc PUT — it yields the 404-on-8 ≡ 404-on-17 drill in S3's exact idiom. Unread count: P2's dedicated endpoint with additive fields. Grace semantics: reads any-state (P1/P3), all mutations active·suspended (P2's prefs reasoning extended uniformly — none are in the S3 grace rights set).
 18. **13A deliveries verb: Pseudonymize (P1/P3)** over P2's Delete — receipts are the evidence a statutory notice was dispatched (deletion_jobs precedent), and P3's zero-content-by-construction rows make retention safe. Retention knobs → OQ-1/OQ-2 (the only genuinely-Julien forks left; all three proposals flagged retention).
+
+## 13. RATIFICATION (orchestrator, 2026-07-12 — Julien's in-absence pre-approval)
+
+Contract **RATIFIED**. Julien greenlit S4's Phase 0 this session, then stepped away mid-turn; per the
+standing rule, in-absence ratification of a current slice's contract is pre-approved (it does NOT extend to
+auto-starting the build — S4 build waits for an explicit "go"). Both open questions are reversible
+founder-scope, desk-tunable calls with unanimous recommendations I endorse.
+
+**Scope + the synthesis rulings (§12) ratified as written.** Zero new intake verbs (S4 = a projection over
+the 3A streams + channel adapters); S3's mail subsumed by the one-line `TrackedEmailSender` decorator exactly
+as S3 §1b pre-ratified (all six S3 sends survive verbatim, `EmailByProducer`, no-double-send lint); the
+nine-category taxonomy closed forever with category 8 unmutable; zero 10A keys (dead-tunable lint); the
+narrow S3 Phase-2a addition (`IDeliveryDirectory` + `IPushTokenFeedback` in `Svac.Identity.Contracts` +
+the pre-ratified `IEmailSender` DI re-registration) with a byte-identical proof before builders fan out.
+
+**OQ-1 — inbox retention: RATIFIED (a).** Sweep READ, non-category-8 items at `inbox.retention_days`
+(v0 365, founder-scope, bounds to 10 years — "never" is one desk edit); category-8 account-safety notices
+retained until account deletion. A notification list is operational, not a memory object. Reversible; flagged
+for Julien's veto.
+
+**OQ-2 — delivery-receipt evidence window: RATIFIED 365 days** (`deliveries.retention_days`, founder-scope,
+conservative-reversible per the S0/S1 interim pattern; counsel's L-1 pass may adjust). Rows carry zero content
+and zero raw addresses, so the privacy cost of the window is minimal by construction. Reversible.
+
+**Julien-executed actions recorded (not blockers; none gate S4 green):** at OQ-3 (Azure subscription) — APNs
+`.p8` + FCM credentials into Key Vault under the S0-reserved posture (DevSeams capture transport covers
+dev/E2E; prod-unconfigured throws, fail-closed). Real-device push proof belongs to the client activation
+slice + S26 store package.
+
+**Lane note:** this ratified contract currently sits on `wave/s5-admin-desk` (swept in with the S5 round-2
+commit). S4's build lane branches cleanly off master once S5 merges; if S4 must start before that, cherry-pick
+this contract onto a `wave/s4-notifications` branch off master (S4 depends on S1+S3, NOT on S5).
+
+Ratified. Awaits an explicit "go" to start Phase 1 (stop-after-slice; in-absence ratification does not
+auto-start the build).
